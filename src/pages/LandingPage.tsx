@@ -1,7 +1,275 @@
 import { Link, useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { Award, ShieldCheck, Star, ArrowRight, Activity, Users, Smile, ChevronLeft, ChevronRight, Mail } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { motion, useInView } from 'motion/react';
+import { Award, ShieldCheck, Star, ArrowRight, Activity, Users, Smile, ChevronLeft, ChevronRight, Mail, Play, CheckCircle2, Download, FileText, Heart } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+
+// ─── Animated Counter Hook ──────────────────────────────────────────────────
+function useCountUp(target: number, duration = 2000, enabled = true) {
+  const [count, setCount] = useState(0);
+  useEffect(() => {
+    if (!enabled) return;
+    let start: number | null = null;
+    const step = (timestamp: number) => {
+      if (!start) start = timestamp;
+      const progress = Math.min((timestamp - start) / duration, 1);
+      // Ease out
+      const eased = 1 - Math.pow(1 - progress, 3);
+      setCount(Math.floor(eased * target));
+      if (progress < 1) requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
+  }, [target, duration, enabled]);
+  return count;
+}
+
+// ─── Stat Item ──────────────────────────────────────────────────────────────
+function StatItem({ value, suffix, label, delay = 0 }: { value: number; suffix: string; label: string; delay?: number }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const inView = useInView(ref, { once: true, margin: '-60px' });
+  const count = useCountUp(value, 2200, inView);
+  return (
+    <motion.div
+      ref={ref}
+      initial={{ opacity: 0, y: 20 }}
+      animate={inView ? { opacity: 1, y: 0 } : {}}
+      transition={{ duration: 0.6, delay }}
+      className="flex flex-col items-center gap-1"
+    >
+      <span className="font-display font-extrabold text-3xl sm:text-4xl text-white leading-none">
+        {count.toLocaleString()}<span className="text-accent">{suffix}</span>
+      </span>
+      <span className="text-gray-400 text-xs font-sans text-center leading-tight">{label}</span>
+    </motion.div>
+  );
+}
+
+// ─── Hero Illustration ───────────────────────────────────────────────────────
+function HeroIllustration() {
+  return (
+    <div className="relative w-full h-full flex items-center justify-center select-none">
+      {/* Outer glow */}
+      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+        <div className="w-72 h-72 rounded-full bg-accent/20 blur-3xl animate-pulse-glow" />
+      </div>
+
+      {/* Central SVG illustration */}
+      <div className="relative z-10 w-80 h-80 sm:w-[400px] sm:h-[400px]">
+        <svg viewBox="0 0 400 400" fill="none" className="w-full h-full overflow-visible">
+          {/* ── Background rotating dashed ring ── */}
+          <circle
+            cx="200" cy="200" r="170"
+            stroke="rgba(31,182,212,0.12)"
+            strokeWidth="1"
+            strokeDasharray="8 6"
+            className="animate-spin-slow"
+            style={{ transformOrigin: '200px 200px' }}
+          />
+          <circle
+            cx="200" cy="200" r="140"
+            stroke="rgba(255,255,255,0.05)"
+            strokeWidth="1"
+            strokeDasharray="4 8"
+            className="animate-spin"
+            style={{ animationDuration: '40s', animationDirection: 'reverse', transformOrigin: '200px 200px' }}
+          />
+
+          {/* ── Medical Book (centre) ── */}
+          <g className="animate-float-y" style={{ transformOrigin: '200px 200px' }}>
+            {/* Book body left page */}
+            <rect x="115" y="120" width="85" height="120" rx="8" fill="#0A1F4D" stroke="rgba(31,182,212,0.5)" strokeWidth="1.5" />
+            {/* Book body right page */}
+            <rect x="200" y="120" width="85" height="120" rx="8" fill="#0F2D6B" stroke="rgba(31,182,212,0.5)" strokeWidth="1.5" />
+            {/* Spine */}
+            <rect x="196" y="116" width="8" height="128" rx="4" fill="#1FB6D4" />
+
+            {/* Left page lines */}
+            <line x1="130" y1="148" x2="180" y2="148" stroke="rgba(31,182,212,0.4)" strokeWidth="1.5" strokeLinecap="round" />
+            <line x1="130" y1="162" x2="175" y2="162" stroke="rgba(255,255,255,0.15)" strokeWidth="1.5" strokeLinecap="round" />
+            <line x1="130" y1="176" x2="178" y2="176" stroke="rgba(255,255,255,0.15)" strokeWidth="1.5" strokeLinecap="round" />
+            <line x1="130" y1="190" x2="172" y2="190" stroke="rgba(255,255,255,0.15)" strokeWidth="1.5" strokeLinecap="round" />
+            <line x1="130" y1="204" x2="175" y2="204" stroke="rgba(31,182,212,0.3)" strokeWidth="1.5" strokeLinecap="round" />
+            {/* Rx symbol left */}
+            <text x="152" y="228" textAnchor="middle" fontSize="16" fill="rgba(31,182,212,0.6)" fontFamily="serif" fontWeight="bold">Rx</text>
+
+            {/* Right page lines */}
+            <line x1="218" y1="148" x2="268" y2="148" stroke="rgba(31,182,212,0.4)" strokeWidth="1.5" strokeLinecap="round" />
+            <line x1="218" y1="162" x2="263" y2="162" stroke="rgba(255,255,255,0.15)" strokeWidth="1.5" strokeLinecap="round" />
+            <line x1="218" y1="176" x2="266" y2="176" stroke="rgba(255,255,255,0.15)" strokeWidth="1.5" strokeLinecap="round" />
+            <line x1="218" y1="190" x2="260" y2="190" stroke="rgba(255,255,255,0.15)" strokeWidth="1.5" strokeLinecap="round" />
+            {/* Medical cross right page */}
+            <rect x="237" y="205" width="5" height="18" rx="2" fill="rgba(31,182,212,0.5)" />
+            <rect x="230" y="212" width="19" height="5" rx="2" fill="rgba(31,182,212,0.5)" />
+          </g>
+
+          {/* ── Stethoscope wrapping ── */}
+          <g>
+            <path
+              d="M90 155 C70 160 55 185 60 210 C65 235 88 252 112 248 C128 245 140 234 145 218"
+              stroke="#1FB6D4"
+              strokeWidth="5"
+              strokeLinecap="round"
+              fill="none"
+              opacity="0.85"
+            />
+            <path
+              d="M145 218 C148 208 148 195 145 185 C141 173 135 165 128 158"
+              stroke="#1FB6D4"
+              strokeWidth="5"
+              strokeLinecap="round"
+              fill="none"
+              opacity="0.85"
+            />
+            {/* Chest piece */}
+            <circle cx="82" cy="155" r="10" fill="#1FB6D4" opacity="0.9" />
+            <circle cx="82" cy="155" r="5" fill="#0A1F4D" />
+            <circle cx="82" cy="155" r="2.5" fill="#1FB6D4" />
+            {/* Earpiece right */}
+            <circle cx="310" cy="178" r="12" fill="#1FB6D4" opacity="0.85" />
+            <circle cx="310" cy="178" r="6" fill="#0A1F4D" />
+            {/* Tubing right */}
+            <path
+              d="M258 155 C280 148 300 155 310 166"
+              stroke="#1FB6D4"
+              strokeWidth="5"
+              strokeLinecap="round"
+              fill="none"
+              opacity="0.85"
+            />
+          </g>
+
+          {/* ── DNA Double Helix (right side) ── */}
+          <g opacity="0.7" className="animate-float-y-slow" style={{ transformOrigin: '340px 200px' }}>
+            {[0, 1, 2, 3, 4].map((i) => {
+              const y = 140 + i * 30;
+              const phase = (i * Math.PI * 2) / 5;
+              const x1 = 328 + Math.cos(phase) * 12;
+              const x2 = 352 - Math.cos(phase) * 12;
+              return (
+                <g key={i}>
+                  <circle cx={x1} cy={y} r="4" fill="#1FB6D4" opacity="0.8" />
+                  <circle cx={x2} cy={y} r="4" fill="rgba(255,255,255,0.5)" />
+                  <line x1={x1} y1={y} x2={x2} y2={y} stroke="rgba(31,182,212,0.4)" strokeWidth="1.5" />
+                </g>
+              );
+            })}
+            {/* Backbone lines */}
+            <polyline
+              points="322,140 330,155 320,170 328,185 322,200 330,215 320,230 328,245 322,260"
+              stroke="#1FB6D4"
+              strokeWidth="2"
+              fill="none"
+              opacity="0.5"
+            />
+            <polyline
+              points="358,140 350,155 360,170 352,185 358,200 350,215 360,230 352,245 358,260"
+              stroke="rgba(255,255,255,0.4)"
+              strokeWidth="2"
+              fill="none"
+              opacity="0.5"
+            />
+          </g>
+
+          {/* ── ECG / Heartbeat Line ── */}
+          <g>
+            <path
+              d="M68 308 L110 308 L122 285 L134 330 L148 295 L158 308 L330 308"
+              stroke="#1FB6D4"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              fill="none"
+              strokeDasharray="280"
+              strokeDashoffset="0"
+              opacity="0.75"
+              className="animate-ecg"
+            />
+            {/* Glow under ECG */}
+            <path
+              d="M68 308 L110 308 L122 285 L134 330 L148 295 L158 308 L330 308"
+              stroke="#1FB6D4"
+              strokeWidth="6"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              fill="none"
+              opacity="0.15"
+            />
+          </g>
+
+          {/* ── Capsule pill ── */}
+          <g className="animate-float-card-1" style={{ transformOrigin: '72px 240px' }}>
+            <rect x="52" y="232" width="40" height="18" rx="9" fill="rgba(31,182,212,0.2)" stroke="#1FB6D4" strokeWidth="1.5" />
+            <rect x="52" y="232" width="20" height="18" rx="9" fill="rgba(31,182,212,0.35)" />
+            <line x1="72" y1="233" x2="72" y2="249" stroke="#1FB6D4" strokeWidth="1" opacity="0.6" />
+          </g>
+
+          {/* ── Brain outline ── */}
+          <g opacity="0.55" className="animate-float-y-slow" style={{ transformOrigin: '80px 88px' }}>
+            <path
+              d="M65 95 C58 85 60 72 70 70 C70 62 80 58 88 64 C92 58 102 58 106 66 C114 64 118 75 114 82 C120 86 118 96 112 98 C114 106 108 112 100 110 C98 116 90 118 86 112 C80 116 72 112 70 106 C64 106 62 100 65 95Z"
+              stroke="#1FB6D4"
+              strokeWidth="1.5"
+              fill="rgba(31,182,212,0.06)"
+            />
+            <path d="M88 64 C88 78 88 94 88 110" stroke="rgba(31,182,212,0.3)" strokeWidth="1" strokeDasharray="3 3" />
+            <path d="M75 78 C82 82 94 82 101 78" stroke="rgba(31,182,212,0.25)" strokeWidth="1" strokeLinecap="round" />
+          </g>
+        </svg>
+
+        {/* ── Floating Glassmorphism Cards ── */}
+        {/* Card 1: PDF */}
+        <div
+          className="glass-card-float absolute -left-8 sm:-left-14 top-16 px-3 py-2.5 flex items-center gap-2.5 animate-float-card-1"
+          style={{ minWidth: 140 }}
+        >
+          <div className="w-8 h-8 rounded-lg bg-accent/20 flex items-center justify-center shrink-0">
+            <FileText className="w-4 h-4 text-accent" />
+          </div>
+          <div>
+            <p className="text-white text-[11px] font-display font-semibold leading-none">Anatomy Notes</p>
+            <p className="text-accent text-[10px] font-sans mt-0.5">PDF • 48 pages</p>
+          </div>
+        </div>
+
+        {/* Card 2: Download progress */}
+        <div
+          className="glass-card-float absolute -right-6 sm:-right-12 top-24 px-3 py-2.5 flex flex-col gap-1.5 animate-float-card-2"
+          style={{ minWidth: 130 }}
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-white text-[11px] font-display font-semibold">Downloading</span>
+            <Download className="w-3.5 h-3.5 text-accent" />
+          </div>
+          <div className="w-full h-1.5 rounded-full bg-white/10">
+            <div className="h-1.5 rounded-full bg-gradient-to-r from-primary to-accent w-[78%]" />
+          </div>
+          <span className="text-accent text-[10px] font-sans">78% complete</span>
+        </div>
+
+        {/* Card 3: Rating */}
+        <div
+          className="glass-card-float absolute -right-4 sm:-right-10 bottom-20 px-3 py-2.5 flex items-center gap-2 animate-float-card-1"
+          style={{ minWidth: 120, animationDelay: '1s' }}
+        >
+          <Heart className="w-4 h-4 text-rose-400 fill-rose-400" />
+          <div>
+            <div className="flex gap-0.5 mb-0.5">
+              {[...Array(5)].map((_, i) => <Star key={i} className="w-2.5 h-2.5 text-yellow-400 fill-yellow-400" />)}
+            </div>
+            <span className="text-white text-[10px] font-sans">10k+ reviews</span>
+          </div>
+        </div>
+
+        {/* Card 4: Subject tag */}
+        <div
+          className="glass-card-float absolute -left-6 sm:-left-12 bottom-24 px-3 py-2 flex items-center gap-2 animate-float-card-2"
+        >
+          <span className="text-[18px]">🩺</span>
+          <span className="text-white text-[11px] font-display font-semibold">MBBS Notes</span>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 const CATEGORIES = [
   { id: 'c1', name: 'MBBS', desc: 'Bachelor of Medicine, Bachelor of Surgery', icon: '🩺', color: 'from-blue-500/10 to-cyan-500/10' },
@@ -60,6 +328,21 @@ const TESTIMONIALS = [
   }
 ];
 
+const FEATURE_CHIPS = [
+  'Instant Email Delivery',
+  'Verified Notes',
+  'Secure Payments',
+  'Updated Every Semester',
+  '48-Hour Secure Download',
+];
+
+const STATS = [
+  { value: 12000, suffix: '+', label: 'Students' },
+  { value: 5000, suffix: '+', label: 'Premium Notes' },
+  { value: 98, suffix: '%', label: 'Student Satisfaction' },
+  { value: 150, suffix: '+', label: 'Medical Subjects' },
+];
+
 export default function LandingPage() {
   const navigate = useNavigate();
   const [currentTestimonial, setCurrentTestimonial] = useState(0);
@@ -80,109 +363,158 @@ export default function LandingPage() {
 
   return (
     <div className="overflow-hidden">
-      {/* 1. Hero Section */}
-      <section className="relative bg-dark-navy text-white pt-24 pb-32 px-4 sm:px-6 lg:px-8 overflow-hidden">
-        {/* Animated Background Gradients */}
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(31,182,212,0.15),transparent_45%)]" />
-        
-        <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-12 items-center relative z-10">
-          {/* Hero text */}
-          <div className="lg:col-span-7 flex flex-col items-start gap-6">
+      {/* ═══════════════════════════════════════════════════════ */}
+      {/* 1. HERO SECTION                                         */}
+      {/* ═══════════════════════════════════════════════════════ */}
+      <section className="relative bg-[#080f1e] text-white pt-20 pb-28 px-4 sm:px-6 lg:px-8 overflow-hidden">
+
+        {/* ── Layered Background Effects ── */}
+        {/* Medical grid */}
+        <div className="absolute inset-0 hero-grid-bg opacity-60 pointer-events-none" />
+        {/* Radial glow top-right */}
+        <div className="absolute top-0 right-0 w-[700px] h-[700px] rounded-full pointer-events-none"
+          style={{ background: 'radial-gradient(circle, rgba(31,182,212,0.13) 0%, transparent 65%)', transform: 'translate(25%,-30%)' }} />
+        {/* Radial glow bottom-left */}
+        <div className="absolute bottom-0 left-0 w-[500px] h-[500px] rounded-full pointer-events-none"
+          style={{ background: 'radial-gradient(circle, rgba(15,45,107,0.45) 0%, transparent 65%)', transform: 'translate(-30%, 30%)' }} />
+        {/* Blurred cyan circle mid-right */}
+        <div className="absolute right-[8%] top-[20%] w-48 h-48 bg-accent/10 rounded-full blur-3xl pointer-events-none animate-pulse-glow" />
+        {/* Blurred navy circle mid-left */}
+        <div className="absolute left-[5%] bottom-[15%] w-56 h-56 bg-primary/20 rounded-full blur-3xl pointer-events-none" />
+
+        <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-6 items-center relative z-10">
+
+          {/* ── Left: Hero Text ── */}
+          <div className="lg:col-span-7 flex flex-col items-start gap-5">
+
+            {/* ── Feature Chips ── */}
             <motion.div
-              initial={{ opacity: 0, y: -20 }}
+              initial={{ opacity: 0, y: -16 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6 }}
-              className="inline-flex items-center gap-2 px-3 py-1 bg-accent/20 border border-accent/30 rounded-full"
+              transition={{ duration: 0.55 }}
+              className="flex flex-wrap gap-2"
             >
-              <Activity className="w-4 h-4 text-accent animate-pulse" />
-              <span className="text-accent font-display text-xs font-semibold uppercase tracking-wider">
-                India's First Med-Notes Marketplace
+              {FEATURE_CHIPS.map((chip) => (
+                <span key={chip} className="hero-chip">
+                  <CheckCircle2 className="w-3 h-3" />
+                  {chip}
+                </span>
+              ))}
+            </motion.div>
+
+            {/* ── Badge ── */}
+            <motion.div
+              initial={{ opacity: 0, y: -12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.55, delay: 0.08 }}
+              className="inline-flex items-center gap-2 px-3 py-1.5 bg-accent/15 border border-accent/30 rounded-full"
+            >
+              <Activity className="w-3.5 h-3.5 text-accent animate-pulse" />
+              <span className="text-accent font-display text-xs font-semibold uppercase tracking-widest">
+                India's #1 Med-Notes Marketplace
               </span>
             </motion.div>
 
+            {/* ── Heading ── */}
             <motion.h1
-              initial={{ opacity: 0, y: 30 }}
+              initial={{ opacity: 0, y: 28 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.7, delay: 0.1 }}
-              className="text-4xl sm:text-6xl font-display font-extrabold leading-tight tracking-tight text-white"
+              transition={{ duration: 0.7, delay: 0.15 }}
+              className="text-4xl sm:text-5xl xl:text-6xl font-display font-extrabold leading-[1.1] tracking-tight text-white"
             >
-              Your <span className="text-transparent bg-clip-text bg-gradient-to-r from-accent to-white">Stethoscope</span> <br />
-              to Academic Success
+              Study Smarter with<br />
+              India's Trusted{' '}
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-accent via-cyan-300 to-blue-400">
+                Medical Notes
+              </span>{' '}
+              Platform
             </motion.h1>
 
+            {/* ── Subheading ── */}
             <motion.p
-              initial={{ opacity: 0, y: 30 }}
+              initial={{ opacity: 0, y: 28 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.7, delay: 0.2 }}
-              className="text-gray-300 text-lg sm:text-xl font-sans max-w-2xl leading-relaxed"
+              transition={{ duration: 0.7, delay: 0.25 }}
+              className="text-gray-300 text-base sm:text-lg font-sans max-w-xl leading-relaxed"
             >
-              Exclusively compiled digital study notes, handwritten summaries, and exam-cracking guides created by top medical and paramedical toppers.
+              Access premium handwritten notes, concise revision PDFs, PYQs, mnemonics, and exam-ready guides for{' '}
+              <span className="text-white font-medium">MBBS, BDS, BHMS, BAMS, Nursing, Pharmacy, Physiotherapy,</span>{' '}
+              and Paramedical students.
             </motion.p>
 
+            {/* ── CTA Buttons ── */}
             <motion.div
-              initial={{ opacity: 0, y: 30 }}
+              initial={{ opacity: 0, y: 28 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.7, delay: 0.3 }}
-              className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto mt-4"
+              transition={{ duration: 0.7, delay: 0.33 }}
+              className="flex flex-col sm:flex-row gap-4 mt-2"
             >
-              <Link to="/courses" className="btn-primary py-4 px-8 text-base">
-                Browse Study Notes
-                <ArrowRight className="w-5 h-5" />
+              <Link
+                to="/courses"
+                className="btn-gradient py-3.5 px-8 text-base font-semibold rounded-xl group"
+              >
+                Browse Notes
+                <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform duration-200" />
               </Link>
-              <a href="#about" className="btn-outline-white py-4 px-8 text-base">
-                Learn More
-              </a>
+              <button
+                className="flex items-center justify-center gap-3 py-3.5 px-8 text-base font-display font-semibold text-white rounded-xl border-2 border-white/20 hover:border-white/40 hover:bg-white/6 transition-all duration-200 group"
+                onClick={() => {}}
+              >
+                <span className="w-8 h-8 rounded-full bg-white/15 flex items-center justify-center group-hover:bg-white/25 transition-colors">
+                  <Play className="w-3.5 h-3.5 fill-white text-white ml-0.5" />
+                </span>
+                Watch Demo
+              </button>
             </motion.div>
 
-            {/* Quick Metrics */}
+            {/* ── Trust Indicators ── */}
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              transition={{ duration: 0.8, delay: 0.4 }}
-              className="grid grid-cols-3 gap-6 pt-8 mt-4 border-t border-white/10 w-full max-w-md"
+              transition={{ duration: 0.7, delay: 0.45 }}
+              className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-5"
             >
-              <div>
-                <h4 className="font-display font-bold text-2xl text-accent">500+</h4>
-                <p className="text-gray-400 text-xs mt-1">Syllabus PDFs</p>
+              <div className="flex items-center gap-2">
+                <div className="flex gap-0.5">
+                  {[...Array(5)].map((_, i) => (
+                    <Star key={i} className="w-4 h-4 text-yellow-400 fill-yellow-400" />
+                  ))}
+                </div>
+                <span className="text-white font-display font-semibold text-sm">4.9/5</span>
+                <span className="text-gray-400 text-sm font-sans">from 10,000+ students</span>
               </div>
-              <div>
-                <h4 className="font-display font-bold text-2xl text-accent">10k+</h4>
-                <p className="text-gray-400 text-xs mt-1">Active Students</p>
-              </div>
-              <div>
-                <h4 className="font-display font-bold text-2xl text-accent">4.9★</h4>
-                <p className="text-gray-400 text-xs mt-1">Average Rating</p>
-              </div>
+              <div className="hidden sm:block h-4 w-px bg-white/15" />
+              <span className="text-gray-400 text-sm font-sans">
+                🇮🇳 Trusted by students across India
+              </span>
             </motion.div>
           </div>
 
-          {/* Hero Image / Animated graphic */}
-          <div className="lg:col-span-5 flex justify-center relative">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.8 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.8, delay: 0.2 }}
-              className="relative w-72 h-72 sm:w-96 sm:h-96"
-            >
-              {/* Decorative Pulsing circles */}
-              <div className="absolute inset-0 bg-accent/10 rounded-full filter blur-2xl animate-pulse" />
-              
-              {/* Core SVG illustration representing medical study */}
-              <svg className="w-full h-full text-accent relative z-10" viewBox="0 0 200 200" fill="none">
-                <circle cx="100" cy="100" r="80" stroke="currentColor" strokeWidth="1" strokeDasharray="5 5" className="animate-spin" style={{ animationDuration: '30s' }} />
-                
-                {/* Book */}
-                <rect x="55" y="65" width="90" height="70" rx="4" fill="#0F2D6B" stroke="currentColor" strokeWidth="3" />
-                <path d="M100 65v70" stroke="currentColor" strokeWidth="2" />
-                <path d="M65 80h25M65 95h25M65 110h25M110 80h25M110 95h25M110 110h25" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-                
-                {/* Stethoscope wrapping book */}
-                <path d="M40 70c-15 15-20 40-10 60s35 25 55 15c10-5 15-15 15-25" stroke="#1FB6D4" strokeWidth="4" strokeLinecap="round" />
-                <path d="M100 130c0 15 10 30 30 35s40-5 45-25c3-12-2-25-10-30" stroke="#1FB6D4" strokeWidth="4" strokeLinecap="round" />
-                <circle cx="165" cy="110" r="10" fill="#1FB6D4" />
-                <circle cx="165" cy="110" r="4" fill="#0F2D6B" />
-              </svg>
-            </motion.div>
+          {/* ── Right: Floating Illustration ── */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.88, x: 30 }}
+            animate={{ opacity: 1, scale: 1, x: 0 }}
+            transition={{ duration: 0.9, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
+            className="lg:col-span-5 flex justify-center items-center relative min-h-[340px]"
+          >
+            <HeroIllustration />
+          </motion.div>
+        </div>
+
+        {/* ── Stats Row ── */}
+        <div className="max-w-7xl mx-auto relative z-10 mt-20">
+          <div className="border-t border-white/8 pt-10">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-8 md:gap-4">
+              {STATS.map((stat, i) => (
+                <StatItem
+                  key={stat.label}
+                  value={stat.value}
+                  suffix={stat.suffix}
+                  label={stat.label}
+                  delay={i * 0.1}
+                />
+              ))}
+            </div>
           </div>
         </div>
       </section>
