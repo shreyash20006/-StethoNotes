@@ -3,7 +3,7 @@
 // ============================================
 
 export type UserRole = 'student' | 'seller_pending' | 'seller' | 'admin' | 'super_admin';
-export type UserStatus = 'active' | 'pending' | 'approved' | 'rejected';
+export type UserStatus = 'active' | 'pending' | 'approved' | 'rejected' | 'suspended';
 export type SellerRequestStatus = 'pending' | 'approved' | 'rejected';
 
 // ============================================
@@ -60,6 +60,7 @@ export interface Note {
   status: 'active' | 'draft';
   semester?: string;
   created_at: string;
+  seller_id?: string;
 }
 
 export interface Order {
@@ -88,9 +89,20 @@ export interface Review {
   note_id: string;
   user_id: string;
   user_name?: string;
+  user_email?: string;
+  user_avatar?: string;
   rating: number;
   comment: string;
+  is_verified_purchase: boolean;
+  is_pinned: boolean;
+  is_hidden: boolean;
+  is_reported: boolean;
+  helpful_count?: number;
+  unhelpful_count?: number;
+  user_vote?: 'helpful' | 'unhelpful' | null;
   created_at: string;
+  updated_at?: string;
+  note_title?: string;
 }
 
 export interface CartItem {
@@ -162,6 +174,7 @@ export interface AuditLog {
   new_values?: any;
   ip_address?: string;
   created_at: string;
+  user_email?: string; // helper
 }
 
 export interface Settings {
@@ -180,6 +193,8 @@ export interface CouponCode {
   usage_limit?: number;
   used_count: number;
   is_active: boolean;
+  min_purchase?: number;
+  max_discount?: number;
   created_at: string;
 }
 
@@ -189,4 +204,133 @@ export interface AnalyticsEvent {
   event_type: string;
   properties?: any;
   created_at: string;
+}
+
+// ============================================
+// MARKETPLACE EXPANSION TYPES
+// ============================================
+
+export interface SellerPayout {
+  id: string;
+  seller_id: string;
+  seller_name?: string;
+  seller_email?: string;
+  amount: number;
+  status: 'pending' | 'processing' | 'completed' | 'failed';
+  bank_details?: any;
+  upi_id?: string;
+  transaction_id?: string;
+  payout_date?: string;
+  created_at: string;
+}
+
+export interface CouponUsage {
+  id: string;
+  coupon_id: string;
+  user_id: string;
+  order_id: string;
+  used_at: string;
+}
+
+export interface ReviewVote {
+  id: string;
+  review_id: string;
+  user_id: string;
+  vote_type: 'helpful' | 'unhelpful';
+  created_at: string;
+}
+
+export interface Comment {
+  id: string;
+  note_id: string;
+  user_id: string;
+  user_name?: string;
+  user_avatar?: string;
+  user_role?: string;
+  comment: string;
+  is_reported: boolean;
+  created_at: string;
+  updated_at?: string;
+  replies?: CommentReply[];
+}
+
+export interface CommentReply {
+  id: string;
+  comment_id: string;
+  user_id: string;
+  user_name?: string;
+  user_avatar?: string;
+  user_role?: string;
+  reply: string;
+  is_reported: boolean;
+  created_at: string;
+  updated_at?: string;
+}
+
+export interface RecentlyViewedItem {
+  id: string;
+  user_id: string;
+  note_id: string;
+  viewed_at: string;
+  note?: Note;
+}
+
+export interface SeoMetadata {
+  path: string;
+  meta_title?: string;
+  meta_description?: string;
+  meta_keywords?: string;
+  og_title?: string;
+  og_description?: string;
+  og_image?: string;
+  twitter_card?: string;
+  canonical_url?: string;
+  json_ld?: any;
+  updated_at?: string;
+}
+
+export interface EmailTemplate {
+  id: string;
+  subject: string;
+  body_html: string;
+  brevo_template_id?: number;
+  updated_at?: string;
+}
+
+export interface ProductTag {
+  id: string;
+  note_id: string;
+  tag: string;
+}
+
+export interface ProductView {
+  id: string;
+  note_id: string;
+  user_id?: string;
+  viewed_at: string;
+}
+
+export interface AnalyticsDaily {
+  date: string;
+  revenue: number;
+  orders: number;
+  downloads: number;
+  signups: number;
+}
+
+export interface AnalyticsMonthly {
+  month: string;
+  revenue: number;
+  orders: number;
+  downloads: number;
+  signups: number;
+}
+
+export interface StorageReport {
+  id: string;
+  pdf_count: number;
+  image_count: number;
+  preview_count: number;
+  storage_used_bytes: number;
+  calculated_at: string;
 }
