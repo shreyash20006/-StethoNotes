@@ -9,6 +9,8 @@ interface AuthState {
   checkSession: () => Promise<void>;
   signUp: (email: string, password: string, name: string, phone: string, role?: 'student' | 'admin') => Promise<boolean>;
   signIn: (email: string, password: string) => Promise<boolean>;
+  signInWithOtp: (email: string) => Promise<boolean>;
+  verifyOtp: (email: string, token: string) => Promise<boolean>;
   signOut: () => Promise<void>;
   updateProfile: (name: string, phone: string) => Promise<boolean>;
   clearError: () => void;
@@ -184,6 +186,63 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       return true;
     } catch (err: any) {
       console.error('Update Profile Error:', err);
+      set({ loading: false, error: err.message });
+      return false;
+    }
+  },
+
+  signInWithOtp: async (email: string) => {
+    set({ loading: true, error: null });
+    try {
+      const { error } = await supabase.auth.signInWithOtp({
+        email,
+        options: {
+          shouldCreateUser: true
+        }
+      });
+      if (error) throw error;
+      set({ loading: false });
+      return true;
+    } catch (err: any) {
+      console.error('OTP Sign In Error:', err);
+      set({ loading: false, error: err.message });
+      return false;
+    }
+  },
+
+  verifyOtp: async (email: string, token: string) => {
+    set({ loading: true, error: null });
+    try {
+      const { data, error } = await supabase.auth.verifyOtp({
+        email,
+        token,
+        type: 'email'
+      });
+      if (error) throw error;
+
+      if (data?.user) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', data.user.id)
+          .single();
+
+        set({
+          user: {
+            id: data.user.id,
+            email: data.user.email || '',
+            name: profile?.name || data.user.user_metadata?.name || 'Student',
+            phone: profile?.phone || data.user.user_metadata?.phone || '',
+            role: (profile?.role || data.user.user_metadata?.role || 'student') as 'student' | 'admin'
+          },
+          loading: false
+        });
+        return true;
+      }
+      set({ loading: false });
+      return false;
+    } catch (err: any) {
+      console.error('OTP Verify Error:', err);
       set({ loading: false, error: err.message });
       return false;
     }

@@ -7,7 +7,7 @@ import { Lock, Mail, User, Phone, KeyRound, UserCheck, ShieldAlert } from 'lucid
 export default function LoginPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { user, signUp, signIn, error, clearError } = useAuthStore();
+  const { user, signUp, signIn, signInWithOtp, verifyOtp, error, clearError } = useAuthStore();
   const { addToast } = useToastStore();
 
   const isSignUpParam = searchParams.get('signup') === 'true';
@@ -21,9 +21,17 @@ export default function LoginPage() {
   const [role, setRole] = useState<'student' | 'admin'>('student');
   const [submitting, setSubmitting] = useState(false);
 
+  // OTP Login states
+  const [loginMethod, setLoginMethod] = useState<'password' | 'otp'>('password');
+  const [otpSent, setOtpSent] = useState(false);
+  const [otpToken, setOtpToken] = useState('');
+
   // Sync isSignUp tab with query params
   useEffect(() => {
     setIsSignUp(searchParams.get('signup') === 'true');
+    // Reset OTP states on toggle
+    setOtpSent(false);
+    setOtpToken('');
   }, [searchParams]);
 
   // Navigate away if user is already logged in
@@ -57,9 +65,25 @@ export default function LoginPage() {
           addToast('success', 'Account Registered', `Welcome to StethoNotes, ${name}!`);
         }
       } else {
-        const success = await signIn(email, password);
-        if (success) {
-          addToast('success', 'Logged In', 'Welcome back to your study notes portal.');
+        if (loginMethod === 'password') {
+          const success = await signIn(email, password);
+          if (success) {
+            addToast('success', 'Logged In', 'Welcome back to your study notes portal.');
+          }
+        } else {
+          // OTP Flow
+          if (!otpSent) {
+            const success = await signInWithOtp(email.trim());
+            if (success) {
+              setOtpSent(true);
+              addToast('success', 'OTP Sent', 'A 6-digit access code has been dispatched to your email.');
+            }
+          } else {
+            const success = await verifyOtp(email.trim(), otpToken.trim());
+            if (success) {
+              addToast('success', 'Logged In', 'OTP verified. Welcome to StethoNotes.');
+            }
+          }
         }
       }
     } catch (err: any) {
@@ -215,27 +239,83 @@ export default function LoginPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                className="w-full pl-10 pr-4 py-3 border border-gray-200 focus:border-accent focus:ring-1 focus:ring-accent outline-none rounded-xl bg-white text-primary"
+                disabled={!isSignUp && loginMethod === 'otp' && otpSent}
+                className="w-full pl-10 pr-4 py-3 border border-gray-200 focus:border-accent focus:ring-1 focus:ring-accent outline-none rounded-xl bg-white text-primary disabled:bg-gray-50 disabled:text-gray-400"
               />
               <Mail className="w-4 h-4 text-gray-400 absolute left-3.5 top-3.5" />
             </div>
           </div>
 
-          {/* Password */}
-          <div className="flex flex-col gap-1.5">
-            <label className="font-display font-semibold text-gray-400">Password</label>
-            <div className="relative">
-              <input
-                type="password"
-                placeholder="••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                className="w-full pl-10 pr-4 py-3 border border-gray-200 focus:border-accent focus:ring-1 focus:ring-accent outline-none rounded-xl bg-white text-primary"
-              />
-              <Lock className="w-4 h-4 text-gray-400 absolute left-3.5 top-3.5" />
+          {/* Toggle Login Method (Only when in Log In mode) */}
+          {!isSignUp && (
+            <div className="flex bg-gray-50 p-1 rounded-xl mb-1 text-[10px] font-medium font-sans">
+              <button
+                type="button"
+                onClick={() => { setLoginMethod('password'); setOtpSent(false); }}
+                className={`flex-1 py-1.5 rounded-lg text-center transition-all ${
+                  loginMethod === 'password' ? 'bg-white text-primary shadow-sm font-semibold' : 'text-gray-400 hover:text-primary'
+                }`}
+              >
+                Password Login
+              </button>
+              <button
+                type="button"
+                onClick={() => setLoginMethod('otp')}
+                className={`flex-1 py-1.5 rounded-lg text-center transition-all ${
+                  loginMethod === 'otp' ? 'bg-white text-primary shadow-sm font-semibold' : 'text-gray-400 hover:text-primary'
+                }`}
+              >
+                OTP Login
+              </button>
             </div>
-          </div>
+          )}
+
+          {/* Password (Only show for signup or login-with-password) */}
+          {(isSignUp || loginMethod === 'password') && (
+            <div className="flex flex-col gap-1.5">
+              <label className="font-display font-semibold text-gray-400">Password</label>
+              <div className="relative">
+                <input
+                  type="password"
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  className="w-full pl-10 pr-4 py-3 border border-gray-200 focus:border-accent focus:ring-1 focus:ring-accent outline-none rounded-xl bg-white text-primary"
+                />
+                <Lock className="w-4 h-4 text-gray-400 absolute left-3.5 top-3.5" />
+              </div>
+            </div>
+          )}
+
+          {/* OTP Token input (Only show when loginMethod === 'otp' and code has been sent) */}
+          {!isSignUp && loginMethod === 'otp' && otpSent && (
+            <div className="flex flex-col gap-1.5 animate-fade-in">
+              <label className="font-display font-semibold text-gray-400">Enter 6-Digit Code</label>
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="e.g. 123456"
+                  maxLength={6}
+                  value={otpToken}
+                  onChange={(e) => setOtpToken(e.target.value.replace(/\D/g, ''))}
+                  required
+                  className="w-full pl-10 pr-4 py-3 border border-gray-200 focus:border-accent focus:ring-1 focus:ring-accent outline-none rounded-xl bg-white text-primary font-mono text-center tracking-widest text-base font-bold"
+                />
+                <KeyRound className="w-4 h-4 text-gray-400 absolute left-3.5 top-3.5" />
+              </div>
+              <button
+                type="button"
+                onClick={async () => {
+                  const success = await signInWithOtp(email.trim());
+                  if (success) addToast('success', 'OTP Resent', 'Verification code resent.');
+                }}
+                className="text-[10px] text-right font-sans text-accent hover:underline mt-0.5"
+              >
+                Resend Code
+              </button>
+            </div>
+          )}
 
           {/* Submit Auth CTA */}
           <button
@@ -244,7 +324,17 @@ export default function LoginPage() {
             className="btn-primary py-3.5 mt-2 font-bold text-sm w-full shadow-md flex items-center justify-center gap-2 disabled:opacity-50"
           >
             <KeyRound className="w-4 h-4" />
-            <span>{submitting ? 'Please wait...' : isSignUp ? 'Register Account' : 'Log In to Portal'}</span>
+            <span>
+              {submitting
+                ? 'Please wait...'
+                : isSignUp
+                ? 'Register Account'
+                : loginMethod === 'otp'
+                ? otpSent
+                  ? 'Verify & Log In'
+                  : 'Send Verification Code'
+                : 'Log In to Portal'}
+            </span>
           </button>
         </form>
       </div>
