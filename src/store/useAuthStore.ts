@@ -11,6 +11,7 @@ interface AuthState {
   signIn: (email: string, password: string) => Promise<boolean>;
   signInWithOtp: (email: string) => Promise<boolean>;
   verifyOtp: (email: string, token: string) => Promise<boolean>;
+  signInWithGoogle: () => Promise<boolean>;
   signOut: () => Promise<void>;
   updateProfile: (name: string, phone: string) => Promise<boolean>;
   clearError: () => void;
@@ -243,6 +244,25 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       return false;
     } catch (err: any) {
       console.error('OTP Verify Error:', err);
+      set({ loading: false, error: err.message });
+      return false;
+    }
+  },
+
+  signInWithGoogle: async () => {
+    set({ loading: true, error: null });
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/dashboard`
+        }
+      });
+      if (error) throw error;
+      set({ loading: false });
+      return true;
+    } catch (err: any) {
+      console.error('Google Sign In Error:', err);
       set({ loading: false, error: err.message });
       return false;
     }
