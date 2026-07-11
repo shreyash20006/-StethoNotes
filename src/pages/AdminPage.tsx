@@ -3,15 +3,18 @@ import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/useAuthStore';
 import { useToastStore } from '../store/useToastStore';
 import { supabase, isLiveSupabase, triggerBrevoEmailSimulation } from '../lib/supabase';
-import type { Note, Course, Order } from '../types';
-import { ShieldCheck, Plus, Trash2, Edit2, TrendingUp, DollarSign, BookOpen, ShoppingBag, FolderOpen, Save, X, RefreshCw, Mail, Upload, FileUp, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { sendSellerApprovalEmail, sendSellerRejectionEmail } from '../lib/brevo';
+import type { Note, Course, Order, SellerRequest } from '../types';
+import { ShieldCheck, Plus, Trash2, Edit2, TrendingUp, DollarSign, BookOpen, ShoppingBag, FolderOpen, Save, X, RefreshCw, Mail, Upload, FileUp, AlertTriangle, CheckCircle2, Users, Clock, XCircle } from 'lucide-react';
 
 export default function AdminPage() {
   const navigate = useNavigate();
   const { user } = useAuthStore();
   const { addToast } = useToastStore();
 
-  const [activeTab, setActiveTab] = useState<'analytics' | 'notes' | 'courses' | 'orders'>('analytics');
+  const [activeTab, setActiveTab] = useState<'analytics' | 'notes' | 'courses' | 'orders' | 'seller_requests'>('analytics');
+  const [sellerRequests, setSellerRequests] = useState<SellerRequest[]>([]);
+  const [processingRequestId, setProcessingRequestId] = useState<string | null>(null);
   const [courses, setCourses] = useState<Course[]>([]);
   const [notes, setNotes] = useState<Note[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
@@ -64,8 +67,8 @@ export default function AdminPage() {
   const [dragActivePreviews, setDragActivePreviews] = useState(false);
 
   useEffect(() => {
-    // Role-based protection: Only admins allowed
-    if (!user || user.role !== 'admin') {
+    // Role-based protection: Only admin and super_admin allowed
+    if (!user || (user.role !== 'admin' && user.role !== 'super_admin')) {
       addToast('error', 'Access Denied', 'You do not have permissions to view this administrator panel.');
       navigate('/');
       return;
@@ -100,10 +103,72 @@ export default function AdminPage() {
         .from('order_items')
         .select('*');
       if (itemsData) setOrderItemsList(itemsData);
+
+      // 5. Fetch seller requests
+      const { data: sellerReqData } = await supabase
+        .from('seller_requests')
+        .select('*')
+        .order('applied_at', { ascending: false });
+      if (sellerReqData) setSellerRequests(sellerReqData as SellerRequest[]);
     } catch (err) {
       console.error('Error fetching admin data:', err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  // ----------------------------------------------------------
+  // SELLER APPROVAL
+  // ----------------------------------------------------------
+  const handleApproveseller = async (req: SellerRequest) => {
+    setProcessingRequestId(req.id);
+    try {
+      // Update profile role to seller + status approved
+      await supabase
+        .from('profiles')
+        .update({ role: 'seller', status: 'approved' })
+        .eq('id', req.user_id);
+
+      // Update seller_request record
+      await supabase
+        .from('seller_requests')
+        .update({ status: 'approved', reviewed_at: new Date().toISOString(), reviewed_by: user?.id })
+        .eq('id', req.id);
+
+      // Send approval email
+      await sendSellerApprovalEmail(req.email, req.full_name || req.email);
+
+      addToast('success', 'Seller Approved', `${req.full_name || req.email} has been approved as a seller.`);
+      fetchAdminData();
+    } catch (err: any) {
+      addToast('error', 'Approval Failed', err.message);
+    } finally {
+      setProcessingRequestId(null);
+    }
+  };
+
+  const handleRejectSeller = async (req: SellerRequest) => {
+    if (!confirm(`Reject seller application from ${req.full_name || req.email}?`)) return;
+    setProcessingRequestId(req.id);
+    try {
+      await supabase
+        .from('profiles')
+        .update({ status: 'rejected' })
+        .eq('id', req.user_id);
+
+      await supabase
+        .from('seller_requests')
+        .update({ status: 'rejected', reviewed_at: new Date().toISOString(), reviewed_by: user?.id })
+        .eq('id', req.id);
+
+      await sendSellerRejectionEmail(req.email, req.full_name || req.email);
+
+      addToast('info', 'Seller Rejected', `Application from ${req.full_name || req.email} has been rejected.`);
+      fetchAdminData();
+    } catch (err: any) {
+      addToast('error', 'Rejection Failed', err.message);
+    } finally {
+      setProcessingRequestId(null);
     }
   };
 
@@ -582,11 +647,120 @@ export default function AdminPage() {
               <ShoppingBag className="w-4 h-4" />
               <span>Purchases Log</span>
             </button>
+
+            <button
+              onClick={() => setActiveTab('seller_requests')}
+              className={`flex items-center gap-2.5 px-4 py-3 rounded-xl text-xs font-display font-semibold text-left transition-all ${
+                activeTab === 'seller_requests'
+                  ? 'bg-emerald-500 text-white shadow-md'
+                  : 'text-gray-300 hover:bg-white/5 hover:text-white'
+              }`}
+            >
+              <Users className="w-4 h-4" />
+              <span>Seller Requests</span>
+              {sellerRequests.filter(r => r.status === 'pending').length > 0 && (
+                <span className="ml-auto bg-amber-400 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full">
+                  {sellerRequests.filter(r => r.status === 'pending').length}
+                </span>
+              )}
+            </button>
           </div>
         </aside>
 
-        {/* Tab content area */}
         <main className="lg:col-span-9 bg-white border border-gray-100 rounded-3xl p-6 sm:p-8 shadow-cyan-soft">
+
+          {/* SELLER REQUESTS TAB */}
+          {activeTab === 'seller_requests' && (
+            <div className="flex flex-col gap-6 animate-fade-in">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-xl font-display font-bold text-primary">Seller Requests</h2>
+                  <p className="text-xs text-gray-400 mt-0.5">Review and approve/reject seller applications.</p>
+                </div>
+                <button onClick={fetchAdminData} className="p-2 text-gray-400 hover:text-accent hover:bg-accent/5 rounded-xl transition-all">
+                  <RefreshCw className="w-4 h-4" />
+                </button>
+              </div>
+
+              {sellerRequests.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-20 text-center">
+                  <div className="w-16 h-16 rounded-2xl bg-emerald-50 flex items-center justify-center mb-4">
+                    <Users className="w-8 h-8 text-emerald-300" />
+                  </div>
+                  <p className="text-gray-400 text-sm font-medium">No seller requests yet.</p>
+                  <p className="text-gray-300 text-xs mt-1">Applications will appear here when sellers apply via the Seller Portal.</p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto rounded-2xl border border-gray-100">
+                  <table className="w-full text-sm">
+                    <thead className="bg-gray-50 border-b border-gray-100">
+                      <tr>
+                        <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500">Applicant</th>
+                        <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500">Applied Date</th>
+                        <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500">Status</th>
+                        <th className="text-right px-4 py-3 text-xs font-semibold text-gray-500">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-50">
+                      {sellerRequests.map(req => (
+                        <tr key={req.id} className="hover:bg-gray-50/50 transition-colors">
+                          <td className="px-4 py-3">
+                            <p className="font-semibold text-slate-800">{req.full_name || '—'}</p>
+                            <p className="text-xs text-slate-400">{req.email}</p>
+                          </td>
+                          <td className="px-4 py-3 text-xs text-gray-500">
+                            {new Date(req.applied_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                          </td>
+                          <td className="px-4 py-3">
+                            <span className={`text-[10px] font-semibold px-2.5 py-1 rounded-full ${
+                              req.status === 'pending'
+                                ? 'bg-amber-100 text-amber-700'
+                                : req.status === 'approved'
+                                ? 'bg-emerald-100 text-emerald-700'
+                                : 'bg-red-100 text-red-700'
+                            }`}>
+                              {req.status === 'pending' && <Clock className="w-3 h-3 inline mr-1" />}
+                              {req.status === 'approved' && <CheckCircle2 className="w-3 h-3 inline mr-1" />}
+                              {req.status === 'rejected' && <XCircle className="w-3 h-3 inline mr-1" />}
+                              {req.status.charAt(0).toUpperCase() + req.status.slice(1)}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3">
+                            {req.status === 'pending' && (
+                              <div className="flex items-center justify-end gap-2">
+                                <button
+                                  onClick={() => handleApproveseller(req)}
+                                  disabled={processingRequestId === req.id}
+                                  className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-semibold rounded-xl transition-all disabled:opacity-50 shadow-sm"
+                                >
+                                  <CheckCircle2 className="w-3.5 h-3.5" />
+                                  {processingRequestId === req.id ? 'Processing…' : 'Approve'}
+                                </button>
+                                <button
+                                  onClick={() => handleRejectSeller(req)}
+                                  disabled={processingRequestId === req.id}
+                                  className="flex items-center gap-1.5 px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-600 text-xs font-semibold rounded-xl transition-all border border-red-200 disabled:opacity-50"
+                                >
+                                  <XCircle className="w-3.5 h-3.5" />
+                                  Reject
+                                </button>
+                              </div>
+                            )}
+                            {req.status !== 'pending' && (
+                              <span className="text-xs text-gray-400 italic text-right block">
+                                Reviewed {req.reviewed_at ? new Date(req.reviewed_at).toLocaleDateString('en-IN') : ''}
+                              </span>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Tab 1: Analytics */}
           {activeTab === 'analytics' && (
             <div className="flex flex-col gap-8 animate-fade-in">

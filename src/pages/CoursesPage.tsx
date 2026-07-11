@@ -41,8 +41,8 @@ export default function CoursesPage() {
           setCourses(coursesData);
         }
 
-        // Fetch notes
-        const { data: notesData } = await supabase.from('notes').select('*').eq('status', 'active');
+        // Fetch notes (with course relation join to prevent filtering bugs in live database mode)
+        const { data: notesData } = await supabase.from('notes').select('*, course:courses(*)').eq('status', 'active');
         if (notesData) {
           setNotes(notesData);
         }

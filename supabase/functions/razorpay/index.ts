@@ -6,7 +6,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-// Helper to verify HMAC SHA256 signature using Web Crypto API
+// Helper to verify HMAC SHA256 signature using Web Crypto API (constant-time check for security)
 async function verifyHmacSignature(data: string, signature: string, secret: string): Promise<boolean> {
   const encoder = new TextEncoder()
   const keyData = encoder.encode(secret)
@@ -28,7 +28,16 @@ async function verifyHmacSignature(data: string, signature: string, secret: stri
 
   const hashArray = Array.from(new Uint8Array(signatureBuffer))
   const hashHex = hashArray.map(b => b.toString(16).padStart(2, "0")).join("")
-  return hashHex === signature
+  
+  // Timing-safe comparison to prevent side-channel attacks
+  if (hashHex.length !== signature.length) {
+    return false
+  }
+  let result = 0
+  for (let i = 0; i < hashHex.length; i++) {
+    result |= hashHex.charCodeAt(i) ^ signature.charCodeAt(i)
+  }
+  return result === 0
 }
 
 // Helper to generate fresh 48-hour signed URLs & send Brevo email
@@ -123,7 +132,6 @@ async function generateAndSendEmail(
         order_id: order.id,
         order_date: new Date(order.created_at).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" }),
         download_list: downloadListHtml,
-        // Keep uppercase params for compatibility
         CUSTOMER_NAME: order.customer_name,
         ORDER_ID: order.id,
         TOTAL_AMOUNT: order.total_amount,
@@ -203,7 +211,7 @@ serve(async (req) => {
     // ENDPOINT: /create-order
     // --------------------------------------------------------
     if (path.endsWith('/create-order')) {
-      const { items, userId, name, email, phone } = await req.json()
+      const { items, userId, name, email, phone, couponCode } = await req.json()
 
       if (!items || items.length === 0 || !email) {
         return new Response(JSON.stringify({ success: false, message: 'Missing fields' }), {
@@ -223,11 +231,38 @@ serve(async (req) => {
         throw new Error('Notes not found or database query failed.')
       }
 
-      const totalAmount = dbNotes.reduce((sum: number, note: any) => sum + Number(note.price), 0)
+      const subtotal = dbNotes.reduce((sum: number, note: any) => sum + Number(note.price), 0)
 
-      if (totalAmount <= 0) {
+      if (subtotal <= 0) {
         throw new Error('Total checkout amount must be greater than zero.')
       }
+
+      // Calculate discount if couponCode is provided
+      let discountAmount = 0
+      if (couponCode) {
+        const { data: couponData } = await supabaseAdmin
+          .from('coupon_codes')
+          .select('*')
+          .eq('code', couponCode.toUpperCase())
+          .eq('is_active', true)
+          .single()
+
+        if (couponData) {
+          const isExpired = couponData.expiry_date && new Date(couponData.expiry_date) < new Date()
+          if (!isExpired) {
+            if (couponData.discount_type === 'percentage') {
+              discountAmount = (subtotal * Number(couponData.discount_value)) / 100
+            } else if (couponData.discount_type === 'fixed') {
+              discountAmount = Number(couponData.discount_value)
+            }
+          }
+        }
+      }
+
+      const afterDiscount = Math.max(0, subtotal - discountAmount)
+      const gst = Number((afterDiscount * 0.18).toFixed(2)) // 18% GST
+      const platformFee = 5.00 // Standard platform fee
+      const grandTotal = Number((afterDiscount + gst + platformFee).toFixed(2))
 
       // Create Razorpay Order
       const auth = btoa(`${razorpayKeyId}:${razorpayKeySecret}`)
@@ -238,7 +273,7 @@ serve(async (req) => {
           "Authorization": `Basic ${auth}`
         },
         body: JSON.stringify({
-          amount: Math.round(totalAmount * 100), // convert to paise
+          amount: Math.round(grandTotal * 100), // convert to paise
           currency: "INR",
           receipt: `receipt_${Date.now()}`,
           notes: {
@@ -246,7 +281,8 @@ serve(async (req) => {
             user_id: userId || "",
             customer_name: name,
             customer_email: email.toLowerCase(),
-            customer_phone: phone
+            customer_phone: phone,
+            coupon_code: couponCode || ""
           }
         })
       })
@@ -295,6 +331,19 @@ serve(async (req) => {
         })
       }
 
+      // Query Razorpay API for the actual payment details (ensures financial audit integrity)
+      const auth = btoa(`${razorpayKeyId}:${razorpayKeySecret}`)
+      const payRes = await fetch(`https://api.razorpay.com/v1/payments/${razorpay_payment_id}`, {
+        headers: { "Authorization": `Basic ${auth}` }
+      })
+
+      if (!payRes.ok) {
+        throw new Error(`Failed to fetch payment details from Razorpay: ${await payRes.text()}`)
+      }
+
+      const paymentDetails = await payRes.json()
+      const paidAmount = Number(paymentDetails.amount) / 100 // convert from paise to INR
+
       // Check if order already exists (webhook could have created it first)
       let { data: existingOrder } = await supabaseAdmin
         .from('orders')
@@ -315,9 +364,7 @@ serve(async (req) => {
           throw new Error('Notes not found in catalog database.')
         }
 
-        const totalAmount = dbNotes.reduce((sum: number, n: any) => sum + Number(n.price), 0)
-
-        // Insert database order record
+        // Insert database order record with the actual paid amount from Razorpay
         const { data: newOrder, error: orderErr } = await supabaseAdmin
           .from('orders')
           .insert({
@@ -325,7 +372,7 @@ serve(async (req) => {
             customer_name,
             customer_email: customer_email.toLowerCase(),
             customer_phone,
-            total_amount: totalAmount,
+            total_amount: paidAmount,
             razorpay_payment_id,
             payment_status: 'completed',
             email_status: 'pending'
@@ -348,6 +395,18 @@ serve(async (req) => {
           .insert(orderItemsPayload)
 
         if (itemsErr) throw itemsErr
+
+        // Insert audit payment record
+        await supabaseAdmin
+          .from('payments')
+          .insert({
+            order_id: dbOrder.id,
+            razorpay_payment_id,
+            razorpay_order_id,
+            razorpay_signature,
+            amount: paidAmount,
+            status: 'captured'
+          })
       }
 
       // Fetch notes list with content to generate signed download URLs
@@ -410,6 +469,7 @@ serve(async (req) => {
         const payment = payload.payload.payment.entity
         const razorpay_payment_id = payment.id
         const razorpay_order_id = payment.order_id
+        const paidAmount = Number(payment.amount) / 100 // convert from paise to INR
 
         // Fetch Razorpay Order notes metadata
         const auth = btoa(`${razorpayKeyId}:${razorpayKeySecret}`)
@@ -442,8 +502,6 @@ serve(async (req) => {
               .in('id', note_ids)
 
             if (dbNotes && dbNotes.length > 0) {
-              const totalAmount = dbNotes.reduce((sum: number, n: any) => sum + Number(n.price), 0)
-
               // Insert order record
               const { data: newOrder } = await supabaseAdmin
                 .from('orders')
@@ -452,7 +510,7 @@ serve(async (req) => {
                   customer_name: meta.customer_name || 'Customer',
                   customer_email: (meta.customer_email || 'support@stethonotes.store').toLowerCase(),
                   customer_phone: meta.customer_phone || '',
-                  total_amount: totalAmount,
+                  total_amount: paidAmount,
                   razorpay_payment_id,
                   payment_status: 'completed',
                   email_status: 'pending'
@@ -473,6 +531,17 @@ serve(async (req) => {
                 await supabaseAdmin
                   .from('order_items')
                   .insert(orderItemsPayload)
+
+                // Insert payment log
+                await supabaseAdmin
+                  .from('payments')
+                  .insert({
+                    order_id: dbOrder.id,
+                    razorpay_payment_id,
+                    razorpay_order_id,
+                    amount: paidAmount,
+                    status: 'captured'
+                  })
               }
             }
           }

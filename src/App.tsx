@@ -18,8 +18,17 @@ import OrderLookupPage from './pages/OrderLookupPage';
 import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
 import TermsOfServicePage from './pages/TermsOfServicePage';
 import Contact from './pages/Contact';
+import AuthCallbackPage from './pages/AuthCallbackPage';
+import SellerLoginPage from './pages/SellerLoginPage';
+import AdminLoginPage from './pages/AdminLoginPage';
+import SellerPendingPage from './pages/SellerPendingPage';
+import SellerDashboardPage from './pages/SellerDashboardPage';
 
-// Layout Wrapper
+// ============================================================
+// LAYOUT WRAPPERS
+// ============================================================
+
+/** Standard layout with Navbar + Footer (public pages) */
 function Layout() {
   return (
     <div className="flex flex-col min-h-screen">
@@ -33,35 +42,71 @@ function Layout() {
   );
 }
 
-// Student Protected Route Guard
-function PrivateRoute() {
-  const { user, loading } = useAuthStore();
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-accent" />
-      </div>
-    );
-  }
-
-  return user ? <Outlet /> : <Navigate to="/login" replace />;
+/** Full-page layout without Navbar/Footer (auth pages, dashboards) */
+function FullPageLayout() {
+  return (
+    <>
+      <Outlet />
+      <ToastContainer />
+    </>
+  );
 }
 
-// Admin Protected Route Guard
+// ============================================================
+// ROUTE GUARDS
+// ============================================================
+
+/** Student only — redirects non-students away */
+function StudentRoute() {
+  const { user, loading } = useAuthStore();
+  if (loading) return <LoadingSpinner />;
+  if (!user) return <Navigate to="/login" replace />;
+  if (user.role === 'admin' || user.role === 'super_admin') return <Navigate to="/admin" replace />;
+  if (user.role === 'seller') return <Navigate to="/seller/dashboard" replace />;
+  if (user.role === 'seller_pending') return <Navigate to="/seller/application-pending" replace />;
+  return <Outlet />;
+}
+
+/** Admin only — allows 'admin' and 'super_admin' */
 function AdminRoute() {
   const { user, loading } = useAuthStore();
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-accent" />
-      </div>
-    );
-  }
-
-  return user && user.role === 'admin' ? <Outlet /> : <Navigate to="/" replace />;
+  if (loading) return <LoadingSpinner />;
+  if (!user) return <Navigate to="/admin/login" replace />;
+  if (user.role !== 'admin' && user.role !== 'super_admin') return <Navigate to="/" replace />;
+  return <Outlet />;
 }
+
+/** Approved seller only */
+function SellerRoute() {
+  const { user, loading } = useAuthStore();
+  if (loading) return <LoadingSpinner />;
+  if (!user) return <Navigate to="/seller/login" replace />;
+  if (user.role === 'seller_pending') return <Navigate to="/seller/application-pending" replace />;
+  if (user.role !== 'seller') return <Navigate to="/" replace />;
+  return <Outlet />;
+}
+
+/** Seller pending only */
+function SellerPendingRoute() {
+  const { user, loading } = useAuthStore();
+  if (loading) return <LoadingSpinner />;
+  if (!user) return <Navigate to="/seller/login" replace />;
+  if (user.role === 'seller') return <Navigate to="/seller/dashboard" replace />;
+  if (user.role !== 'seller_pending') return <Navigate to="/" replace />;
+  return <Outlet />;
+}
+
+function LoadingSpinner() {
+  return (
+    <div className="min-h-screen flex items-center justify-center">
+      <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-accent" />
+    </div>
+  );
+}
+
+// ============================================================
+// APP
+// ============================================================
 
 function App() {
   const { checkSession } = useAuthStore();
@@ -73,8 +118,32 @@ function App() {
   return (
     <BrowserRouter>
       <Routes>
+        {/* ─── AUTH CALLBACK (no layout) ─── */}
+        <Route path="/auth/callback" element={<AuthCallbackPage />} />
+
+        {/* ─── FULL-PAGE AUTH PAGES (no navbar) ─── */}
+        <Route element={<FullPageLayout />}>
+          <Route path="/seller/login" element={<SellerLoginPage />} />
+          <Route path="/admin/login" element={<AdminLoginPage />} />
+
+          {/* Seller pending holding page */}
+          <Route element={<SellerPendingRoute />}>
+            <Route path="/seller/application-pending" element={<SellerPendingPage />} />
+          </Route>
+
+          {/* Seller dashboard */}
+          <Route element={<SellerRoute />}>
+            <Route path="/seller/dashboard" element={<SellerDashboardPage />} />
+          </Route>
+
+          {/* Admin panel */}
+          <Route element={<AdminRoute />}>
+            <Route path="/admin" element={<AdminPage />} />
+          </Route>
+        </Route>
+
+        {/* ─── PUBLIC ROUTES (with Navbar + Footer) ─── */}
         <Route path="/" element={<Layout />}>
-          {/* Public Routes */}
           <Route index element={<LandingPage />} />
           <Route path="courses" element={<CoursesPage />} />
           <Route path="notes/:id" element={<ProductDetailPage />} />
@@ -86,17 +155,12 @@ function App() {
           <Route path="terms" element={<TermsOfServicePage />} />
           <Route path="contact" element={<Contact />} />
 
-          {/* Student Private Routes */}
-          <Route element={<PrivateRoute />}>
+          {/* Student protected dashboard */}
+          <Route element={<StudentRoute />}>
             <Route path="dashboard" element={<DashboardPage />} />
           </Route>
 
-          {/* Admin Private Routes */}
-          <Route element={<AdminRoute />}>
-            <Route path="admin" element={<AdminPage />} />
-          </Route>
-
-          {/* Catch-all fallback redirect */}
+          {/* Catch-all */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
       </Routes>

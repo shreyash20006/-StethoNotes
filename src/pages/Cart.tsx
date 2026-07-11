@@ -30,7 +30,8 @@ export default function Cart() {
     clearCart,
     getGrandTotal,
     paymentState,
-    setPaymentState
+    setPaymentState,
+    coupon
   } = useCartStore();
 
   // Form Fields
@@ -115,7 +116,8 @@ export default function Cart() {
             userId: user?.id || null,
             name: name.trim(),
             email: email.trim().toLowerCase(),
-            phone: phone.trim()
+            phone: phone.trim(),
+            couponCode: coupon || null
           }
         });
 

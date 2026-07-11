@@ -402,7 +402,7 @@ export default function LandingPage() {
                 className="border border-gray-200 focus:border-accent focus:ring-1 focus:ring-accent outline-none px-4 py-3 rounded-xl text-sm resize-none"
               />
             </div>
-            <div className="sm:col-span-2 flex justify-center mt-2">
+            <div className="sm:col-span-2 flex flex-col items-center gap-3 mt-2">
               <button
                 type="button"
                 onClick={() => alert('Message Sent! Thank you for contacting StethoNotes.')}
@@ -410,6 +410,13 @@ export default function LandingPage() {
               >
                 Send Message
               </button>
+              <p className="text-xs text-gray-400 text-center">
+                We respect your privacy. Read our{' '}
+                <Link to="/privacy" className="text-accent hover:underline">
+                  Privacy Policy
+                </Link>{' '}
+                to learn how we handle your data.
+              </p>
             </div>
           </form>
         </div>

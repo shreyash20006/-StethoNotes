@@ -1,69 +1,92 @@
 import { create } from 'zustand';
 import { supabase } from '../lib/supabase';
-import type { UserProfile } from '../types';
+import type { UserProfile, UserRole, UserStatus } from '../types';
+
+// ============================================================
+// TYPES
+// ============================================================
+
+export type AuthUser = UserProfile & {
+  email: string;
+  avatar_url?: string;
+  status?: UserStatus;
+};
 
 interface AuthState {
-  user: (UserProfile & { email: string }) | null;
+  user: AuthUser | null;
   loading: boolean;
   error: string | null;
+  // Role that was requested during OAuth (used by AuthCallbackPage)
+  pendingOAuthRole: 'student' | 'seller' | 'admin' | null;
+
   checkSession: () => Promise<void>;
-  signUp: (email: string, password: string, name: string, phone: string, role?: 'student' | 'admin') => Promise<boolean>;
+  signUp: (email: string, password: string, name: string, phone: string, role?: UserRole) => Promise<boolean>;
   signIn: (email: string, password: string) => Promise<boolean>;
   signInWithOtp: (email: string) => Promise<boolean>;
   verifyOtp: (email: string, token: string) => Promise<boolean>;
-  signInWithGoogle: () => Promise<boolean>;
+  signInWithGoogle: (role: 'student' | 'seller' | 'admin') => Promise<boolean>;
   signOut: () => Promise<void>;
   updateProfile: (name: string, phone: string) => Promise<boolean>;
   clearError: () => void;
+  setPendingOAuthRole: (role: 'student' | 'seller' | 'admin' | null) => void;
 }
+
+// ============================================================
+// HELPERS
+// ============================================================
+
+function buildUserFromProfile(
+  session: any,
+  profile: any
+): AuthUser {
+  const meta = session.user?.user_metadata || {};
+  return {
+    id: session.user.id,
+    email: session.user.email || meta.email || '',
+    name: profile?.full_name || profile?.name || meta.full_name || meta.name || 'User',
+    full_name: profile?.full_name || meta.full_name,
+    avatar_url: profile?.avatar_url || meta.avatar_url,
+    phone: profile?.phone || meta.phone || '',
+    role: (profile?.role || meta.role || 'student') as UserRole,
+    status: (profile?.status || meta.status || 'active') as UserStatus,
+    created_at: profile?.created_at,
+  };
+}
+
+// ============================================================
+// STORE
+// ============================================================
 
 export const useAuthStore = create<AuthState>((set, get) => ({
   user: null,
   loading: true,
   error: null,
+  pendingOAuthRole: null,
 
   clearError: () => set({ error: null }),
 
+  setPendingOAuthRole: (role) => set({ pendingOAuthRole: role }),
+
+  // ----------------------------------------------------------
+  // CHECK SESSION
+  // ----------------------------------------------------------
   checkSession: async () => {
     set({ loading: true, error: null });
     try {
       const { data: { session }, error: sessionErr } = await supabase.auth.getSession();
-      
       if (sessionErr) throw sessionErr;
 
       if (session?.user) {
-        // Fetch matching profile
-        const { data: profile, error: profileErr } = await supabase
+        const { data: profile } = await supabase
           .from('profiles')
           .select('*')
           .eq('id', session.user.id)
           .single();
 
-        if (profileErr) {
-          // If profile fetch fails, build from session user metadata
-          const meta = session.user.user_metadata || {};
-          set({
-            user: {
-              id: session.user.id,
-              email: session.user.email || '',
-              name: meta.name || 'Student',
-              phone: meta.phone || '',
-              role: meta.role || 'student'
-            },
-            loading: false
-          });
-        } else {
-          set({
-            user: {
-              id: session.user.id,
-              email: session.user.email || '',
-              name: profile.name,
-              phone: profile.phone,
-              role: profile.role
-            },
-            loading: false
-          });
-        }
+        set({
+          user: buildUserFromProfile(session, profile),
+          loading: false
+        });
       } else {
         set({ user: null, loading: false });
       }
@@ -73,6 +96,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
   },
 
+  // ----------------------------------------------------------
+  // SIGN UP
+  // ----------------------------------------------------------
   signUp: async (email, password, name, phone, role = 'student') => {
     set({ loading: true, error: null });
     try {
@@ -80,23 +106,22 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         email,
         password,
         options: {
-          data: { name, phone, role }
+          data: { name, full_name: name, phone, role }
         }
       });
 
       if (error) throw error;
 
       if (data?.user) {
-        // Trigger might insert, but let's make sure it is in profiles if we are on live/mock
-        // On mock, the Auth.signUp method already handles profiles insertion.
-        // For live mode, we check profiles to confirm it synced.
         set({
           user: {
             id: data.user.id,
             email: data.user.email || '',
             name,
+            full_name: name,
             phone,
-            role
+            role,
+            status: 'active'
           },
           loading: false
         });
@@ -111,6 +136,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
   },
 
+  // ----------------------------------------------------------
+  // SIGN IN (email + password)
+  // ----------------------------------------------------------
   signIn: async (email, password) => {
     set({ loading: true, error: null });
     try {
@@ -122,7 +150,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       if (error) throw error;
 
       if (data?.user) {
-        // Fetch matching profile
         const { data: profile } = await supabase
           .from('profiles')
           .select('*')
@@ -130,13 +157,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           .single();
 
         set({
-          user: {
-            id: data.user.id,
-            email: data.user.email || '',
-            name: profile?.name || data.user.user_metadata?.name || 'Student',
-            phone: profile?.phone || data.user.user_metadata?.phone || '',
-            role: (profile?.role || data.user.user_metadata?.role || 'student') as 'student' | 'admin'
-          },
+          user: buildUserFromProfile({ user: data.user }, profile),
           loading: false
         });
         return true;
@@ -150,18 +171,24 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
   },
 
+  // ----------------------------------------------------------
+  // SIGN OUT
+  // ----------------------------------------------------------
   signOut: async () => {
     set({ loading: true, error: null });
     try {
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
-      set({ user: null, loading: false });
+      set({ user: null, loading: false, pendingOAuthRole: null });
     } catch (err: any) {
       console.error('Sign Out Error:', err);
       set({ loading: false, error: err.message });
     }
   },
 
+  // ----------------------------------------------------------
+  // UPDATE PROFILE
+  // ----------------------------------------------------------
   updateProfile: async (name, phone) => {
     const currentUser = get().user;
     if (!currentUser) return false;
@@ -170,18 +197,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     try {
       const { error } = await supabase
         .from('profiles')
-        .update({ name, phone })
+        .update({ name, full_name: name, phone })
         .eq('id', currentUser.id);
 
       if (error) throw error;
 
-      // Update state
       set({
-        user: {
-          ...currentUser,
-          name,
-          phone
-        },
+        user: { ...currentUser, name, full_name: name, phone },
         loading: false
       });
       return true;
@@ -192,14 +214,15 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
   },
 
+  // ----------------------------------------------------------
+  // OTP LOGIN
+  // ----------------------------------------------------------
   signInWithOtp: async (email: string) => {
     set({ loading: true, error: null });
     try {
       const { error } = await supabase.auth.signInWithOtp({
         email,
-        options: {
-          shouldCreateUser: true
-        }
+        options: { shouldCreateUser: true }
       });
       if (error) throw error;
       set({ loading: false });
@@ -229,13 +252,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           .single();
 
         set({
-          user: {
-            id: data.user.id,
-            email: data.user.email || '',
-            name: profile?.name || data.user.user_metadata?.name || 'Student',
-            phone: profile?.phone || data.user.user_metadata?.phone || '',
-            role: (profile?.role || data.user.user_metadata?.role || 'student') as 'student' | 'admin'
-          },
+          user: buildUserFromProfile({ user: data.user }, profile),
           loading: false
         });
         return true;
@@ -249,22 +266,34 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
   },
 
-  signInWithGoogle: async () => {
-    set({ loading: true, error: null });
+  // ----------------------------------------------------------
+  // GOOGLE SIGN IN — role-aware OAuth redirect
+  // Each role gets its own redirectTo so AuthCallbackPage knows
+  // what to do after Google returns.
+  // ----------------------------------------------------------
+  signInWithGoogle: async (role: 'student' | 'seller' | 'admin') => {
+    set({ loading: true, error: null, pendingOAuthRole: role });
     try {
+      const redirectTo = `${window.location.origin}/auth/callback?role=${role}`;
+
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: window.location.origin
+          redirectTo,
+          // Pass role as query param so AuthCallbackPage can read it
+          queryParams: {
+            role,
+          }
         }
       });
+
       if (error) throw error;
       set({ loading: false });
       return true;
     } catch (err: any) {
       console.error('Google Sign In Error:', err);
-      set({ loading: false, error: err.message });
+      set({ loading: false, error: err.message, pendingOAuthRole: null });
       return false;
     }
-  }
+  },
 }));
