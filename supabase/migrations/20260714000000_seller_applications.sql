@@ -3,6 +3,21 @@
 -- Run this script in: Supabase Dashboard → SQL Editor
 -- ============================================================
 
+-- Ensure the is_admin helper function exists first
+CREATE OR REPLACE FUNCTION public.is_admin(user_id UUID)
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+    RETURN EXISTS (
+        SELECT 1 FROM public.profiles
+        WHERE id = user_id AND role IN ('admin', 'super_admin')
+    );
+END;
+$$;
+
+-- Create seller_applications table
 CREATE TABLE IF NOT EXISTS public.seller_applications (
     id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id           UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
