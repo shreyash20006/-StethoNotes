@@ -22,19 +22,35 @@ export default function AuthCallbackPage() {
 
   const handleCallback = async () => {
     try {
-      // Exchange code for session in live mode
-      if (isLiveSupabase) {
+          // Fetch session first (standard client-side SDK might have already exchanged the code automatically)
+      let { data: { session }, error: sessionErr } = await supabase.auth.getSession();
+      if (sessionErr) throw sessionErr;
+
+      // If no session exists yet, try exchanging code manually
+      if (!session && isLiveSupabase) {
         const code = searchParams.get('code');
         if (code) {
-          const { error } = await supabase.auth.exchangeCodeForSession(code);
-          if (error) throw error;
+          try {
+            const { error: exchangeErr } = await supabase.auth.exchangeCodeForSession(code);
+            if (!exchangeErr) {
+              const { data: refreshed } = await supabase.auth.getSession();
+              session = refreshed.session;
+            }
+          } catch (e) {
+            console.warn('Manual PKCE code exchange failed; checking if session exists:', e);
+          }
         }
       }
 
-      // Fetch the current session
-      const { data: { session }, error: sessionErr } = await supabase.auth.getSession();
-      if (sessionErr) throw sessionErr;
-      if (!session?.user) throw new Error('No session after OAuth callback.');
+      // Re-fetch session one last time
+      if (!session) {
+        const { data: refreshed } = await supabase.auth.getSession();
+        session = refreshed.session;
+      }
+
+      if (!session?.user) {
+        throw new Error('No session after OAuth callback. If you are in mock mode, please ensure your browser has localStorage enabled.');
+      }
 
       const user = session.user;
       const email = user.email || '';
@@ -50,7 +66,14 @@ export default function AuthCallbackPage() {
           p_email: email
         });
 
-        if (rpcErr || !allowlistData || !allowlistData.allowed) {
+        if (rpcErr) {
+          console.error('RPC Error check_admin_allowlist:', rpcErr);
+          setErrorMsg(`Database RPC check_admin_allowlist failed. Have you run the SQL migration script in your Supabase SQL Editor? Details: ${rpcErr.message}`);
+          setStatus('error');
+          return;
+        }
+
+        if (!allowlistData || !allowlistData.allowed) {
           // Immediately sign out unauthorized account
           await supabase.auth.signOut();
           setStatus('denied');
