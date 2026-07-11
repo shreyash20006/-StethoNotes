@@ -3,20 +3,6 @@
 -- Run this script in: Supabase Dashboard → SQL Editor
 -- ============================================================
 
--- Ensure the is_admin helper function exists first
-CREATE OR REPLACE FUNCTION public.is_admin(user_id UUID)
-RETURNS BOOLEAN
-LANGUAGE plpgsql
-SECURITY DEFINER
-AS $$
-BEGIN
-    RETURN EXISTS (
-        SELECT 1 FROM public.profiles
-        WHERE id = user_id AND role IN ('admin', 'super_admin')
-    );
-END;
-$$;
-
 -- Create seller_applications table
 CREATE TABLE IF NOT EXISTS public.seller_applications (
     id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -40,14 +26,21 @@ CREATE TABLE IF NOT EXISTS public.seller_applications (
 );
 
 -- ==========================================
--- ROW LEVEL SECURITY POLICIES
+-- ROW LEVEL SECURITY POLICIES (INLINE LOGIC)
 -- ==========================================
 
 ALTER TABLE public.seller_applications ENABLE ROW LEVEL SECURITY;
 
 -- 1. SELECT: Users can view their own application, admins can view all
 CREATE POLICY "seller_apps: select policy" ON public.seller_applications
-    FOR SELECT USING (auth.uid() = user_id OR public.is_admin(auth.uid()));
+    FOR SELECT USING (
+        auth.uid() = user_id 
+        OR 
+        EXISTS (
+            SELECT 1 FROM public.profiles 
+            WHERE id = auth.uid() AND role IN ('admin', 'super_admin')
+        )
+    );
 
 -- 2. INSERT: Authenticated users can insert their own application
 CREATE POLICY "seller_apps: insert policy" ON public.seller_applications
@@ -55,7 +48,12 @@ CREATE POLICY "seller_apps: insert policy" ON public.seller_applications
 
 -- 3. UPDATE: Only admins can update applications
 CREATE POLICY "seller_apps: update policy" ON public.seller_applications
-    FOR UPDATE USING (public.is_admin(auth.uid()));
+    FOR UPDATE USING (
+        EXISTS (
+            SELECT 1 FROM public.profiles 
+            WHERE id = auth.uid() AND role IN ('admin', 'super_admin')
+        )
+    );
 
 -- ==========================================
 -- PERFORMANCE INDEXES
