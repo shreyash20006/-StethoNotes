@@ -72,12 +72,16 @@ export default function Navbar() {
             >
               About Us
             </Link>
-            <Link
-              to="/#contact"
-              className="font-display font-medium text-sm text-primary hover:text-accent transition-colors"
+            <NavLink
+              to="/contact"
+              className={({ isActive }) =>
+                `font-display font-medium text-sm transition-colors ${
+                  isActive ? 'text-accent' : 'text-primary hover:text-accent'
+                }`
+              }
             >
               Contact
-            </Link>
+            </NavLink>
           </div>
 
           {/* Actions: Cart & Auth */}
@@ -222,13 +226,17 @@ export default function Navbar() {
           >
             About Us
           </a>
-          <a
-            href="/#contact"
+          <NavLink
+            to="/contact"
             onClick={() => setIsOpen(false)}
-            className="font-display font-medium text-base p-2 rounded-xl text-primary hover:bg-gray-50"
+            className={({ isActive }) =>
+              `font-display font-medium text-base p-2 rounded-xl ${
+                isActive ? 'bg-accent/10 text-accent' : 'text-primary hover:bg-gray-50'
+              }`
+            }
           >
             Contact
-          </a>
+          </NavLink>
 
           <div className="border-t border-gray-50 pt-3 flex flex-col gap-2">
             {user ? (

@@ -450,7 +450,7 @@ serve(async (req) => {
                 .insert({
                   user_id: meta.user_id ? meta.user_id : null,
                   customer_name: meta.customer_name || 'Customer',
-                  customer_email: (meta.customer_email || 'support@stethonotes.com').toLowerCase(),
+                  customer_email: (meta.customer_email || 'support@stethonotes.store').toLowerCase(),
                   customer_phone: meta.customer_phone || '',
                   total_amount: totalAmount,
                   razorpay_payment_id,
