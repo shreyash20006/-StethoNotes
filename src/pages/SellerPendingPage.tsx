@@ -13,7 +13,7 @@ export default function SellerPendingPage() {
     if (!user) { navigate('/seller/login'); return; }
     if (user.role === 'seller') { navigate('/seller/dashboard'); return; }
     if (user.role === 'student') { navigate('/dashboard'); return; }
-    if (user.role === 'admin' || user.role === 'super_admin') { navigate('/admin'); return; }
+    if (user.role === 'admin' || user.role === 'super_admin') { navigate('/admin/dashboard'); return; }
   }, [user, navigate]);
 
   const handleSignOut = async () => {

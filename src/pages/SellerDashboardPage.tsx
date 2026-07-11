@@ -29,7 +29,7 @@ export default function SellerDashboardPage() {
     if (user.role !== 'seller') {
       if (user.role === 'seller_pending') navigate('/seller/application-pending');
       else if (user.role === 'student') navigate('/dashboard');
-      else if (user.role === 'admin' || user.role === 'super_admin') navigate('/admin');
+      else if (user.role === 'admin' || user.role === 'super_admin') navigate('/admin/dashboard');
       return;
     }
     setName(user.name);

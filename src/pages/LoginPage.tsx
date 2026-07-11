@@ -40,7 +40,7 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (user) {
-      if (user.role === 'admin' || user.role === 'super_admin') navigate('/admin');
+      if (user.role === 'admin' || user.role === 'super_admin') navigate('/admin/dashboard');
       else if (user.role === 'seller') navigate('/seller/dashboard');
       else if (user.role === 'seller_pending') navigate('/seller/application-pending');
       else navigate('/dashboard');

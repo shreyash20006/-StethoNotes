@@ -32,8 +32,6 @@ export default function SellerLoginPage() {
     if (user) {
       if (user.role === 'seller') navigate('/seller/dashboard');
       else if (user.role === 'seller_pending') navigate('/seller/application-pending');
-      else if (user.role === 'admin' || user.role === 'super_admin') navigate('/admin');
-      else navigate('/dashboard');
     }
   }, [user, navigate]);
 

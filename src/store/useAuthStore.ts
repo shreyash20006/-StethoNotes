@@ -274,14 +274,14 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   signInWithGoogle: async (role: 'student' | 'seller' | 'admin') => {
     set({ loading: true, error: null, pendingOAuthRole: role });
     try {
-      const redirectTo = `${window.location.origin}/auth/callback?state=${role}`;
+      const redirectTo = `${window.location.origin}/auth/callback?role=${role}`;
 
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
           redirectTo,
           queryParams: {
-            state: role,
+            role,
           }
         }
       });

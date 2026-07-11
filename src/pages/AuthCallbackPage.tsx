@@ -13,7 +13,10 @@ export default function AuthCallbackPage() {
   const [status, setStatus] = useState<'loading' | 'denied' | 'error'>('loading');
   const [errorMsg, setErrorMsg] = useState('');
 
-  const oauthState = searchParams.get('state') || searchParams.get('role') || 'student';
+  const rawRole = searchParams.get('role') || searchParams.get('flow');
+  const rawState = searchParams.get('state');
+  const isMockState = rawState && rawState.length < 15;
+  const oauthState = rawRole || (isMockState ? rawState : null) || 'student';
   const isMock = searchParams.get('mock') === 'true';
 
   useEffect(() => {
