@@ -19,7 +19,7 @@ import OrderLookupPage from './pages/OrderLookupPage';
 // Layout Wrapper
 function Layout() {
   return (
-    <div className="flex flex-col min-h-screen overflow-x-hidden">
+    <div className="flex flex-col min-h-screen">
       <Navbar />
       <div className="flex-grow">
         <Outlet />

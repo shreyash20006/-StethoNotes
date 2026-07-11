@@ -30,23 +30,6 @@
     border: 1px solid rgba(255, 255, 255, 0.08);
   }
 
-  /* Glassmorphism Navbar */
-  .glass-nav {
-    background: rgba(255, 255, 255, 0.9);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.25);
-    box-shadow: 0 1px 20px rgba(0, 0, 0, 0.06);
-  }
-
-  .glass-nav-scrolled {
-    background: rgba(255, 255, 255, 0.95);
-    backdrop-filter: blur(32px);
-    -webkit-backdrop-filter: blur(32px);
-    border-bottom: 1px solid rgba(15, 45, 107, 0.08);
-    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
-  }
-
   /* Buttons */
   .btn-primary {
     @apply px-6 py-3 font-display font-medium text-white bg-accent rounded-xl hover:bg-accent-hover active:scale-[0.98] transition-all duration-200 shadow-cyan-soft hover:shadow-cyan-hover flex items-center justify-center gap-2;
@@ -58,62 +41,6 @@
 
   .btn-outline-white {
     @apply px-6 py-3 font-display font-medium text-white border-2 border-white/30 rounded-xl hover:bg-white/10 active:scale-[0.98] transition-all duration-200 flex items-center justify-center gap-2;
-  }
-
-  /* Gradient CTA button */
-  .btn-gradient {
-    background: linear-gradient(135deg, #0F2D6B 0%, #1FB6D4 100%);
-    @apply px-6 py-3 font-display font-semibold text-white rounded-xl active:scale-[0.98] transition-all duration-200 flex items-center justify-center gap-2;
-    box-shadow: 0 8px 25px rgba(31, 182, 212, 0.3);
-  }
-
-  .btn-gradient:hover {
-    background: linear-gradient(135deg, #1D4596 0%, #189CB6 100%);
-    box-shadow: 0 12px 35px rgba(31, 182, 212, 0.45);
-    transform: translateY(-1px);
-  }
-
-  /* Nav hover underline */
-  .nav-link {
-    @apply relative font-display font-medium text-sm text-primary/80 hover:text-primary transition-colors duration-200 cursor-pointer;
-  }
-
-  .nav-link::after {
-    content: '';
-    position: absolute;
-    bottom: -4px;
-    left: 0;
-    width: 0;
-    height: 2px;
-    background: linear-gradient(90deg, #0F2D6B, #1FB6D4);
-    border-radius: 2px;
-    transition: width 0.25s ease;
-  }
-
-  .nav-link:hover::after,
-  .nav-link.active::after {
-    width: 100%;
-  }
-
-  .nav-link.active {
-    @apply text-accent;
-  }
-
-  /* Hero chip pills */
-  .hero-chip {
-    @apply inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-display font-semibold;
-    background: rgba(31, 182, 212, 0.12);
-    border: 1px solid rgba(31, 182, 212, 0.25);
-    color: #1FB6D4;
-  }
-
-  /* Glass card for floating illustration */
-  .glass-card-float {
-    background: rgba(255, 255, 255, 0.08);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
-    border: 1px solid rgba(255, 255, 255, 0.15);
-    border-radius: 16px;
   }
 }
 
@@ -164,67 +91,3 @@
 .animate-shimmer {
   animation: shimmer 1.5s infinite;
 }
-
-/* Float animation for hero illustration */
-@keyframes floatY {
-  0%, 100% { transform: translateY(0px); }
-  50% { transform: translateY(-14px); }
-}
-
-@keyframes floatYSlow {
-  0%, 100% { transform: translateY(0px); }
-  50% { transform: translateY(-8px); }
-}
-
-@keyframes floatCard1 {
-  0%, 100% { transform: translateY(0px) rotate(-3deg); }
-  50% { transform: translateY(-12px) rotate(-3deg); }
-}
-
-@keyframes floatCard2 {
-  0%, 100% { transform: translateY(0px) rotate(3deg); }
-  50% { transform: translateY(-10px) rotate(3deg); }
-}
-
-@keyframes pulse-glow {
-  0%, 100% { opacity: 0.4; transform: scale(1); }
-  50% { opacity: 0.7; transform: scale(1.08); }
-}
-
-@keyframes ecg {
-  0% { stroke-dashoffset: 200; }
-  100% { stroke-dashoffset: 0; }
-}
-
-.animate-float-y {
-  animation: floatY 5s ease-in-out infinite;
-}
-
-.animate-float-y-slow {
-  animation: floatYSlow 8s ease-in-out infinite;
-}
-
-.animate-float-card-1 {
-  animation: floatCard1 6s ease-in-out infinite;
-}
-
-.animate-float-card-2 {
-  animation: floatCard2 7s ease-in-out infinite 0.5s;
-}
-
-.animate-pulse-glow {
-  animation: pulse-glow 4s ease-in-out infinite;
-}
-
-.animate-ecg {
-  animation: ecg 2s ease-in-out infinite;
-}
-
-/* Medical grid subtle background */
-.hero-grid-bg {
-  background-image:
-    linear-gradient(rgba(31, 182, 212, 0.04) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(31, 182, 212, 0.04) 1px, transparent 1px);
-  background-size: 40px 40px;
-}
-
