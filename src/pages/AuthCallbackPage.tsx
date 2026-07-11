@@ -31,10 +31,11 @@ export default function AuthCallbackPage() {
       // In live mode, Supabase exchanges the code automatically.
       // In mock mode, the session is already in localStorage.
       if (isLiveSupabase) {
-        const { error } = await supabase.auth.exchangeCodeForSession(
-          window.location.search
-        );
-        if (error) throw error;
+        const code = searchParams.get('code');
+        if (code) {
+          const { error } = await supabase.auth.exchangeCodeForSession(code);
+          if (error) throw error;
+        }
       }
 
       // Get the current session
