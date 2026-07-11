@@ -119,6 +119,9 @@ ALTER TABLE public.email_logs  ENABLE ROW LEVEL SECURITY;
 
 
 -- 3.1 courses
+DROP POLICY IF EXISTS "courses: public read" ON public.courses;
+DROP POLICY IF EXISTS "courses: admin write" ON public.courses;
+
 CREATE POLICY "courses: public read"
     ON public.courses FOR SELECT USING (true);
 
@@ -130,6 +133,10 @@ CREATE POLICY "courses: admin write"
 
 
 -- 3.2 profiles
+DROP POLICY IF EXISTS "profiles: own read" ON public.profiles;
+DROP POLICY IF EXISTS "profiles: own update" ON public.profiles;
+DROP POLICY IF EXISTS "profiles: admin full access" ON public.profiles;
+
 CREATE POLICY "profiles: own read"
     ON public.profiles FOR SELECT USING (auth.uid() = id);
 
@@ -145,6 +152,9 @@ CREATE POLICY "profiles: admin full access"
 
 
 -- 3.3 notes
+DROP POLICY IF EXISTS "notes: public read" ON public.notes;
+DROP POLICY IF EXISTS "notes: admin write" ON public.notes;
+
 CREATE POLICY "notes: public read"
     ON public.notes FOR SELECT USING (true);
 
@@ -156,6 +166,11 @@ CREATE POLICY "notes: admin write"
 
 
 -- 3.4 orders
+DROP POLICY IF EXISTS "orders: own read" ON public.orders;
+DROP POLICY IF EXISTS "orders: own insert" ON public.orders;
+DROP POLICY IF EXISTS "orders: guest insert" ON public.orders;
+DROP POLICY IF EXISTS "orders: admin full access" ON public.orders;
+
 CREATE POLICY "orders: own read"
     ON public.orders FOR SELECT USING (auth.uid() = user_id);
 
@@ -173,6 +188,11 @@ CREATE POLICY "orders: admin full access"
 
 
 -- 3.5 order_items
+DROP POLICY IF EXISTS "order_items: own read" ON public.order_items;
+DROP POLICY IF EXISTS "order_items: own insert" ON public.order_items;
+DROP POLICY IF EXISTS "order_items: guest insert" ON public.order_items;
+DROP POLICY IF EXISTS "order_items: admin full access" ON public.order_items;
+
 CREATE POLICY "order_items: own read"
     ON public.order_items FOR SELECT
     USING (EXISTS (
@@ -202,6 +222,11 @@ CREATE POLICY "order_items: admin full access"
 
 
 -- 3.6 reviews
+DROP POLICY IF EXISTS "reviews: public read" ON public.reviews;
+DROP POLICY IF EXISTS "reviews: own insert" ON public.reviews;
+DROP POLICY IF EXISTS "reviews: own update" ON public.reviews;
+DROP POLICY IF EXISTS "reviews: own delete" ON public.reviews;
+
 CREATE POLICY "reviews: public read"
     ON public.reviews FOR SELECT USING (true);
 
@@ -217,6 +242,8 @@ CREATE POLICY "reviews: own delete"
 
 
 -- 3.7 email_logs
+DROP POLICY IF EXISTS "email_logs: admin full access" ON public.email_logs;
+
 CREATE POLICY "email_logs: admin full access"
     ON public.email_logs FOR ALL
     USING (EXISTS (
@@ -302,6 +329,10 @@ ON CONFLICT (id) DO NOTHING;
 
 
 -- Storage RLS — notes-pdfs (private)
+DROP POLICY IF EXISTS "notes-pdfs: admin upload" ON storage.objects;
+DROP POLICY IF EXISTS "notes-pdfs: admin delete" ON storage.objects;
+DROP POLICY IF EXISTS "notes-pdfs: authenticated read" ON storage.objects;
+
 CREATE POLICY "notes-pdfs: admin upload"
     ON storage.objects FOR INSERT
     WITH CHECK (
@@ -322,6 +353,10 @@ CREATE POLICY "notes-pdfs: authenticated read"
 
 
 -- Storage RLS — thumbnails (public)
+DROP POLICY IF EXISTS "thumbnails: public read" ON storage.objects;
+DROP POLICY IF EXISTS "thumbnails: admin upload" ON storage.objects;
+DROP POLICY IF EXISTS "thumbnails: admin delete" ON storage.objects;
+
 CREATE POLICY "thumbnails: public read"
     ON storage.objects FOR SELECT USING (bucket_id = 'thumbnails');
 
@@ -341,6 +376,10 @@ CREATE POLICY "thumbnails: admin delete"
 
 
 -- Storage RLS — previews (public)
+DROP POLICY IF EXISTS "previews: public read" ON storage.objects;
+DROP POLICY IF EXISTS "previews: admin upload" ON storage.objects;
+DROP POLICY IF EXISTS "previews: admin delete" ON storage.objects;
+
 CREATE POLICY "previews: public read"
     ON storage.objects FOR SELECT USING (bucket_id = 'previews');
 
