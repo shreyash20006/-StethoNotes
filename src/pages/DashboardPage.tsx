@@ -28,6 +28,14 @@ export default function DashboardPage() {
   const [noteToOrderMap, setNoteToOrderMap] = useState<Record<string, string>>({});
 
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const tabParam = params.get('tab');
+    if (tabParam && ['purchases', 'profile', 'orders'].includes(tabParam)) {
+      setActiveTab(tabParam as any);
+    }
+  }, [window.location.search]);
+
+  useEffect(() => {
     if (!user) {
       navigate('/login');
       return;

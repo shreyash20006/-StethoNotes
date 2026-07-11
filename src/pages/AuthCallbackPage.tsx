@@ -13,45 +13,66 @@ export default function AuthCallbackPage() {
   const [status, setStatus] = useState<'loading' | 'denied' | 'error'>('loading');
   const [errorMsg, setErrorMsg] = useState('');
 
+  // Extract intended role flow from URL query, hash verifier, or localStorage fallback
   const rawRole = searchParams.get('role') || searchParams.get('flow');
   const rawState = searchParams.get('state');
+  const savedRole = localStorage.getItem('stetho_pending_oauth_role') as 'student' | 'seller' | 'admin' | null;
+
+  // Suppress long PKCE verifier state parameter strings in live mode
   const isMockState = rawState && rawState.length < 15;
-  const oauthState = rawRole || (isMockState ? rawState : null) || 'student';
-  const isMock = searchParams.get('mock') === 'true';
+  const oauthState = rawRole || (isMockState ? rawState : null) || savedRole || 'student';
+  const isMock = searchParams.get('mock') === 'true' || !isLiveSupabase;
 
   useEffect(() => {
+    console.log('[DEBUG] AuthCallbackPage mounted. Context:', {
+      urlSearch: window.location.search,
+      urlHash: window.location.hash,
+      rawRole,
+      rawState,
+      savedRole,
+      oauthState,
+      isMock,
+      isLiveSupabase
+    });
     handleCallback();
   }, []);
 
   const handleCallback = async () => {
     try {
-          // Fetch session first (standard client-side SDK might have already exchanged the code automatically)
+      // 1. Fetch current session (client-side SDK might have already exchanged code automatically)
       let { data: { session }, error: sessionErr } = await supabase.auth.getSession();
-      if (sessionErr) throw sessionErr;
+      if (sessionErr) {
+        console.error('[DEBUG] Fetch session error:', sessionErr);
+        throw sessionErr;
+      }
 
-      // If no session exists yet, try exchanging code manually
+      // 2. If no session exists yet, try exchanging code manually
       if (!session && isLiveSupabase) {
         const code = searchParams.get('code');
         if (code) {
           try {
+            console.log('[DEBUG] Session not found. Exchanging code manually:', code);
             const { error: exchangeErr } = await supabase.auth.exchangeCodeForSession(code);
-            if (!exchangeErr) {
+            if (exchangeErr) {
+              console.warn('[DEBUG] Code exchange returned error (might be already consumed):', exchangeErr);
+            } else {
               const { data: refreshed } = await supabase.auth.getSession();
               session = refreshed.session;
             }
           } catch (e) {
-            console.warn('Manual PKCE code exchange failed; checking if session exists:', e);
+            console.warn('[DEBUG] Exception during code exchange:', e);
           }
         }
       }
 
-      // Re-fetch session one last time
+      // 3. Re-fetch session one last time
       if (!session) {
         const { data: refreshed } = await supabase.auth.getSession();
         session = refreshed.session;
       }
 
       if (!session?.user) {
+        console.error('[DEBUG] Authentication callback failed to retrieve a valid user session.');
         throw new Error('No session after OAuth callback. If you are in mock mode, please ensure your browser has localStorage enabled.');
       }
 
@@ -60,76 +81,98 @@ export default function AuthCallbackPage() {
       const fullName = user.user_metadata?.full_name || user.user_metadata?.name || email.split('@')[0];
       const avatarUrl = user.user_metadata?.avatar_url || '';
 
-      // --------------------------------------------------------
-      // FLOW 1: ADMIN LOGIN
-      // --------------------------------------------------------
+      console.log('[DEBUG] OAuth Session User Retrieved:', {
+        userId: user.id,
+        email,
+        fullName,
+        avatarUrl
+      });
+
+      // 4. Fetch existing database profile
+      const { data: existingProfile, error: profileErr } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single();
+
+      if (profileErr && profileErr.code !== 'PGRST116') {
+        console.warn('[DEBUG] Profile query encountered error:', profileErr);
+      }
+
+      console.log('[DEBUG] Existing profile status:', existingProfile);
+
+      let finalRole = existingProfile?.role;
+      let finalStatus = existingProfile?.status || 'active';
+
+      // 5. Resolve role & status depending on flow and allowlist
       if (oauthState === 'admin') {
-        // Secure server-side check using check_admin_allowlist RPC
+        console.log('[DEBUG] Admin login flow. Checking backend allowlist for:', email);
+        
+        // Secure backend check using check_admin_allowlist RPC
         const { data: allowlistData, error: rpcErr } = await supabase.rpc('check_admin_allowlist', {
           p_email: email
         });
 
+        console.log('[DEBUG] Allowlist RPC response:', { allowlistData, rpcErr });
+
         if (rpcErr) {
-          console.error('RPC Error check_admin_allowlist:', rpcErr);
+          console.error('[DEBUG] Allowlist RPC failed:', rpcErr);
           setErrorMsg(`Database RPC check_admin_allowlist failed. Have you run the SQL migration script in your Supabase SQL Editor? Details: ${rpcErr.message}`);
           setStatus('error');
           return;
         }
 
         if (!allowlistData || !allowlistData.allowed) {
-          // Immediately sign out unauthorized account
+          console.warn('[DEBUG] Admin access denied for:', email);
           await supabase.auth.signOut();
           setStatus('denied');
           return;
         }
 
-        const assignedRole = allowlistData.role || 'admin';
+        finalRole = allowlistData.role || 'admin';
+        finalStatus = 'active';
 
-        // Upsert admin profile
-        await supabase.from('profiles').upsert({
-          id: user.id,
-          email,
-          full_name: fullName,
-          name: fullName,
-          avatar_url: avatarUrl,
-          role: assignedRole,
-          status: 'active'
-        }, { onConflict: 'id' });
-
-        await checkSession();
-        navigate('/admin/dashboard', { replace: true });
-        return;
-      }
-
-      // --------------------------------------------------------
-      // FLOW 2: SELLER LOGIN
-      // --------------------------------------------------------
-      if (oauthState === 'seller') {
-        // Check if user is already an approved seller
-        const { data: existingProfile } = await supabase
-          .from('profiles')
-          .select('role, status')
-          .eq('id', user.id)
-          .single();
-
-        if (existingProfile?.role === 'seller' && existingProfile?.status === 'approved') {
-          await checkSession();
-          navigate('/seller/dashboard', { replace: true });
-          return;
+      } else if (oauthState === 'seller') {
+        console.log('[DEBUG] Seller login/signup flow triggered for:', email);
+        
+        // Transition students to pending sellers; keep existing approved/rejected sellers intact
+        if (finalRole !== 'seller' && finalRole !== 'seller_pending') {
+          finalRole = 'seller_pending';
+          finalStatus = 'pending';
         }
 
-        // Upsert profile as seller_pending
-        await supabase.from('profiles').upsert({
-          id: user.id,
-          email,
-          full_name: fullName,
-          name: fullName,
-          avatar_url: avatarUrl,
-          role: 'seller_pending',
-          status: 'pending'
-        }, { onConflict: 'id' });
+      } else {
+        console.log('[DEBUG] Student login/signup flow triggered for:', email);
+        
+        // Default to student if no role is established yet
+        if (!finalRole) {
+          finalRole = 'student';
+          finalStatus = 'active';
+        }
+      }
 
-        // Create seller_requests record if it doesn't already exist
+      // 6. Upsert the profile table (preventing duplicate key collisions)
+      const profilePayload = {
+        id: user.id,
+        email,
+        full_name: fullName,
+        name: fullName,
+        avatar_url: avatarUrl,
+        role: finalRole,
+        status: finalStatus,
+        updated_at: new Date().toISOString()
+      };
+
+      console.log('[DEBUG] Upserting profile record:', profilePayload);
+      const { error: upsertErr } = await supabase.from('profiles').upsert(profilePayload, { onConflict: 'id' });
+      
+      if (upsertErr) {
+        console.error('[DEBUG] Profile upsert failed:', upsertErr);
+        throw upsertErr;
+      }
+
+      // 7. Handle Seller request log entry
+      if (finalRole === 'seller_pending') {
         const { data: existingReq } = await supabase
           .from('seller_requests')
           .select('id')
@@ -137,6 +180,7 @@ export default function AuthCallbackPage() {
           .single();
 
         if (!existingReq) {
+          console.log('[DEBUG] Inserting new seller request record for:', email);
           await supabase.from('seller_requests').insert({
             user_id: user.id,
             email,
@@ -145,51 +189,57 @@ export default function AuthCallbackPage() {
             applied_at: new Date().toISOString()
           });
 
-          // Send confirmation email
+          // Send Brevo application email
           sendSellerApplicationReceivedEmail(email, fullName).catch(console.error);
         }
-
-        await checkSession();
-        navigate('/seller/application-pending', { replace: true });
-        return;
       }
 
-      // --------------------------------------------------------
-      // FLOW 3: STUDENT LOGIN (default)
-      // --------------------------------------------------------
-      await supabase.from('profiles').upsert({
-        id: user.id,
-        email,
-        full_name: fullName,
-        name: fullName,
-        avatar_url: avatarUrl,
-        role: 'student',
-        status: 'active'
-      }, { onConflict: 'id' });
-
+      // 8. Update client auth store state
       await checkSession();
-      navigate('/dashboard', { replace: true });
+
+      // Clear pending oauth role flag from local storage
+      localStorage.removeItem('stetho_pending_oauth_role');
+
+      // 9. Redirect user to their corresponding role dashboard
+      let redirectDest = '/dashboard';
+      if (finalRole === 'admin' || finalRole === 'super_admin') {
+        redirectDest = '/admin/dashboard';
+      } else if (finalRole === 'seller') {
+        redirectDest = '/seller/dashboard';
+      } else if (finalRole === 'seller_pending') {
+        redirectDest = '/seller/application-pending';
+      }
+
+      console.log('[DEBUG] Auth flow successful. Redirecting to:', redirectDest);
+      navigate(redirectDest, { replace: true });
 
     } catch (err: any) {
-      console.error('Auth callback error:', err);
+      console.error('[DEBUG] Authentication flow caught exception:', err);
+      
       if (isMock) {
+        console.log('[DEBUG] Handling mock callback fallback logic...');
         await checkSession();
+        localStorage.removeItem('stetho_pending_oauth_role');
+
+        let redirectDest = '/dashboard';
         if (oauthState === 'admin') {
-          // Simulation allowlist check in mock mode: any email containing "admin" or test emails
-          const email = 'admin@stethonotes.com';
-          const isAllowed = email.toLowerCase().includes('admin');
+          // Simulation mock allowlist (allows emails containing 'admin')
+          const mockEmail = 'admin@stethonotes.com';
+          const isAllowed = mockEmail.toLowerCase().includes('admin');
           if (!isAllowed) {
             setStatus('denied');
             return;
           }
-          navigate('/admin/dashboard', { replace: true });
+          redirectDest = '/admin/dashboard';
         } else if (oauthState === 'seller') {
-          navigate('/seller/application-pending', { replace: true });
-        } else {
-          navigate('/dashboard', { replace: true });
+          redirectDest = '/seller/application-pending';
         }
+
+        console.log('[DEBUG] Mock redirection target:', redirectDest);
+        navigate(redirectDest, { replace: true });
         return;
       }
+
       setStatus('error');
       setErrorMsg(err.message || 'Authentication failed.');
     }
@@ -234,13 +284,13 @@ export default function AuthCallbackPage() {
   if (status === 'error') {
     return (
       <div className="min-h-screen bg-[#0a0f1e] flex items-center justify-center px-4">
-        <div className="text-center">
-          <p className="text-red-400 mb-4">{errorMsg}</p>
+        <div className="text-center max-w-md">
+          <p className="text-red-400 mb-6 font-semibold">{errorMsg}</p>
           <button
             onClick={() => navigate('/', { replace: true })}
-            className="text-white/60 hover:text-white text-sm transition-colors"
+            className="px-6 py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 text-white text-sm font-medium rounded-xl transition-colors"
           >
-            Go home
+            Go back to homepage
           </button>
         </div>
       </div>
@@ -258,7 +308,7 @@ export default function AuthCallbackPage() {
         className="flex flex-col items-center gap-4"
       >
         <Loader2 className="w-8 h-8 text-blue-400 animate-spin" />
-        <p className="text-slate-400 text-sm">Verifying your account…</p>
+        <p className="text-slate-400 text-sm font-display">Verifying your account…</p>
       </motion.div>
     </div>
   );

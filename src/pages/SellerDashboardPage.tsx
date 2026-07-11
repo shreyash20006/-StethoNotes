@@ -25,6 +25,14 @@ export default function SellerDashboardPage() {
   const [savingProfile, setSavingProfile] = useState(false);
 
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const tabParam = params.get('tab');
+    if (tabParam && ['overview', 'products', 'orders', 'profile'].includes(tabParam)) {
+      setActiveTab(tabParam as any);
+    }
+  }, [window.location.search]);
+
+  useEffect(() => {
     if (!user) { navigate('/seller/login'); return; }
     if (user.role !== 'seller') {
       if (user.role === 'seller_pending') navigate('/seller/application-pending');

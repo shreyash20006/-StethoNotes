@@ -115,6 +115,18 @@ function App() {
   const { checkSession } = useAuthStore();
 
   useEffect(() => {
+    // Intercept Google OAuth redirects that land on '/' instead of '/auth/callback' due to Supabase redirect URI config mismatches
+    const hasCode = window.location.search.includes('code=') || window.location.hash.includes('access_token=');
+    const isCallback = window.location.pathname.startsWith('/auth/callback');
+
+    if (hasCode && !isCallback) {
+      console.log('[DEBUG] OAuth tokens detected on non-callback path. Forwarding to /auth/callback...');
+      const search = window.location.search;
+      const hash = window.location.hash;
+      window.location.href = `/auth/callback${search}${hash}`;
+      return;
+    }
+
     checkSession();
   }, [checkSession]);
 

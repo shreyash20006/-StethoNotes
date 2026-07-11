@@ -2,7 +2,10 @@ import { useState } from 'react';
 import { Link, NavLink, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/useAuthStore';
 import { useCartStore } from '../store/useCartStore';
-import { ShoppingCart, User, LogOut, Menu, X, ShieldAlert, BookOpen, Store, Clock } from 'lucide-react';
+import {
+  ShoppingCart, User, LogOut, Menu, X, ShieldAlert,
+  BookOpen, Store, Clock, Package, Users, BarChart3, DollarSign
+} from 'lucide-react';
 
 export default function Navbar() {
   const navigate = useNavigate();
@@ -136,7 +139,7 @@ export default function Navbar() {
                 {isDropdownOpen && (
                   <>
                     <div className="fixed inset-0 z-10" onClick={() => setIsDropdownOpen(false)} />
-                    <div className="absolute right-0 mt-2 w-60 bg-white rounded-2xl shadow-xl border border-gray-100 py-2 z-20 overflow-hidden">
+                    <div className="absolute right-0 mt-2 w-60 bg-white rounded-2xl shadow-xl border border-gray-100 py-2 z-20 overflow-hidden font-display">
                       <div className="px-4 py-3 border-b border-gray-50">
                         <p className="text-xs text-gray-400 font-sans">Logged in as</p>
                         <p className="font-display font-semibold text-sm text-primary truncate">{user.name}</p>
@@ -148,42 +151,105 @@ export default function Navbar() {
 
                       {/* Admin links */}
                       {isAdmin && (
-                        <Link to="/admin/dashboard" onClick={() => setIsDropdownOpen(false)}
-                          className="flex items-center gap-2 px-4 py-2.5 text-sm text-primary hover:bg-accent/5 hover:text-accent transition-colors">
-                          <ShieldAlert className="w-4 h-4" />
-                          <span>Admin Panel</span>
-                        </Link>
+                        <>
+                          <Link to="/admin/dashboard" onClick={() => setIsDropdownOpen(false)}
+                            className="flex items-center gap-2 px-4 py-2.5 text-sm text-primary hover:bg-accent/5 hover:text-accent transition-colors">
+                            <ShieldAlert className="w-4 h-4 text-blue-500" />
+                            <span>Admin Dashboard</span>
+                          </Link>
+                          <Link to="/admin/dashboard?tab=notes" onClick={() => setIsDropdownOpen(false)}
+                            className="flex items-center gap-2 px-4 py-2.5 text-sm text-primary hover:bg-accent/5 hover:text-accent transition-colors">
+                            <Package className="w-4 h-4 text-slate-500" />
+                            <span>Products</span>
+                          </Link>
+                          <Link to="/admin/dashboard?tab=orders" onClick={() => setIsDropdownOpen(false)}
+                            className="flex items-center gap-2 px-4 py-2.5 text-sm text-primary hover:bg-accent/5 hover:text-accent transition-colors">
+                            <ShoppingCart className="w-4 h-4 text-slate-500" />
+                            <span>Orders</span>
+                          </Link>
+                          <Link to="/admin/dashboard?tab=seller_requests" onClick={() => setIsDropdownOpen(false)}
+                            className="flex items-center gap-2 px-4 py-2.5 text-sm text-primary hover:bg-accent/5 hover:text-accent transition-colors">
+                            <Users className="w-4 h-4 text-slate-500" />
+                            <span>Sellers</span>
+                          </Link>
+                          <Link to="/admin/dashboard?tab=analytics" onClick={() => setIsDropdownOpen(false)}
+                            className="flex items-center gap-2 px-4 py-2.5 text-sm text-primary hover:bg-accent/5 hover:text-accent transition-colors">
+                            <BarChart3 className="w-4 h-4 text-slate-500" />
+                            <span>Analytics</span>
+                          </Link>
+                        </>
                       )}
 
-                      {/* Seller links */}
+                      {/* Seller approved links */}
                       {isSeller && (
-                        <Link to="/seller/dashboard" onClick={() => setIsDropdownOpen(false)}
-                          className="flex items-center gap-2 px-4 py-2.5 text-sm text-primary hover:bg-emerald-50 hover:text-emerald-600 transition-colors">
-                          <Store className="w-4 h-4" />
-                          <span>Seller Dashboard</span>
-                        </Link>
+                        <>
+                          <Link to="/seller/dashboard" onClick={() => setIsDropdownOpen(false)}
+                            className="flex items-center gap-2 px-4 py-2.5 text-sm text-primary hover:bg-emerald-50 hover:text-emerald-600 transition-colors">
+                            <Store className="w-4 h-4 text-emerald-500" />
+                            <span>Seller Dashboard</span>
+                          </Link>
+                          <Link to="/seller/dashboard?tab=products" onClick={() => setIsDropdownOpen(false)}
+                            className="flex items-center gap-2 px-4 py-2.5 text-sm text-primary hover:bg-emerald-50 hover:text-emerald-600 transition-colors">
+                            <Package className="w-4 h-4 text-slate-500" />
+                            <span>Products</span>
+                          </Link>
+                          <Link to="/seller/dashboard?tab=orders" onClick={() => setIsDropdownOpen(false)}
+                            className="flex items-center gap-2 px-4 py-2.5 text-sm text-primary hover:bg-emerald-50 hover:text-emerald-600 transition-colors">
+                            <ShoppingCart className="w-4 h-4 text-slate-500" />
+                            <span>Orders</span>
+                          </Link>
+                          <Link to="/seller/dashboard?tab=overview" onClick={() => setIsDropdownOpen(false)}
+                            className="flex items-center gap-2 px-4 py-2.5 text-sm text-primary hover:bg-emerald-50 hover:text-emerald-600 transition-colors">
+                            <DollarSign className="w-4 h-4 text-slate-500" />
+                            <span>Earnings</span>
+                          </Link>
+                          <Link to="/seller/dashboard?tab=profile" onClick={() => setIsDropdownOpen(false)}
+                            className="flex items-center gap-2 px-4 py-2.5 text-sm text-primary hover:bg-emerald-50 hover:text-emerald-600 transition-colors">
+                            <User className="w-4 h-4 text-slate-500" />
+                            <span>Profile</span>
+                          </Link>
+                        </>
                       )}
 
-                      {/* Seller pending status */}
+                      {/* Seller pending links */}
                       {isSellerPending && (
-                        <Link to="/seller/application-pending" onClick={() => setIsDropdownOpen(false)}
-                          className="flex items-center gap-2 px-4 py-2.5 text-sm text-amber-600 hover:bg-amber-50 transition-colors">
-                          <Clock className="w-4 h-4" />
-                          <span>Application Pending</span>
-                        </Link>
+                        <>
+                          <Link to="/seller/application-pending" onClick={() => setIsDropdownOpen(false)}
+                            className="flex items-center gap-2 px-4 py-2.5 text-sm text-amber-600 hover:bg-amber-50 transition-colors">
+                            <Clock className="w-4 h-4" />
+                            <span>Application Status</span>
+                          </Link>
+                          <Link to="/seller/application-pending" onClick={() => setIsDropdownOpen(false)}
+                            className="flex items-center gap-2 px-4 py-2.5 text-sm text-amber-650 hover:bg-amber-50 transition-colors">
+                            <User className="w-4 h-4" />
+                            <span>Profile</span>
+                          </Link>
+                        </>
                       )}
 
                       {/* Student links */}
                       {isStudent && (
-                        <Link to="/dashboard" onClick={() => setIsDropdownOpen(false)}
-                          className="flex items-center gap-2 px-4 py-2.5 text-sm text-primary hover:bg-accent/5 hover:text-accent transition-colors">
-                          <BookOpen className="w-4 h-4" />
-                          <span>My Purchases</span>
-                        </Link>
+                        <>
+                          <Link to="/dashboard" onClick={() => setIsDropdownOpen(false)}
+                            className="flex items-center gap-2 px-4 py-2.5 text-sm text-primary hover:bg-accent/5 hover:text-accent transition-colors">
+                            <BookOpen className="w-4 h-4 text-accent" />
+                            <span>Dashboard</span>
+                          </Link>
+                          <Link to="/dashboard?tab=purchases" onClick={() => setIsDropdownOpen(false)}
+                            className="flex items-center gap-2 px-4 py-2.5 text-sm text-primary hover:bg-accent/5 hover:text-accent transition-colors">
+                            <BookOpen className="w-4 h-4 text-slate-500" />
+                            <span>My Purchases</span>
+                          </Link>
+                          <Link to="/dashboard?tab=profile" onClick={() => setIsDropdownOpen(false)}
+                            className="flex items-center gap-2 px-4 py-2.5 text-sm text-primary hover:bg-accent/5 hover:text-accent transition-colors">
+                            <User className="w-4 h-4 text-slate-500" />
+                            <span>Profile</span>
+                          </Link>
+                        </>
                       )}
 
                       <button onClick={handleLogout}
-                        className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors text-left">
+                        className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors text-left border-t border-gray-50 mt-1">
                         <LogOut className="w-4 h-4" />
                         <span>Sign Out</span>
                       </button>
@@ -220,7 +286,7 @@ export default function Navbar() {
 
       {/* Mobile Menu */}
       {isOpen && (
-        <div className="md:hidden border-t border-gray-100 bg-white px-4 pt-2 pb-6 flex flex-col gap-3 shadow-lg">
+        <div className="md:hidden border-t border-gray-100 bg-white px-4 pt-2 pb-6 flex flex-col gap-3 shadow-lg font-display">
           {!isAdmin && (
             <>
               <NavLink to="/courses" onClick={() => setIsOpen(false)}
@@ -252,40 +318,107 @@ export default function Navbar() {
                   </span>
                 </div>
 
+                {/* Mobile Admin links */}
                 {isAdmin && (
-                  <Link to="/admin/dashboard" onClick={() => setIsOpen(false)}
-                    className="flex items-center gap-2 p-2 rounded-xl text-sm text-primary hover:bg-accent/5 hover:text-accent">
-                    <ShieldAlert className="w-4 h-4" />
-                    <span>Admin Panel</span>
-                  </Link>
+                  <>
+                    <Link to="/admin/dashboard" onClick={() => setIsOpen(false)}
+                      className="flex items-center gap-2 p-2 rounded-xl text-sm text-primary hover:bg-accent/5 hover:text-accent">
+                      <ShieldAlert className="w-4 h-4 text-blue-500" />
+                      <span>Admin Dashboard</span>
+                    </Link>
+                    <Link to="/admin/dashboard?tab=notes" onClick={() => setIsOpen(false)}
+                      className="flex items-center gap-2 p-2 rounded-xl text-sm text-primary hover:bg-accent/5 hover:text-accent">
+                      <Package className="w-4 h-4 text-slate-500" />
+                      <span>Products</span>
+                    </Link>
+                    <Link to="/admin/dashboard?tab=orders" onClick={() => setIsOpen(false)}
+                      className="flex items-center gap-2 p-2 rounded-xl text-sm text-primary hover:bg-accent/5 hover:text-accent">
+                      <ShoppingCart className="w-4 h-4 text-slate-500" />
+                      <span>Orders</span>
+                    </Link>
+                    <Link to="/admin/dashboard?tab=seller_requests" onClick={() => setIsOpen(false)}
+                      className="flex items-center gap-2 p-2 rounded-xl text-sm text-primary hover:bg-accent/5 hover:text-accent">
+                      <Users className="w-4 h-4 text-slate-500" />
+                      <span>Sellers</span>
+                    </Link>
+                    <Link to="/admin/dashboard?tab=analytics" onClick={() => setIsOpen(false)}
+                      className="flex items-center gap-2 p-2 rounded-xl text-sm text-primary hover:bg-accent/5 hover:text-accent">
+                      <BarChart3 className="w-4 h-4 text-slate-500" />
+                      <span>Analytics</span>
+                    </Link>
+                  </>
                 )}
 
+                {/* Mobile Seller links */}
                 {isSeller && (
-                  <Link to="/seller/dashboard" onClick={() => setIsOpen(false)}
-                    className="flex items-center gap-2 p-2 rounded-xl text-sm text-emerald-600 hover:bg-emerald-50">
-                    <Store className="w-4 h-4" />
-                    <span>Seller Dashboard</span>
-                  </Link>
+                  <>
+                    <Link to="/seller/dashboard" onClick={() => setIsOpen(false)}
+                      className="flex items-center gap-2 p-2 rounded-xl text-sm text-emerald-600 hover:bg-emerald-50">
+                      <Store className="w-4 h-4 text-emerald-500" />
+                      <span>Seller Dashboard</span>
+                    </Link>
+                    <Link to="/seller/dashboard?tab=products" onClick={() => setIsOpen(false)}
+                      className="flex items-center gap-2 p-2 rounded-xl text-sm text-emerald-650 hover:bg-emerald-50">
+                      <Package className="w-4 h-4 text-slate-500" />
+                      <span>Products</span>
+                    </Link>
+                    <Link to="/seller/dashboard?tab=orders" onClick={() => setIsOpen(false)}
+                      className="flex items-center gap-2 p-2 rounded-xl text-sm text-emerald-650 hover:bg-emerald-50">
+                      <ShoppingCart className="w-4 h-4 text-slate-500" />
+                      <span>Orders</span>
+                    </Link>
+                    <Link to="/seller/dashboard?tab=overview" onClick={() => setIsOpen(false)}
+                      className="flex items-center gap-2 p-2 rounded-xl text-sm text-emerald-650 hover:bg-emerald-50">
+                      <DollarSign className="w-4 h-4 text-slate-500" />
+                      <span>Earnings</span>
+                    </Link>
+                    <Link to="/seller/dashboard?tab=profile" onClick={() => setIsOpen(false)}
+                      className="flex items-center gap-2 p-2 rounded-xl text-sm text-emerald-650 hover:bg-emerald-50">
+                      <User className="w-4 h-4 text-slate-500" />
+                      <span>Profile</span>
+                    </Link>
+                  </>
                 )}
 
+                {/* Mobile Seller Pending links */}
                 {isSellerPending && (
-                  <Link to="/seller/application-pending" onClick={() => setIsOpen(false)}
-                    className="flex items-center gap-2 p-2 rounded-xl text-sm text-amber-600 hover:bg-amber-50">
-                    <Clock className="w-4 h-4" />
-                    <span>Application Pending</span>
-                  </Link>
+                  <>
+                    <Link to="/seller/application-pending" onClick={() => setIsOpen(false)}
+                      className="flex items-center gap-2 p-2 rounded-xl text-sm text-amber-600 hover:bg-amber-50">
+                      <Clock className="w-4 h-4 text-amber-500" />
+                      <span>Application Status</span>
+                    </Link>
+                    <Link to="/seller/application-pending" onClick={() => setIsOpen(false)}
+                      className="flex items-center gap-2 p-2 rounded-xl text-sm text-amber-650 hover:bg-amber-50">
+                      <User className="w-4 h-4" />
+                      <span>Profile</span>
+                    </Link>
+                  </>
                 )}
 
+                {/* Mobile Student links */}
                 {isStudent && (
-                  <Link to="/dashboard" onClick={() => setIsOpen(false)}
-                    className="flex items-center gap-2 p-2 rounded-xl text-sm text-primary hover:bg-accent/5 hover:text-accent">
-                    <BookOpen className="w-4 h-4" />
-                    <span>My Purchases</span>
-                  </Link>
+                  <>
+                    <Link to="/dashboard" onClick={() => setIsOpen(false)}
+                      className="flex items-center gap-2 p-2 rounded-xl text-sm text-primary hover:bg-accent/5 hover:text-accent">
+                      <BookOpen className="w-4 h-4 text-accent" />
+                      <span>Dashboard</span>
+                    </Link>
+                    <Link to="/dashboard?tab=purchases" onClick={() => setIsOpen(false)}
+                      className="flex items-center gap-2 p-2 rounded-xl text-sm text-primary hover:bg-accent/5 hover:text-accent">
+                      <BookOpen className="w-4 h-4 text-slate-500" />
+                      <span>My Purchases</span>
+                    </Link>
+                    <Link to="/dashboard?tab=profile" onClick={() => setIsOpen(false)}
+                      className="flex items-center gap-2 p-2 rounded-xl text-sm text-primary hover:bg-accent/5 hover:text-accent">
+                      <User className="w-4 h-4 text-slate-500" />
+                      <span>Profile</span>
+                    </Link>
+                  </>
                 )}
 
                 <button onClick={handleLogout}
-                  className="w-full flex items-center gap-2 p-2 rounded-xl text-sm text-red-600 hover:bg-red-50 text-left">
+                  className="w-full flex items-center gap-2 p-2 rounded-xl text-sm text-red-600 hover:bg-red-50 text-left border-t border-gray-50 mt-1">
                   <LogOut className="w-4 h-4" />
                   <span>Sign Out</span>
                 </button>

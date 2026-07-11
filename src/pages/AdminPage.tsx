@@ -67,6 +67,14 @@ export default function AdminPage() {
   const [dragActivePreviews, setDragActivePreviews] = useState(false);
 
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const tabParam = params.get('tab');
+    if (tabParam && ['analytics', 'notes', 'courses', 'orders', 'seller_requests'].includes(tabParam)) {
+      setActiveTab(tabParam as any);
+    }
+  }, [window.location.search]);
+
+  useEffect(() => {
     // Role-based protection: Only admin and super_admin allowed
     if (!user || (user.role !== 'admin' && user.role !== 'super_admin')) {
       addToast('error', 'Access Denied', 'You do not have permissions to view this administrator panel.');
