@@ -15,6 +15,8 @@ import DashboardPage from './pages/DashboardPage';
 import AdminPage from './pages/AdminPage';
 import LoginPage from './pages/LoginPage';
 import OrderLookupPage from './pages/OrderLookupPage';
+import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
+import TermsOfServicePage from './pages/TermsOfServicePage';
 
 // Layout Wrapper
 function Layout() {
@@ -79,6 +81,8 @@ function App() {
           <Route path="order-success" element={<OrderConfirmationPage />} />
           <Route path="track-order" element={<OrderLookupPage />} />
           <Route path="login" element={<LoginPage />} />
+          <Route path="privacy" element={<PrivacyPolicyPage />} />
+          <Route path="terms" element={<TermsOfServicePage />} />
 
           {/* Student Private Routes */}
           <Route element={<PrivateRoute />}>
