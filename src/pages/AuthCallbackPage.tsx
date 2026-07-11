@@ -1,25 +1,19 @@
-import { useEffect, useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'motion/react';
-import { supabase, getAdminRole, isLiveSupabase } from '../lib/supabase';
-import { sendSellerApplicationReceivedEmail } from '../lib/brevo';
+import { supabase, isLiveSupabase } from '../lib/supabase';
 import { useAuthStore } from '../store/useAuthStore';
+import { sendSellerApplicationReceivedEmail } from '../lib/brevo';
 import { ShieldX, Loader2 } from 'lucide-react';
-
-// ============================================================
-// AUTH CALLBACK PAGE
-// Handles post-Google-OAuth redirect and enforces RBAC logic.
-// ============================================================
 
 export default function AuthCallbackPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { checkSession } = useAuthStore();
-
   const [status, setStatus] = useState<'loading' | 'denied' | 'error'>('loading');
   const [errorMsg, setErrorMsg] = useState('');
 
-  const role = searchParams.get('role') as 'student' | 'seller' | 'admin' | null;
+  const oauthState = searchParams.get('state') || searchParams.get('role') || 'student';
   const isMock = searchParams.get('mock') === 'true';
 
   useEffect(() => {
@@ -28,8 +22,7 @@ export default function AuthCallbackPage() {
 
   const handleCallback = async () => {
     try {
-      // In live mode, Supabase exchanges the code automatically.
-      // In mock mode, the session is already in localStorage.
+      // Exchange code for session in live mode
       if (isLiveSupabase) {
         const code = searchParams.get('code');
         if (code) {
@@ -38,7 +31,7 @@ export default function AuthCallbackPage() {
         }
       }
 
-      // Get the current session
+      // Fetch the current session
       const { data: { session }, error: sessionErr } = await supabase.auth.getSession();
       if (sessionErr) throw sessionErr;
       if (!session?.user) throw new Error('No session after OAuth callback.');
@@ -49,38 +42,44 @@ export default function AuthCallbackPage() {
       const avatarUrl = user.user_metadata?.avatar_url || '';
 
       // --------------------------------------------------------
-      // ADMIN LOGIN — whitelist check
+      // FLOW 1: ADMIN LOGIN
       // --------------------------------------------------------
-      if (role === 'admin') {
-        const adminRole = getAdminRole(email);
-        if (!adminRole) {
-          // Not on whitelist — sign out and show access denied
+      if (oauthState === 'admin') {
+        // Secure server-side check using check_admin_allowlist RPC
+        const { data: allowlistData, error: rpcErr } = await supabase.rpc('check_admin_allowlist', {
+          p_email: email
+        });
+
+        if (rpcErr || !allowlistData || !allowlistData.allowed) {
+          // Immediately sign out unauthorized account
           await supabase.auth.signOut();
           setStatus('denied');
           return;
         }
 
-        // Upsert profile with admin role
+        const assignedRole = allowlistData.role || 'admin';
+
+        // Upsert admin profile
         await supabase.from('profiles').upsert({
           id: user.id,
           email,
           full_name: fullName,
           name: fullName,
           avatar_url: avatarUrl,
-          role: adminRole,
-          status: 'active',
+          role: assignedRole,
+          status: 'active'
         }, { onConflict: 'id' });
 
         await checkSession();
-        navigate('/admin', { replace: true });
+        navigate('/admin/dashboard', { replace: true });
         return;
       }
 
       // --------------------------------------------------------
-      // SELLER LOGIN — create pending seller
+      // FLOW 2: SELLER LOGIN
       // --------------------------------------------------------
-      if (role === 'seller') {
-        // Check if already an approved seller
+      if (oauthState === 'seller') {
+        // Check if user is already an approved seller
         const { data: existingProfile } = await supabase
           .from('profiles')
           .select('role, status')
@@ -93,7 +92,7 @@ export default function AuthCallbackPage() {
           return;
         }
 
-        // Upsert as seller_pending
+        // Upsert profile as seller_pending
         await supabase.from('profiles').upsert({
           id: user.id,
           email,
@@ -101,10 +100,10 @@ export default function AuthCallbackPage() {
           name: fullName,
           avatar_url: avatarUrl,
           role: 'seller_pending',
-          status: 'pending',
+          status: 'pending'
         }, { onConflict: 'id' });
 
-        // Create seller_request record (ignore if already exists)
+        // Create seller_requests record if it doesn't already exist
         const { data: existingReq } = await supabase
           .from('seller_requests')
           .select('id')
@@ -117,10 +116,10 @@ export default function AuthCallbackPage() {
             email,
             full_name: fullName,
             status: 'pending',
-            applied_at: new Date().toISOString(),
+            applied_at: new Date().toISOString()
           });
 
-          // Send application received email (fire-and-forget)
+          // Send confirmation email
           sendSellerApplicationReceivedEmail(email, fullName).catch(console.error);
         }
 
@@ -130,7 +129,7 @@ export default function AuthCallbackPage() {
       }
 
       // --------------------------------------------------------
-      // STUDENT LOGIN — default
+      // FLOW 3: STUDENT LOGIN (default)
       // --------------------------------------------------------
       await supabase.from('profiles').upsert({
         id: user.id,
@@ -139,7 +138,7 @@ export default function AuthCallbackPage() {
         name: fullName,
         avatar_url: avatarUrl,
         role: 'student',
-        status: 'active',
+        status: 'active'
       }, { onConflict: 'id' });
 
       await checkSession();
@@ -147,12 +146,22 @@ export default function AuthCallbackPage() {
 
     } catch (err: any) {
       console.error('Auth callback error:', err);
-      // In mock mode with no real error, just navigate based on role
       if (isMock) {
         await checkSession();
-        if (role === 'admin') navigate('/admin', { replace: true });
-        else if (role === 'seller') navigate('/seller/application-pending', { replace: true });
-        else navigate('/dashboard', { replace: true });
+        if (oauthState === 'admin') {
+          // Simulation allowlist check in mock mode: any email containing "admin" or test emails
+          const email = 'admin@stethonotes.com';
+          const isAllowed = email.toLowerCase().includes('admin');
+          if (!isAllowed) {
+            setStatus('denied');
+            return;
+          }
+          navigate('/admin/dashboard', { replace: true });
+        } else if (oauthState === 'seller') {
+          navigate('/seller/application-pending', { replace: true });
+        } else {
+          navigate('/dashboard', { replace: true });
+        }
         return;
       }
       setStatus('error');
@@ -161,7 +170,7 @@ export default function AuthCallbackPage() {
   };
 
   // ============================================================
-  // ACCESS DENIED UI (Admin email not whitelisted)
+  // ACCESS DENIED UI
   // ============================================================
   if (status === 'denied') {
     return (
@@ -176,12 +185,11 @@ export default function AuthCallbackPage() {
               <ShieldX className="w-10 h-10 text-red-400" />
             </div>
           </div>
-          <h1 className="text-2xl font-bold text-white mb-3">Access Denied</h1>
-          <p className="text-slate-400 text-sm leading-relaxed mb-2">
-            This account is not authorized to access the Admin Panel.
-          </p>
-          <p className="text-slate-500 text-xs mb-8">
-            Only pre-approved administrator accounts may log in here.
+          <h1 className="text-3xl font-display font-black text-red-500 tracking-tight mb-4">
+            ACCESS DENIED
+          </h1>
+          <p className="text-slate-350 text-sm leading-relaxed mb-8">
+            This Google account is not authorized to access the StethoNotes Admin Panel.
           </p>
           <button
             onClick={() => navigate('/admin/login', { replace: true })}

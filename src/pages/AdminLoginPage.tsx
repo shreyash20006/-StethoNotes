@@ -4,7 +4,6 @@ import { motion, AnimatePresence } from 'motion/react';
 import { useAuthStore } from '../store/useAuthStore';
 import { useToastStore } from '../store/useToastStore';
 import { ShieldCheck, Lock, AlertTriangle, ChevronRight } from 'lucide-react';
-import { ADMIN_EMAILS } from '../lib/supabase';
 
 const GoogleIcon = () => (
   <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24">
@@ -24,7 +23,7 @@ export default function AdminLoginPage() {
   // Redirect if already admin
   useEffect(() => {
     if (user && (user.role === 'admin' || user.role === 'super_admin')) {
-      navigate('/admin');
+      navigate('/admin/dashboard');
     }
   }, [user, navigate]);
 
@@ -47,7 +46,6 @@ export default function AdminLoginPage() {
   };
 
   const isDisabled = submitting || loading;
-  const authorizedEmails = Object.keys(ADMIN_EMAILS);
 
   return (
     <div className="min-h-screen bg-[#07091a] flex items-center justify-center px-4 py-12 relative overflow-hidden">
@@ -143,27 +141,15 @@ export default function AdminLoginPage() {
               )}
             </motion.button>
 
-            {/* Authorized emails list */}
-            <div className="mt-6 pt-5 border-t border-white/5">
-              <p className="text-[10px] text-slate-600 uppercase tracking-widest font-medium mb-3">
-                Authorized accounts
-              </p>
-              <div className="flex flex-col gap-2">
-                {authorizedEmails.map((email) => {
-                  const role = ADMIN_EMAILS[email];
-                  return (
-                    <div key={email} className="flex items-center justify-between px-3 py-2 bg-white/[0.02] border border-white/5 rounded-xl">
-                      <span className="text-slate-400 text-xs font-mono">{email}</span>
-                      <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
-                        role === 'super_admin'
-                          ? 'bg-blue-500/20 text-blue-400'
-                          : 'bg-slate-500/20 text-slate-400'
-                      }`}>
-                        {role === 'super_admin' ? 'Super Admin' : 'Admin'}
-                      </span>
-                    </div>
-                  );
-                })}
+            {/* Restricted access notice (replacing Authorized accounts list) */}
+            <div className="mt-8 pt-6 border-t border-white/5">
+              <div className="bg-blue-950/20 border border-blue-800/10 p-4 rounded-2xl text-center">
+                <h3 className="font-display font-semibold text-xs text-blue-400 tracking-wider uppercase mb-1">
+                  Restricted Access
+                </h3>
+                <p className="text-[11px] text-slate-400 leading-relaxed">
+                  Only authorized StethoNotes administrators can access this portal. Unauthorized login attempts are monitored and logged.
+                </p>
               </div>
             </div>
 

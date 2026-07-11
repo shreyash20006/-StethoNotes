@@ -7,19 +7,6 @@ const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
 export const isLiveSupabase = Boolean(supabaseUrl && supabaseAnonKey);
 
 // ==========================================
-// ADMIN EMAIL WHITELIST
-// ==========================================
-
-export const ADMIN_EMAILS: Record<string, 'admin' | 'super_admin'> = {
-  'shreyashumedkumarborkar@gmail.com': 'super_admin',
-  'sb108750@gmail.com': 'admin',
-};
-
-export function getAdminRole(email: string): 'admin' | 'super_admin' | null {
-  return ADMIN_EMAILS[email.toLowerCase().trim()] || null;
-}
-
-// ==========================================
 // MOCK SUPABASE CLIENT IMPLEMENTATION
 // ==========================================
 
@@ -99,55 +86,9 @@ const initializeMockData = () => {
         ],
         status: 'active',
         created_at: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString()
-      },
-      {
-        id: 'n5',
-        title: 'Pharmacology General Principles - B.Pharma',
-        description: 'Master pharmacokinetics, pharmacodynamics, drug receptors, and adverse drug reactions. Clear charts, high-yield details.',
-        course_id: 'c5',
-        subject: 'Pharmacology',
-        price: 180.00,
-        pdf_url: 'pdfs/pharmacol_general.pdf',
-        thumbnail_url: 'https://images.unsplash.com/photo-1607619056574-7b8f304b3b89?auto=format&fit=crop&q=80&w=400',
-        preview_images: [
-          'https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?auto=format&fit=crop&q=80&w=400'
-        ],
-        status: 'active',
-        created_at: new Date(Date.now() - 20 * 24 * 60 * 60 * 1000).toISOString()
-      },
-      {
-        id: 'n6',
-        title: 'BSc Nursing Fundamentals of Nursing Study Notes',
-        description: 'Covers nursing ethics, patient assessment, hygiene, vital signs, and standard care plans. Crucial for clinical placement and exams.',
-        course_id: 'c4',
-        subject: 'Nursing Foundation',
-        price: 150.00,
-        pdf_url: 'pdfs/nursing_fundamentals.pdf',
-        thumbnail_url: 'https://images.unsplash.com/photo-1576765608535-5f04d1e3f289?auto=format&fit=crop&q=80&w=400',
-        preview_images: [
-          'https://images.unsplash.com/photo-1516549655169-df83a0774514?auto=format&fit=crop&q=80&w=400'
-        ],
-        status: 'active',
-        created_at: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000).toISOString()
       }
     ];
     localStorage.setItem('stetho_notes', JSON.stringify(mockNotes));
-  } else {
-    try {
-      const notes = JSON.parse(localStorage.getItem('stetho_notes') || '[]');
-      let updated = false;
-      notes.forEach((n: any) => {
-        if (!n.status) {
-          n.status = 'active';
-          updated = true;
-        }
-      });
-      if (updated) {
-        localStorage.setItem('stetho_notes', JSON.stringify(notes));
-      }
-    } catch (e) {
-      console.error(e);
-    }
   }
 
   if (!localStorage.getItem('stetho_profiles')) {
@@ -172,7 +113,6 @@ const initializeMockData = () => {
         status: 'active',
         created_at: new Date().toISOString()
       },
-      // Mock seller_pending for testing
       {
         id: 'seller-pending-id',
         name: 'Rohan Seller',
@@ -182,17 +122,6 @@ const initializeMockData = () => {
         role: 'seller_pending',
         status: 'pending',
         created_at: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString()
-      },
-      // Mock approved seller for testing
-      {
-        id: 'seller-approved-id',
-        name: 'Priya Notes',
-        full_name: 'Priya Notes',
-        email: 'priya@stethonotes.com',
-        phone: '6666666666',
-        role: 'seller',
-        status: 'approved',
-        created_at: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString()
       }
     ];
     localStorage.setItem('stetho_profiles', JSON.stringify(mockProfiles));
@@ -211,30 +140,6 @@ const initializeMockData = () => {
         payment_status: 'completed',
         email_status: 'sent',
         created_at: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000).toISOString()
-      },
-      {
-        id: 'ord-mock2',
-        user_id: null,
-        customer_name: 'Rohan Gupta',
-        customer_email: 'rohan@gmail.com',
-        customer_phone: '9876543210',
-        total_amount: 199.00,
-        razorpay_payment_id: 'pay_mock222222222',
-        payment_status: 'completed',
-        email_status: 'sent',
-        created_at: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString()
-      },
-      {
-        id: 'ord-mock3',
-        user_id: null,
-        customer_name: 'Aditi Rao',
-        customer_email: 'aditi@yahoo.com',
-        customer_phone: '9123456789',
-        total_amount: 150.00,
-        razorpay_payment_id: 'pay_mock333333333',
-        payment_status: 'completed',
-        email_status: 'failed',
-        created_at: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString()
       }
     ];
     localStorage.setItem('stetho_orders', JSON.stringify(mockOrders));
@@ -242,22 +147,11 @@ const initializeMockData = () => {
 
   if (!localStorage.getItem('stetho_order_items')) {
     const mockOrderItems = [
-      { id: 'item-mock1', order_id: 'ord-mock1', note_id: 'n1', price: 299.00 },
-      { id: 'item-mock2', order_id: 'ord-mock2', note_id: 'n2', price: 199.00 },
-      { id: 'item-mock3', order_id: 'ord-mock3', note_id: 'n6', price: 150.00 }
+      { id: 'item-mock1', order_id: 'ord-mock1', note_id: 'n1', price: 299.00 }
     ];
     localStorage.setItem('stetho_order_items', JSON.stringify(mockOrderItems));
   }
 
-  if (!localStorage.getItem('stetho_reviews')) {
-    const mockReviews = [
-      { id: 'r1', note_id: 'n1', user_id: 'student-id', user_name: 'Jane Doe', rating: 5, comment: 'Amazing diagrams! The mnemonics really helped me clear my anatomy vivas. Highly recommended!', created_at: new Date().toISOString() },
-      { id: 'r2', note_id: 'n1', user_id: 'student-2', user_name: 'Rahul Sharma', rating: 4, comment: 'Very concise and clear handwriting. Missing some topics on hand joints but covers 95% of upper limb syllabus.', created_at: new Date().toISOString() }
-    ];
-    localStorage.setItem('stetho_reviews', JSON.stringify(mockReviews));
-  }
-
-  // Initialize mock seller_requests from seller_pending profiles
   if (!localStorage.getItem('stetho_seller_requests')) {
     const mockSellerRequests = [
       {
@@ -278,20 +172,11 @@ const initializeMockData = () => {
 initializeMockData();
 
 // ==========================================
-// MOCK AUTH CLASS (with full RBAC support)
+// MOCK AUTH CLASS (with PKCE / state support)
 // ==========================================
 
 class MockAuth {
   private listeners: Function[] = [];
-
-  constructor() {
-    // Initialize default session only if none exists
-    // Don't set a default session so users see the login page
-    const sess = localStorage.getItem('stetho_session');
-    if (!sess) {
-      // No default session — user must log in
-    }
-  }
 
   async signUp({ email, options }: any) {
     const profiles = JSON.parse(localStorage.getItem('stetho_profiles') || '[]');
@@ -333,12 +218,9 @@ class MockAuth {
 
   async signInWithPassword({ email }: any) {
     const profiles = JSON.parse(localStorage.getItem('stetho_profiles') || '[]');
-
-    // Match by email
     let matchedProfile = profiles.find((p: any) => p.email === email);
 
     if (!matchedProfile) {
-      // Fallback: derive role from email keyword for testing
       let role = 'student';
       let name = 'Student User';
       let status = 'active';
@@ -386,32 +268,25 @@ class MockAuth {
   }
 
   async signInWithOAuth({ options }: any) {
-    // In mock mode, simulate Google OAuth by reading the pending role from state
-    const role: string = options?.queryParams?.role || 'student';
+    const role: string = options?.queryParams?.state || options?.queryParams?.role || 'student';
 
-    // Resolve mock user for role
-    let mockEmail: string;
-    let mockName: string;
-    let mockId: string;
-    let mockStatus: string = 'active';
+    let mockEmail = 'student@stethonotes.com';
+    let mockName = 'Jane Doe';
+    let mockId = 'student-id';
+    let mockStatus = 'active';
 
     if (role === 'admin') {
-      mockEmail = 'shreyashumedkumarborkar@gmail.com';
-      mockName = 'Dr. Admin (Mock)';
+      mockEmail = 'admin@stethonotes.com';
+      mockName = 'Admin User';
       mockId = 'admin-id';
     } else if (role === 'seller') {
       mockEmail = 'seller@stethonotes.com';
       mockName = 'Rohan Seller';
       mockId = 'seller-pending-id';
       mockStatus = 'pending';
-    } else {
-      mockEmail = 'student@stethonotes.com';
-      mockName = 'Jane Doe';
-      mockId = 'student-id';
     }
 
-    // Find or create the profile
-    let profiles = JSON.parse(localStorage.getItem('stetho_profiles') || '[]');
+    const profiles = JSON.parse(localStorage.getItem('stetho_profiles') || '[]');
     let profile = profiles.find((p: any) => p.id === mockId);
     if (!profile) {
       profile = {
@@ -434,27 +309,19 @@ class MockAuth {
       user_metadata: {
         name: profile.name,
         full_name: profile.full_name,
-        avatar_url: `https://api.dicebear.com/7.x/avataaars/svg?seed=${profile.id}`,
         role: profile.role,
-        status: profile.status,
-        pending_oauth_role: role  // signals AuthCallbackPage what was requested
+        status: profile.status
       }
     };
 
-    // Simulate the OAuth redirect by storing session and notifying
     localStorage.setItem('stetho_session', JSON.stringify({ user }));
-    // Store pending role so AuthCallbackPage can read it
-    localStorage.setItem('stetho_pending_oauth_role', role);
-
-    // Simulate redirect to callback
-    window.location.href = `/auth/callback?role=${role}&mock=true`;
+    window.location.href = `/auth/callback?state=${role}&mock=true`;
 
     return { data: {}, error: null };
   }
 
   async signOut() {
     localStorage.removeItem('stetho_session');
-    localStorage.removeItem('stetho_pending_oauth_role');
     this.notify({ event: 'SIGNED_OUT', session: null });
     return { error: null };
   }
@@ -465,14 +332,12 @@ class MockAuth {
   }
 
   async signInWithOtp({ email }: any) {
-    // Mock: always succeeds
-    console.info('[Mock OTP] Would send OTP to', email);
+    console.info('[Mock OTP] Code sent to', email);
     return { error: null };
   }
 
   async verifyOtp({ email, token }: any) {
-    // Mock: token 123456 always works
-    if (token === '123456' || token.length === 6) {
+    if (token.length === 6) {
       const profiles = JSON.parse(localStorage.getItem('stetho_profiles') || '[]');
       let profile = profiles.find((p: any) => p.email === email);
 
@@ -507,7 +372,7 @@ class MockAuth {
 
       return { data: { user, session: { user } }, error: null };
     }
-    return { data: null, error: { message: 'Invalid OTP token. Use 123456 in mock mode.' } };
+    return { data: null, error: { message: 'Invalid OTP token' } };
   }
 
   onAuthStateChange(callback: Function) {
@@ -537,41 +402,25 @@ class MockAuth {
 class MockQueryBuilder {
   private tableName: string;
   private data: any[] = [];
-  private filterField: string = '';
+  private filterField = '';
   private filterValue: any = null;
-  private filterInFields: string = '';
-  private filterInValues: any[] = [];
-  private singleResult: boolean = false;
-  private limitCount: number = 0;
-  private _orderField: string = '';
-  private _orderAsc: boolean = true;
-  private _neqField: string = '';
-  private _neqValue: any = null;
+  private singleResult = false;
+  private limitCount = 0;
+  private _orderField = '';
+  private _orderAsc = true;
 
   constructor(tableName: string) {
     this.tableName = tableName;
     this.data = JSON.parse(localStorage.getItem(`stetho_${tableName}`) || '[]');
   }
 
-  select(_fields: string = '*') {
+  select(_fields = '*') {
     return this;
   }
 
   eq(field: string, value: any) {
     this.filterField = field;
     this.filterValue = value;
-    return this;
-  }
-
-  neq(field: string, value: any) {
-    this._neqField = field;
-    this._neqValue = value;
-    return this;
-  }
-
-  in(field: string, values: any[]) {
-    this.filterInFields = field;
-    this.filterInValues = values;
     return this;
   }
 
@@ -591,11 +440,9 @@ class MockQueryBuilder {
     return this;
   }
 
-  // Execute SELECT
   async then(resolve: Function) {
     let filtered = [...this.data];
 
-    // Handle course mapping for notes
     if (this.tableName === 'notes') {
       const courses = JSON.parse(localStorage.getItem('stetho_courses') || '[]');
       filtered = filtered.map(note => ({
@@ -606,14 +453,6 @@ class MockQueryBuilder {
 
     if (this.filterField) {
       filtered = filtered.filter(item => item[this.filterField] === this.filterValue);
-    }
-
-    if (this._neqField) {
-      filtered = filtered.filter(item => item[this._neqField] !== this._neqValue);
-    }
-
-    if (this.filterInFields && this.filterInValues.length > 0) {
-      filtered = filtered.filter(item => this.filterInValues.includes(item[this.filterInFields]));
     }
 
     if (this._orderField) {
@@ -640,7 +479,6 @@ class MockQueryBuilder {
     resolve({ data: filtered, error: null });
   }
 
-  // Insert Row
   async insert(payload: any) {
     const records = Array.isArray(payload) ? payload : [payload];
     const saved = JSON.parse(localStorage.getItem(`stetho_${this.tableName}`) || '[]');
@@ -660,7 +498,6 @@ class MockQueryBuilder {
     return { data: Array.isArray(payload) ? added : added[0], error: null };
   }
 
-  // Upsert Row
   async upsert(payload: any, _options?: any) {
     const records = Array.isArray(payload) ? payload : [payload];
     let saved = JSON.parse(localStorage.getItem(`stetho_${this.tableName}`) || '[]');
@@ -682,7 +519,6 @@ class MockQueryBuilder {
     return { data: Array.isArray(payload) ? records : records[0], error: null };
   }
 
-  // Update Row
   async update(payload: any) {
     let saved = JSON.parse(localStorage.getItem(`stetho_${this.tableName}`) || '[]');
     let updatedItem: any = null;
@@ -699,7 +535,6 @@ class MockQueryBuilder {
     return { data: updatedItem, error: updatedItem ? null : { message: 'No item matched' } };
   }
 
-  // Delete Row
   async delete() {
     let saved = JSON.parse(localStorage.getItem(`stetho_${this.tableName}`) || '[]');
     const countBefore = saved.length;
@@ -731,7 +566,7 @@ class MockStorage {
             });
           }
         } else {
-          await new Promise(r => setTimeout(r, 450));
+          await new Promise(r => setTimeout(r, 200));
         }
         const simulatedUrl = `https://stethonotes-storage.mock/${bucketName}/${path}`;
         return { data: { path, fullPath: simulatedUrl }, error: null };
@@ -749,11 +584,37 @@ class MockStorage {
 // COMBINED MOCK CLIENT
 // ==========================================
 
-const mockSupabase = {
-  auth: new MockAuth(),
-  from: (tableName: string) => new MockQueryBuilder(tableName),
-  storage: new MockStorage()
-};
+class MockSupabase {
+  auth = new MockAuth();
+  storage = new MockStorage();
+
+  from(tableName: string) {
+    return new MockQueryBuilder(tableName);
+  }
+
+  async rpc(funcName: string, params: any) {
+    if (funcName === 'check_admin_allowlist') {
+      const email = params?.p_email || '';
+      // Secure backend allowlist logic simulation (allow any email containing "admin")
+      const isAllowed = email.toLowerCase().includes('admin') || 
+                        email.toLowerCase() === 'shreyashumedkumarborkar@gmail.com' ||
+                        email.toLowerCase() === 'sb108750@gmail.com';
+      
+      const role = email.toLowerCase() === 'shreyashumedkumarborkar@gmail.com' ? 'super_admin' : 'admin';
+      
+      return {
+        data: {
+          allowed: isAllowed,
+          role: isAllowed ? role : null
+        },
+        error: null
+      };
+    }
+    return { data: null, error: { message: `RPC ${funcName} not implemented in mock` } };
+  }
+}
+
+const mockSupabase = new MockSupabase();
 
 // ==========================================
 // EXPORT
@@ -768,7 +629,7 @@ export const supabase = isLiveSupabase
 // ==========================================
 
 export const triggerBrevoEmailSimulation = async (orderId: string): Promise<boolean> => {
-  await new Promise(resolve => setTimeout(resolve, 1500));
+  await new Promise(resolve => setTimeout(resolve, 1000));
 
   const orders = JSON.parse(localStorage.getItem('stetho_orders') || '[]');
   const idx = orders.findIndex((o: any) => o.id === orderId);

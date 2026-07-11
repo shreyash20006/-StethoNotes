@@ -22,20 +22,31 @@ export default function Navbar() {
     await signOut();
     setIsDropdownOpen(false);
     setIsOpen(false);
-    // Redirect to appropriate login page
     if (isAdmin) navigate('/admin/login');
     else if (isSeller || isSellerPending) navigate('/seller/login');
     else navigate('/');
   };
 
-  // Role badge config
+  // Role labels mapped dynamically
+  const getRoleLabel = (role: string) => {
+    switch (role) {
+      case 'super_admin': return 'Super Admin';
+      case 'admin': return 'Admin';
+      case 'seller': return 'Seller';
+      case 'seller_pending': return 'Seller Pending';
+      default: return 'Student';
+    }
+  };
+
+  const roleLabel = getRoleLabel(user?.role || 'student');
+
   const roleBadge = isAdmin
-    ? { label: user?.role === 'super_admin' ? 'Super Admin' : 'Admin', className: 'bg-blue-100 text-blue-700' }
+    ? { label: roleLabel, className: 'bg-blue-100 text-blue-700' }
     : isSeller
-    ? { label: 'Seller', className: 'bg-emerald-100 text-emerald-700' }
+    ? { label: roleLabel, className: 'bg-emerald-100 text-emerald-700' }
     : isSellerPending
-    ? { label: 'Pending Review', className: 'bg-amber-100 text-amber-700' }
-    : { label: 'Student', className: 'bg-accent/10 text-accent' };
+    ? { label: roleLabel, className: 'bg-amber-100 text-amber-700' }
+    : { label: roleLabel, className: 'bg-accent/10 text-accent' };
 
   return (
     <nav className="sticky top-0 z-40 bg-white border-b border-gray-100 shadow-sm">
@@ -60,7 +71,7 @@ export default function Navbar() {
             </Link>
           </div>
 
-          {/* Desktop Nav Links — only show public links for non-admin/seller */}
+          {/* Desktop Nav Links */}
           {!isAdmin && (
             <div className="hidden md:flex items-center gap-8">
               <NavLink
@@ -137,7 +148,7 @@ export default function Navbar() {
 
                       {/* Admin links */}
                       {isAdmin && (
-                        <Link to="/admin" onClick={() => setIsDropdownOpen(false)}
+                        <Link to="/admin/dashboard" onClick={() => setIsDropdownOpen(false)}
                           className="flex items-center gap-2 px-4 py-2.5 text-sm text-primary hover:bg-accent/5 hover:text-accent transition-colors">
                           <ShieldAlert className="w-4 h-4" />
                           <span>Admin Panel</span>
@@ -242,7 +253,7 @@ export default function Navbar() {
                 </div>
 
                 {isAdmin && (
-                  <Link to="/admin" onClick={() => setIsOpen(false)}
+                  <Link to="/admin/dashboard" onClick={() => setIsOpen(false)}
                     className="flex items-center gap-2 p-2 rounded-xl text-sm text-primary hover:bg-accent/5 hover:text-accent">
                     <ShieldAlert className="w-4 h-4" />
                     <span>Admin Panel</span>

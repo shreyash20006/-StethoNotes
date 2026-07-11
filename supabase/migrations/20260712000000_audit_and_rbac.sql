@@ -1,5 +1,5 @@
 -- ============================================================
--- STETHONOTES — DATABASE MIGRATION (AUDIT & RBAC)
+-- STETHONOTES — DATABASE MIGRATION (AUDIT, ALLOWLIST & RBAC)
 -- Run this script in: Supabase Dashboard → SQL Editor
 -- ============================================================
 
@@ -34,7 +34,15 @@ ALTER TABLE public.notes
 -- SECTION 2: NEW TABLES
 -- ==========================================
 
--- 2.1 Subjects (Lookup lookup table)
+-- 2.1 Admin Allowlist
+CREATE TABLE IF NOT EXISTS public.admin_allowlist (
+    id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    email      TEXT NOT NULL UNIQUE,
+    role       TEXT NOT NULL CHECK (role IN ('admin', 'super_admin')),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- 2.2 Subjects (Lookup lookup table)
 CREATE TABLE IF NOT EXISTS public.subjects (
     id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name        TEXT NOT NULL,
@@ -43,7 +51,7 @@ CREATE TABLE IF NOT EXISTS public.subjects (
     UNIQUE (name, course_id)
 );
 
--- 2.2 Seller Requests
+-- 2.3 Seller Requests
 CREATE TABLE IF NOT EXISTS public.seller_requests (
     id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id     UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
@@ -56,7 +64,7 @@ CREATE TABLE IF NOT EXISTS public.seller_requests (
     reviewed_by UUID REFERENCES public.profiles(id) ON DELETE SET NULL
 );
 
--- 2.3 Seller Profiles
+-- 2.4 Seller Profiles
 CREATE TABLE IF NOT EXISTS public.seller_profiles (
     id            UUID PRIMARY KEY REFERENCES public.profiles(id) ON DELETE CASCADE,
     store_name    TEXT UNIQUE,
@@ -67,7 +75,7 @@ CREATE TABLE IF NOT EXISTS public.seller_profiles (
     updated_at    TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
--- 2.4 Wishlist
+-- 2.5 Wishlist
 CREATE TABLE IF NOT EXISTS public.wishlist (
     id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id     UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
@@ -76,7 +84,7 @@ CREATE TABLE IF NOT EXISTS public.wishlist (
     UNIQUE (user_id, note_id)
 );
 
--- 2.5 Cart Items (Database-persisted cart fallback)
+-- 2.6 Cart Items (Database-persisted cart fallback)
 CREATE TABLE IF NOT EXISTS public.cart_items (
     id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id     UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
@@ -86,7 +94,7 @@ CREATE TABLE IF NOT EXISTS public.cart_items (
     UNIQUE (user_id, note_id)
 );
 
--- 2.6 Payments Log
+-- 2.7 Payments Log
 CREATE TABLE IF NOT EXISTS public.payments (
     id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     order_id            UUID REFERENCES public.orders(id) ON DELETE SET NULL,
@@ -98,7 +106,7 @@ CREATE TABLE IF NOT EXISTS public.payments (
     created_at          TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
--- 2.7 Downloads Log
+-- 2.8 Downloads Log
 CREATE TABLE IF NOT EXISTS public.downloads (
     id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id       UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
@@ -107,7 +115,7 @@ CREATE TABLE IF NOT EXISTS public.downloads (
     downloaded_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
--- 2.8 Notifications
+-- 2.9 Notifications
 CREATE TABLE IF NOT EXISTS public.notifications (
     id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id     UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
@@ -117,7 +125,7 @@ CREATE TABLE IF NOT EXISTS public.notifications (
     created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
--- 2.9 Audit Logs
+-- 2.10 Audit Logs
 CREATE TABLE IF NOT EXISTS public.audit_logs (
     id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id     UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
@@ -130,7 +138,7 @@ CREATE TABLE IF NOT EXISTS public.audit_logs (
     created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
--- 2.10 Settings
+-- 2.11 Settings
 CREATE TABLE IF NOT EXISTS public.settings (
     key         TEXT PRIMARY KEY,
     value       JSONB NOT NULL,
@@ -138,7 +146,7 @@ CREATE TABLE IF NOT EXISTS public.settings (
     updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
--- 2.11 Coupon Codes
+-- 2.12 Coupon Codes
 CREATE TABLE IF NOT EXISTS public.coupon_codes (
     id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     code           TEXT NOT NULL UNIQUE,
@@ -151,7 +159,7 @@ CREATE TABLE IF NOT EXISTS public.coupon_codes (
     created_at     TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
--- 2.12 Analytics Events
+-- 2.13 Analytics Events
 CREATE TABLE IF NOT EXISTS public.analytics_events (
     id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id     UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
@@ -267,11 +275,43 @@ CREATE TRIGGER trg_seller_profiles_updated_at BEFORE UPDATE ON public.seller_pro
 CREATE TRIGGER trg_settings_updated_at BEFORE UPDATE ON public.settings FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 
 
+-- ============================================================
+-- SECTION 5: SECURE ADMINISTRATIVE AUTHORIZATION RPC
+-- ============================================================
+
+-- Secure check_admin_allowlist RPC to verify admin status on the backend
+CREATE OR REPLACE FUNCTION public.check_admin_allowlist(p_email TEXT)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+    matched_role TEXT;
+    is_allowed BOOLEAN := false;
+BEGIN
+    SELECT role INTO matched_role
+    FROM public.admin_allowlist
+    WHERE LOWER(email) = LOWER(TRIM(p_email));
+
+    IF matched_role IS NOT NULL THEN
+        is_allowed := true;
+    END IF;
+
+    RETURN jsonb_build_object(
+        'allowed', is_allowed,
+        'role', matched_role
+    );
+END;
+$$;
+
+
 -- ==========================================
--- SECTION 5: ROW LEVEL SECURITY POLICIES
+-- SECTION 6: ROW LEVEL SECURITY POLICIES
 -- ==========================================
 
 -- Enable RLS on new tables
+ALTER TABLE public.admin_allowlist      ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.subjects           ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.seller_requests    ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.seller_profiles    ENABLE ROW LEVEL SECURITY;
@@ -313,14 +353,22 @@ BEGIN
 END;
 $$;
 
+-- 6.1 admin_allowlist: read-only for admin/super_admin, write-only for super_admin
+CREATE POLICY "admin_allowlist: admin view" ON public.admin_allowlist FOR SELECT
+    USING (public.is_admin(auth.uid()));
 
--- 5.1 Update Legacy Table RLS to support super_admin role
--- 5.1.1 public.courses
+CREATE POLICY "admin_allowlist: super_admin manage" ON public.admin_allowlist FOR ALL
+    USING (EXISTS (
+        SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'super_admin'
+    ));
+
+-- 6.2 Update Legacy Table RLS to support super_admin role
+-- 6.2.1 public.courses
 DROP POLICY IF EXISTS "courses: admin write" ON public.courses;
 CREATE POLICY "courses: admin write" ON public.courses FOR ALL
     USING (public.is_admin(auth.uid()));
 
--- 5.1.2 public.profiles
+-- 6.2.2 public.profiles
 DROP POLICY IF EXISTS "profiles: admin full access" ON public.profiles;
 CREATE POLICY "profiles: admin full access" ON public.profiles FOR ALL
     USING (public.is_admin(auth.uid()));
@@ -331,7 +379,7 @@ DROP POLICY IF EXISTS "profiles: own read" ON public.profiles;
 CREATE POLICY "profiles: public read" ON public.profiles FOR SELECT
     USING (true);
 
--- 5.1.3 public.notes
+-- 6.2.3 public.notes
 DROP POLICY IF EXISTS "notes: admin write" ON public.notes;
 CREATE POLICY "notes: admin write" ON public.notes FOR ALL
     USING (public.is_admin(auth.uid()));
@@ -341,46 +389,46 @@ CREATE POLICY "notes: seller manage" ON public.notes FOR ALL
     USING (public.is_seller(auth.uid()) AND (seller_id = auth.uid() OR seller_id IS NULL))
     WITH CHECK (public.is_seller(auth.uid()) AND seller_id = auth.uid());
 
--- 5.1.4 public.orders
+-- 6.2.4 public.orders
 DROP POLICY IF EXISTS "orders: admin full access" ON public.orders;
 CREATE POLICY "orders: admin full access" ON public.orders FOR ALL
     USING (public.is_admin(auth.uid()));
 
--- 5.1.5 public.order_items
+-- 6.2.5 public.order_items
 DROP POLICY IF EXISTS "order_items: admin full access" ON public.order_items;
 CREATE POLICY "order_items: admin full access" ON public.order_items FOR ALL
     USING (public.is_admin(auth.uid()));
 
--- 5.1.6 public.email_logs
+-- 6.2.6 public.email_logs
 DROP POLICY IF EXISTS "email_logs: admin full access" ON public.email_logs;
 CREATE POLICY "email_logs: admin full access" ON public.email_logs FOR ALL
     USING (public.is_admin(auth.uid()));
 
 
--- 5.2 RLS Policies for New Tables
--- 5.2.1 subjects
+-- 6.3 RLS Policies for New Tables
+-- 6.3.1 subjects
 CREATE POLICY "subjects: public read" ON public.subjects FOR SELECT USING (true);
 CREATE POLICY "subjects: staff write" ON public.subjects FOR ALL USING (public.is_admin(auth.uid()));
 
--- 5.2.2 seller_requests
+-- 6.3.2 seller_requests
 CREATE POLICY "seller_requests: own view" ON public.seller_requests FOR SELECT USING (auth.uid() = user_id);
 CREATE POLICY "seller_requests: admin view" ON public.seller_requests FOR SELECT USING (public.is_admin(auth.uid()));
 CREATE POLICY "seller_requests: own insert" ON public.seller_requests FOR INSERT WITH CHECK (auth.uid() = user_id);
 CREATE POLICY "seller_requests: admin write" ON public.seller_requests FOR ALL USING (public.is_admin(auth.uid()));
 
--- 5.2.3 seller_profiles
+-- 6.3.3 seller_profiles
 CREATE POLICY "seller_profiles: public read" ON public.seller_profiles FOR SELECT USING (true);
 CREATE POLICY "seller_profiles: own update" ON public.seller_profiles FOR UPDATE USING (auth.uid() = id) WITH CHECK (auth.uid() = id);
 CREATE POLICY "seller_profiles: own insert" ON public.seller_profiles FOR INSERT WITH CHECK (auth.uid() = id);
 CREATE POLICY "seller_profiles: admin manage" ON public.seller_profiles FOR ALL USING (public.is_admin(auth.uid()));
 
--- 5.2.4 wishlist
+-- 6.3.4 wishlist
 CREATE POLICY "wishlist: own access" ON public.wishlist FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
 
--- 5.2.5 cart_items
+-- 6.3.5 cart_items
 CREATE POLICY "cart_items: own access" ON public.cart_items FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
 
--- 5.2.6 payments
+-- 6.3.6 payments
 CREATE POLICY "payments: admin view" ON public.payments FOR SELECT USING (public.is_admin(auth.uid()));
 CREATE POLICY "payments: user view" ON public.payments FOR SELECT USING (
     EXISTS (
@@ -389,34 +437,34 @@ CREATE POLICY "payments: user view" ON public.payments FOR SELECT USING (
     )
 );
 
--- 5.2.7 downloads
+-- 6.3.7 downloads
 CREATE POLICY "downloads: admin view" ON public.downloads FOR SELECT USING (public.is_admin(auth.uid()));
 CREATE POLICY "downloads: user own view" ON public.downloads FOR SELECT USING (auth.uid() = user_id);
 CREATE POLICY "downloads: log download" ON public.downloads FOR INSERT WITH CHECK (true);
 
--- 5.2.8 notifications
+-- 6.3.8 notifications
 CREATE POLICY "notifications: own access" ON public.notifications FOR SELECT USING (auth.uid() = user_id);
 CREATE POLICY "notifications: own update" ON public.notifications FOR UPDATE USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
 CREATE POLICY "notifications: admin manage" ON public.notifications FOR ALL USING (public.is_admin(auth.uid()));
 
--- 5.2.9 audit_logs
+-- 6.3.9 audit_logs
 CREATE POLICY "audit_logs: admin view" ON public.audit_logs FOR SELECT USING (public.is_admin(auth.uid()));
 
--- 5.2.10 settings
+-- 6.3.10 settings
 CREATE POLICY "settings: public read" ON public.settings FOR SELECT USING (true);
 CREATE POLICY "settings: admin manage" ON public.settings FOR ALL USING (public.is_admin(auth.uid()));
 
--- 5.2.11 coupon_codes
+-- 6.3.11 coupon_codes
 CREATE POLICY "coupon_codes: public read" ON public.coupon_codes FOR SELECT USING (true);
 CREATE POLICY "coupon_codes: admin manage" ON public.coupon_codes FOR ALL USING (public.is_admin(auth.uid()));
 
--- 5.2.12 analytics_events
+-- 6.3.12 analytics_events
 CREATE POLICY "analytics_events: log event" ON public.analytics_events FOR INSERT WITH CHECK (true);
 CREATE POLICY "analytics_events: admin view" ON public.analytics_events FOR SELECT USING (public.is_admin(auth.uid()));
 
 
 -- ==========================================
--- SECTION 6: STORAGE BUCKET RLS CORRECTIONS
+-- SECTION 7: STORAGE BUCKET RLS CORRECTIONS
 -- ==========================================
 
 -- Revoke the insecure open select policy on notes-pdfs
@@ -434,7 +482,7 @@ CREATE POLICY "notes-pdfs: staff read"
     );
 
 -- Support seller uploads on storage buckets
--- 6.1 Private notes-pdfs upload
+-- 7.1 Private notes-pdfs upload
 DROP POLICY IF EXISTS "notes-pdfs: admin upload" ON storage.objects;
 CREATE POLICY "notes-pdfs: staff upload"
     ON storage.objects FOR INSERT
@@ -457,7 +505,7 @@ CREATE POLICY "notes-pdfs: staff delete"
         )
     );
 
--- 6.2 Public thumbnails upload
+-- 7.2 Public thumbnails upload
 DROP POLICY IF EXISTS "thumbnails: admin upload" ON storage.objects;
 CREATE POLICY "thumbnails: staff upload"
     ON storage.objects FOR INSERT
@@ -480,7 +528,7 @@ CREATE POLICY "thumbnails: staff delete"
         )
     );
 
--- 6.3 Public previews upload
+-- 7.3 Public previews upload
 DROP POLICY IF EXISTS "previews: admin upload" ON storage.objects;
 CREATE POLICY "previews: staff upload"
     ON storage.objects FOR INSERT
@@ -505,9 +553,17 @@ CREATE POLICY "previews: staff delete"
 
 
 -- ==========================================
--- SECTION 7: SEED COUPON CODES DATA
+-- SECTION 8: SEED SEED DATA
 -- ==========================================
 
+-- 8.1 Seed admin allowlist
+INSERT INTO public.admin_allowlist (email, role)
+VALUES
+    ('shreyashumedkumarborkar@gmail.com', 'super_admin'),
+    ('sb108750@gmail.com', 'admin')
+ON CONFLICT (email) DO NOTHING;
+
+-- 8.2 Seed coupon codes
 INSERT INTO public.coupon_codes (code, discount_type, discount_value)
 VALUES
     ('WELCOME10', 'percentage', 10.00),

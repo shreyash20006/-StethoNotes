@@ -56,12 +56,13 @@ function FullPageLayout() {
 // ROUTE GUARDS
 // ============================================================
 
-/** Student only — redirects non-students away */
+/** Student only — redirects non-students away (super_admin has full access) */
 function StudentRoute() {
   const { user, loading } = useAuthStore();
   if (loading) return <LoadingSpinner />;
   if (!user) return <Navigate to="/login" replace />;
-  if (user.role === 'admin' || user.role === 'super_admin') return <Navigate to="/admin" replace />;
+  if (user.role === 'super_admin') return <Outlet />;
+  if (user.role === 'admin') return <Navigate to="/admin/dashboard" replace />;
   if (user.role === 'seller') return <Navigate to="/seller/dashboard" replace />;
   if (user.role === 'seller_pending') return <Navigate to="/seller/application-pending" replace />;
   return <Outlet />;
@@ -76,11 +77,12 @@ function AdminRoute() {
   return <Outlet />;
 }
 
-/** Approved seller only */
+/** Approved seller only — also allows super_admin */
 function SellerRoute() {
   const { user, loading } = useAuthStore();
   if (loading) return <LoadingSpinner />;
   if (!user) return <Navigate to="/seller/login" replace />;
+  if (user.role === 'super_admin') return <Outlet />;
   if (user.role === 'seller_pending') return <Navigate to="/seller/application-pending" replace />;
   if (user.role !== 'seller') return <Navigate to="/" replace />;
   return <Outlet />;
@@ -91,6 +93,7 @@ function SellerPendingRoute() {
   const { user, loading } = useAuthStore();
   if (loading) return <LoadingSpinner />;
   if (!user) return <Navigate to="/seller/login" replace />;
+  if (user.role === 'super_admin') return <Navigate to="/admin/dashboard" replace />;
   if (user.role === 'seller') return <Navigate to="/seller/dashboard" replace />;
   if (user.role !== 'seller_pending') return <Navigate to="/" replace />;
   return <Outlet />;
@@ -98,7 +101,7 @@ function SellerPendingRoute() {
 
 function LoadingSpinner() {
   return (
-    <div className="min-h-screen flex items-center justify-center">
+    <div className="min-h-screen flex items-center justify-center bg-[#07091a]">
       <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-accent" />
     </div>
   );
@@ -138,7 +141,8 @@ function App() {
 
           {/* Admin panel */}
           <Route element={<AdminRoute />}>
-            <Route path="/admin" element={<AdminPage />} />
+            <Route path="/admin" element={<Navigate to="/admin/dashboard" replace />} />
+            <Route path="/admin/dashboard" element={<AdminPage />} />
           </Route>
         </Route>
 
