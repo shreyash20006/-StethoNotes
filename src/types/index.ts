@@ -334,3 +334,23 @@ export interface StorageReport {
   storage_used_bytes: number;
   calculated_at: string;
 }
+
+export interface SellerApplication {
+  id: string;
+  user_id: string;
+  full_name: string;
+  email: string;
+  phone: string;
+  college: string;
+  course: string;
+  year: string;
+  upi_id: string;
+  bio?: string;
+  government_id_url?: string;
+  profile_photo_url?: string;
+  status: 'pending' | 'approved' | 'rejected';
+  submitted_at: string;
+  reviewed_at?: string;
+  reviewed_by?: string;
+  rejection_reason?: string;
+}

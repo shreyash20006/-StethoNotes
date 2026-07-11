@@ -116,8 +116,16 @@ export async function sendSellerApprovalEmail(
 
 export async function sendSellerRejectionEmail(
   email: string,
-  name: string
+  name: string,
+  rejectionReason?: string
 ): Promise<boolean> {
+  const reasonHtml = rejectionReason
+    ? `<div style="background:#f8fafc;border-left:4px solid #ef4444;padding:16px;margin:20px 0;border-radius:0 8px 8px 0;">
+         <p style="color:#475569;font-size:14px;margin:0;font-weight:600;">Rejection Reason:</p>
+         <p style="color:#64748b;font-size:14px;margin:4px 0 0 0;font-style:italic;">"${rejectionReason}"</p>
+       </div>`
+    : '';
+
   return sendBrevoEmail({
     sender: { name: FROM_NAME, email: FROM_EMAIL },
     to: [{ email, name }],
@@ -132,6 +140,7 @@ export async function sendSellerRejectionEmail(
           <p style="color:#64748b;font-size:15px;line-height:1.6;">
             After reviewing your application, we're unable to approve your seller account at this time.
           </p>
+          ${reasonHtml}
           <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:12px;padding:16px;margin:24px 0;">
             <p style="color:#991b1b;font-size:13px;margin:0;">If you believe this is an error, please contact us at <a href="mailto:support@stethonotes.store" style="color:#dc2626;">support@stethonotes.store</a></p>
           </div>

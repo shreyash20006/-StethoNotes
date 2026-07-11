@@ -3,7 +3,6 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { supabase, isLiveSupabase } from '../lib/supabase';
 import { useAuthStore } from '../store/useAuthStore';
-import { sendSellerApplicationReceivedEmail } from '../lib/brevo';
 import { ShieldX, Loader2 } from 'lucide-react';
 
 export default function AuthCallbackPage() {
@@ -172,27 +171,7 @@ export default function AuthCallbackPage() {
       }
 
       // 7. Handle Seller request log entry
-      if (finalRole === 'seller_pending') {
-        const { data: existingReq } = await supabase
-          .from('seller_requests')
-          .select('id')
-          .eq('user_id', user.id)
-          .single();
-
-        if (!existingReq) {
-          console.log('[DEBUG] Inserting new seller request record for:', email);
-          await supabase.from('seller_requests').insert({
-            user_id: user.id,
-            email,
-            full_name: fullName,
-            status: 'pending',
-            applied_at: new Date().toISOString()
-          });
-
-          // Send Brevo application email
-          sendSellerApplicationReceivedEmail(email, fullName).catch(console.error);
-        }
-      }
+      // (Seller application details form will be filled in the guarded SellerPendingPage.tsx)
 
       // 8. Update client auth store state
       await checkSession();

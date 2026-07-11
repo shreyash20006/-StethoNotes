@@ -167,7 +167,7 @@ export default function Navbar() {
                             <ShoppingCart className="w-4 h-4 text-slate-500" />
                             <span>Orders</span>
                           </Link>
-                          <Link to="/admin/dashboard?tab=seller_requests" onClick={() => setIsDropdownOpen(false)}
+                          <Link to="/admin/dashboard?tab=sellers" onClick={() => setIsDropdownOpen(false)}
                             className="flex items-center gap-2 px-4 py-2.5 text-sm text-primary hover:bg-accent/5 hover:text-accent transition-colors">
                             <Users className="w-4 h-4 text-slate-500" />
                             <span>Sellers</span>
@@ -244,6 +244,11 @@ export default function Navbar() {
                             className="flex items-center gap-2 px-4 py-2.5 text-sm text-primary hover:bg-accent/5 hover:text-accent transition-colors">
                             <User className="w-4 h-4 text-slate-500" />
                             <span>Profile</span>
+                          </Link>
+                          <Link to="/seller/login" onClick={() => setIsDropdownOpen(false)}
+                            className="flex items-center gap-2 px-4 py-2.5 text-sm text-primary hover:bg-emerald-50 hover:text-emerald-600 transition-colors">
+                            <Store className="w-4 h-4 text-emerald-500" />
+                            <span>Become a Seller</span>
                           </Link>
                         </>
                       )}
@@ -336,7 +341,7 @@ export default function Navbar() {
                       <ShoppingCart className="w-4 h-4 text-slate-500" />
                       <span>Orders</span>
                     </Link>
-                    <Link to="/admin/dashboard?tab=seller_requests" onClick={() => setIsOpen(false)}
+                    <Link to="/admin/dashboard?tab=sellers" onClick={() => setIsOpen(false)}
                       className="flex items-center gap-2 p-2 rounded-xl text-sm text-primary hover:bg-accent/5 hover:text-accent">
                       <Users className="w-4 h-4 text-slate-500" />
                       <span>Sellers</span>
@@ -413,6 +418,11 @@ export default function Navbar() {
                       className="flex items-center gap-2 p-2 rounded-xl text-sm text-primary hover:bg-accent/5 hover:text-accent">
                       <User className="w-4 h-4 text-slate-500" />
                       <span>Profile</span>
+                    </Link>
+                    <Link to="/seller/login" onClick={() => setIsOpen(false)}
+                      className="flex items-center gap-2 p-2 rounded-xl text-sm text-primary hover:bg-emerald-50 hover:text-emerald-600">
+                      <Store className="w-4 h-4 text-emerald-500" />
+                      <span>Become a Seller</span>
                     </Link>
                   </>
                 )}
