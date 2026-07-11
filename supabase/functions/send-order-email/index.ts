@@ -13,8 +13,14 @@ serve(async (req) => {
     return new Response('ok', { headers: corsHeaders })
   }
 
+  let orderId: string | null = null;
+  let customerEmail: string = '';
+  let supabase: any = null;
+
   try {
-    const { orderId } = await req.json()
+    const body = await req.json()
+    orderId = body.orderId
+
     if (!orderId) {
       return new Response(JSON.stringify({ success: false, message: 'Missing orderId' }), {
         status: 400,
@@ -30,7 +36,7 @@ serve(async (req) => {
       throw new Error('Missing Supabase Service configurations in Deno environment.')
     }
 
-    const supabase = createClient(supabaseUrl, supabaseServiceKey)
+    supabase = createClient(supabaseUrl, supabaseServiceKey)
 
     // 1. Fetch order details
     const { data: order, error: orderErr } = await supabase
@@ -42,6 +48,8 @@ serve(async (req) => {
     if (orderErr || !order) {
       throw new Error(`Order ${orderId} not found.`)
     }
+
+    customerEmail = order.customer_email || '';
 
     // 2. Fetch order items
     const { data: items, error: itemsErr } = await supabase
@@ -76,13 +84,17 @@ serve(async (req) => {
       }
     }
 
-    // 4. Dispatch Email via Brevo API
+    // 4. Config variables
     const brevoApiKey = Deno.env.get('BREVO_API_KEY')
+    const brevoTemplateId = Deno.env.get('BREVO_TEMPLATE_ID')
+    const fromEmail = Deno.env.get('FROM_EMAIL') ?? 'support@stethonotes.com'
+    const fromName = Deno.env.get('FROM_NAME') ?? 'StethoNotes Support'
+
     if (!brevoApiKey) {
       throw new Error('BREVO_API_KEY environment variable is not configured.')
     }
 
-    // Build notes HTML list for email
+    // Build notes HTML list for fallback email
     const notesHtml = emailNotesList.map(item => `
       <div style="margin-bottom: 20px; padding: 15px; border: 1px solid #E6F7FA; border-left: 4px solid #1FB6D4; background-color: #FAFCFD; border-radius: 8px;">
         <span style="font-size: 10px; text-transform: uppercase; color: #1FB6D4; font-weight: bold; font-family: sans-serif;">${item.subject}</span>
@@ -109,7 +121,7 @@ serve(async (req) => {
             <p style="font-size: 13px; color: #666666;">
               If you have any issues downloading your notes or require academic assistance, please reply to this email or contact us at <a href="mailto:support@stethonotes.com" style="color:#1FB6D4">support@stethonotes.com</a>.
             </p>
-            <div style="border-t: 1px solid #EAF0F6; padding-top: 15px; margin-top: 30px; text-align: center; font-size: 11px; color: #888888;">
+            <div style="border-top: 1px solid #EAF0F6; padding-top: 15px; margin-top: 30px; text-align: center; font-size: 11px; color: #888888;">
               <p>StethoNotes © 2026. Your Stethoscope to success.</p>
             </div>
           </div>
@@ -117,11 +129,33 @@ serve(async (req) => {
       </html>
     `
 
-    const brevoPayload = {
-      sender: { name: "StethoNotes Support", email: "support@stethonotes.com" },
+    let brevoPayload: any = {
+      sender: { name: fromName, email: fromEmail },
       to: [{ email: order.customer_email, name: order.customer_name }],
-      subject: "Your StethoNotes Purchased PDFs are Ready!",
-      htmlContent: emailHtmlBody
+      subject: "Your StethoNotes Purchased PDFs are Ready!"
+    }
+
+    if (brevoTemplateId) {
+      brevoPayload = {
+        ...brevoPayload,
+        templateId: parseInt(brevoTemplateId, 10),
+        params: {
+          CUSTOMER_NAME: order.customer_name,
+          ORDER_ID: order.id,
+          TOTAL_AMOUNT: order.total_amount,
+          ITEMS: emailNotesList.map(item => ({
+            title: item.title,
+            subject: item.subject,
+            downloadUrl: item.downloadUrl
+          })),
+          DOWNLOADS_HTML: notesHtml
+        }
+      }
+    } else {
+      brevoPayload = {
+        ...brevoPayload,
+        htmlContent: emailHtmlBody
+      }
     }
 
     const response = await fetch("https://api.brevo.com/v3/smtp/email", {
@@ -147,6 +181,13 @@ serve(async (req) => {
 
     if (updateErr) throw updateErr
 
+    // Log success
+    await supabase.from('email_logs').insert({
+      order_id: orderId,
+      email: customerEmail,
+      status: 'success'
+    })
+
     return new Response(JSON.stringify({ success: true, message: 'Email sent successfully via Brevo.' }), {
       status: 200,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -156,7 +197,23 @@ serve(async (req) => {
     console.error("Edge Function Error:", err)
 
     // Attempt to log failure in database if orderId is available
-    // (Note: orderId scope verification would happen in outer scope catch block)
+    if (supabase && orderId) {
+      try {
+        await supabase
+          .from('orders')
+          .update({ email_status: 'failed' })
+          .eq('id', orderId)
+
+        await supabase.from('email_logs').insert({
+          order_id: orderId,
+          email: customerEmail || 'unknown@stethonotes.com',
+          status: 'failure',
+          error_message: err.message
+        })
+      } catch (logErr) {
+        console.error("Failed to write to logs or update order status:", logErr)
+      }
+    }
     
     return new Response(JSON.stringify({ success: false, message: err.message }), {
       status: 500,

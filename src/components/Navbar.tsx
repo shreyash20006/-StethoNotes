@@ -5,7 +5,6 @@ import { useAuthStore } from '../store/useAuthStore';
 import { useCartStore } from '../store/useCartStore';
 import {
   ShoppingCart,
-  User,
   LogOut,
   Menu,
   X,

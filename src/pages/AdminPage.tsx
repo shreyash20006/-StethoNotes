@@ -57,6 +57,12 @@ export default function AdminPage() {
   // Email resending spinner tracking
   const [resendingEmailId, setResendingEmailId] = useState<string | null>(null);
 
+  // New features: semester and drag-and-drop file upload states
+  const [noteSemester, setNoteSemester] = useState('1st Semester');
+  const [dragActivePdf, setDragActivePdf] = useState(false);
+  const [dragActiveThumb, setDragActiveThumb] = useState(false);
+  const [dragActivePreviews, setDragActivePreviews] = useState(false);
+
   useEffect(() => {
     // Role-based protection: Only admins allowed
     if (!user || user.role !== 'admin') {
@@ -132,11 +138,49 @@ export default function AdminPage() {
     }
   };
 
+  const handleDrag = (e: React.DragEvent, setDragActive: (active: boolean) => void) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.type === "dragenter" || e.type === "dragover") {
+      setDragActive(true);
+    } else if (e.type === "dragleave") {
+      setDragActive(false);
+    }
+  };
+
+  const handleDropPdf = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActivePdf(false);
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      setPdfFile(e.dataTransfer.files[0]);
+    }
+  };
+
+  const handleDropThumb = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActiveThumb(false);
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      setThumbnailFile(e.dataTransfer.files[0]);
+    }
+  };
+
+  const handleDropPreviews = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActivePreviews(false);
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      setPreviewFiles(e.dataTransfer.files);
+    }
+  };
+
   const openAddNoteModal = () => {
     setEditingNote(null);
     setNoteTitle('');
     setNoteDesc('');
     setNoteSubject('');
+    setNoteSemester('1st Semester');
     setNotePrice('');
     setNoteStatus('active');
     setPdfFile(null);
@@ -159,6 +203,7 @@ export default function AdminPage() {
     setNoteDesc(note.description);
     setNoteCourseId(note.course_id);
     setNoteSubject(note.subject);
+    setNoteSemester(note.semester || '1st Semester');
     setNotePrice(note.price.toString());
     setNoteStatus(note.status || 'active');
     setPdfFile(null);
@@ -333,6 +378,7 @@ export default function AdminPage() {
         description: noteDesc,
         course_id: noteCourseId,
         subject: noteSubject,
+        semester: noteSemester,
         price: parseFloat(notePrice),
         pdf_url: finalPdfUrl,
         thumbnail_url: finalThumbUrl,
@@ -408,6 +454,7 @@ export default function AdminPage() {
         if (error) throw error;
         if (data?.success) {
           addToast('success', 'Email Dispatched', 'Transactional email resent successfully via Brevo.');
+          fetchAdminData(); // Refresh UI
         } else {
           throw new Error(data?.message || 'Email delivery failed');
         }
@@ -976,6 +1023,32 @@ export default function AdminPage() {
                   />
                 </div>
 
+                {/* Academic Semester */}
+                <div className="flex flex-col gap-1">
+                  <label className="font-display font-semibold text-gray-400">Semester / Year</label>
+                  <select
+                    value={noteSemester}
+                    onChange={(e) => setNoteSemester(e.target.value)}
+                    className="border border-gray-200 outline-none focus:border-accent p-2.5 rounded-xl bg-white text-primary"
+                  >
+                    <option value="1st Semester">1st Semester</option>
+                    <option value="2nd Semester">2nd Semester</option>
+                    <option value="3rd Semester">3rd Semester</option>
+                    <option value="4th Semester">4th Semester</option>
+                    <option value="5th Semester">5th Semester</option>
+                    <option value="6th Semester">6th Semester</option>
+                    <option value="7th Semester">7th Semester</option>
+                    <option value="8th Semester">8th Semester</option>
+                    <option value="9th Semester">9th Semester</option>
+                    <option value="10th Semester">10th Semester</option>
+                    <option value="1st Year">1st Year</option>
+                    <option value="2nd Year">2nd Year</option>
+                    <option value="3rd Year">3rd Year</option>
+                    <option value="4th Year">4th Year</option>
+                    <option value="Final Year">Final Year</option>
+                  </select>
+                </div>
+
                 {/* Price (INR) */}
                 <div className="flex flex-col gap-1">
                   <label className="font-display font-semibold text-gray-400">Price (INR)</label>
@@ -1007,41 +1080,87 @@ export default function AdminPage() {
                 {/* File Upload fields */}
                 <div className="border-t border-gray-100 sm:col-span-2 pt-4 mt-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
                   
-                  {/* PDF Upload */}
+                  {/* PDF Drag & Drop */}
                   <div className="flex flex-col gap-1.5">
                     <label className="font-display font-semibold text-gray-400">
                       PDF Document Study Guide {!editingNote && <span className="text-red-500">*</span>}
                     </label>
-                    <input
-                      type="file"
-                      accept=".pdf"
-                      onChange={(e) => setPdfFile(e.target.files?.[0] || null)}
-                      required={!editingNote}
-                      className="w-full border border-gray-200 focus:border-accent p-2 rounded-xl bg-white text-primary text-[11px]"
-                    />
+                    <div
+                      onDragEnter={(e) => handleDrag(e, setDragActivePdf)}
+                      onDragOver={(e) => handleDrag(e, setDragActivePdf)}
+                      onDragLeave={(e) => handleDrag(e, setDragActivePdf)}
+                      onDrop={handleDropPdf}
+                      className={`relative border-2 border-dashed rounded-2xl p-4 transition-all duration-200 text-center flex flex-col items-center justify-center cursor-pointer min-h-[110px] ${
+                        dragActivePdf ? 'border-accent bg-accent/5' : 'border-gray-200 bg-gray-50/50 hover:bg-gray-50'
+                      }`}
+                    >
+                      <input
+                        id="pdf-upload-input"
+                        type="file"
+                        accept=".pdf"
+                        onChange={(e) => setPdfFile(e.target.files?.[0] || null)}
+                        required={!editingNote}
+                        className="hidden"
+                      />
+                      <label htmlFor="pdf-upload-input" className="cursor-pointer w-full h-full flex flex-col items-center justify-center">
+                        <Upload className="w-5 h-5 text-gray-400 mb-1" />
+                        {pdfFile ? (
+                          <span className="text-xs font-semibold text-primary truncate max-w-[200px]">
+                            {pdfFile.name}
+                          </span>
+                        ) : (
+                          <span className="text-[10px] text-gray-500">
+                            Drag & Drop PDF here, or <strong className="text-accent">Browse</strong>
+                          </span>
+                        )}
+                      </label>
+                    </div>
                     <span className="text-[10px] text-gray-400 leading-normal block">
                       Max file size: <strong>50MB</strong>. PDF format (.pdf) only.
                     </span>
                   </div>
 
-                  {/* Thumbnail Cover Image */}
+                  {/* Thumbnail Drag & Drop */}
                   <div className="flex flex-col gap-1.5">
                     <label className="font-display font-semibold text-gray-400">
                       Thumbnail Cover Image {!editingNote && <span className="text-red-500">*</span>}
                     </label>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={(e) => setThumbnailFile(e.target.files?.[0] || null)}
-                      required={!editingNote}
-                      className="w-full border border-gray-200 focus:border-accent p-2 rounded-xl bg-white text-primary text-[11px]"
-                    />
+                    <div
+                      onDragEnter={(e) => handleDrag(e, setDragActiveThumb)}
+                      onDragOver={(e) => handleDrag(e, setDragActiveThumb)}
+                      onDragLeave={(e) => handleDrag(e, setDragActiveThumb)}
+                      onDrop={handleDropThumb}
+                      className={`relative border-2 border-dashed rounded-2xl p-4 transition-all duration-200 text-center flex flex-col items-center justify-center cursor-pointer min-h-[110px] ${
+                        dragActiveThumb ? 'border-accent bg-accent/5' : 'border-gray-200 bg-gray-50/50 hover:bg-gray-50'
+                      }`}
+                    >
+                      <input
+                        id="thumbnail-upload-input"
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => setThumbnailFile(e.target.files?.[0] || null)}
+                        required={!editingNote}
+                        className="hidden"
+                      />
+                      <label htmlFor="thumbnail-upload-input" className="cursor-pointer w-full h-full flex flex-col items-center justify-center">
+                        <Upload className="w-5 h-5 text-gray-400 mb-1" />
+                        {thumbnailFile ? (
+                          <span className="text-xs font-semibold text-primary truncate max-w-[200px]">
+                            {thumbnailFile.name}
+                          </span>
+                        ) : (
+                          <span className="text-[10px] text-gray-500">
+                            Drag & Drop Cover here, or <strong className="text-accent">Browse</strong>
+                          </span>
+                        )}
+                      </label>
+                    </div>
                     <span className="text-[10px] text-gray-400 leading-normal block">
                       Cover thumbnail image uploaded to public bucket.
                     </span>
                   </div>
 
-                  {/* Previews multi-image Upload */}
+                  {/* Previews Drag & Drop */}
                   <div className="sm:col-span-2 flex flex-col gap-1.5 border-t border-gray-50 pt-3">
                     <label className="font-display font-semibold text-gray-400 flex items-center justify-between">
                       <span>Preview Sample Pages (Multi-Upload)</span>
@@ -1050,13 +1169,36 @@ export default function AdminPage() {
                         <span>2-5 preview files recommended</span>
                       </span>
                     </label>
-                    <input
-                      type="file"
-                      multiple
-                      accept="image/*"
-                      onChange={(e) => setPreviewFiles(e.target.files)}
-                      className="w-full border border-gray-200 focus:border-accent p-2 rounded-xl bg-white text-primary text-[11px]"
-                    />
+                    <div
+                      onDragEnter={(e) => handleDrag(e, setDragActivePreviews)}
+                      onDragOver={(e) => handleDrag(e, setDragActivePreviews)}
+                      onDragLeave={(e) => handleDrag(e, setDragActivePreviews)}
+                      onDrop={handleDropPreviews}
+                      className={`relative border-2 border-dashed rounded-2xl p-4 transition-all duration-200 text-center flex flex-col items-center justify-center cursor-pointer min-h-[110px] ${
+                        dragActivePreviews ? 'border-accent bg-accent/5' : 'border-gray-200 bg-gray-50/50 hover:bg-gray-50'
+                      }`}
+                    >
+                      <input
+                        id="previews-upload-input"
+                        type="file"
+                        multiple
+                        accept="image/*"
+                        onChange={(e) => setPreviewFiles(e.target.files)}
+                        className="hidden"
+                      />
+                      <label htmlFor="previews-upload-input" className="cursor-pointer w-full h-full flex flex-col items-center justify-center">
+                        <Upload className="w-5 h-5 text-gray-400 mb-1" />
+                        {previewFiles && previewFiles.length > 0 ? (
+                          <span className="text-xs font-semibold text-primary truncate max-w-[400px]">
+                            {previewFiles.length} file(s) selected
+                          </span>
+                        ) : (
+                          <span className="text-[10px] text-gray-500">
+                            Drag & Drop preview pages here, or <strong className="text-accent">Browse</strong>
+                          </span>
+                        )}
+                      </label>
+                    </div>
                     <span className="text-[10px] text-gray-400 leading-normal block">
                       Add sample preview pages of the notes with watermarks. If uploaded, these replace any current previews.
                     </span>

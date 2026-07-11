@@ -161,6 +161,22 @@ export default function Cart() {
 
               if (updateErr) throw updateErr;
 
+              // Trigger Brevo email delivery via Edge Function
+              try {
+                const { data: fnData, error: fnErr } = await supabase.functions.invoke('send-order-email', {
+                  body: { orderId: orderData.id }
+                });
+                if (fnErr || !fnData?.success) {
+                  console.error('Email auto-dispatch error:', fnErr || fnData?.message);
+                  addToast('info', 'Email Delayed', 'Payment succeeded, but notes email dispatch failed. You can resend it from the confirmation page.');
+                } else {
+                  addToast('success', 'Email Dispatched', 'Your purchased note guides have been sent to your email.');
+                }
+              } catch (emailErr) {
+                console.error('Email auto-dispatch failed:', emailErr);
+                addToast('info', 'Email Delayed', 'Notes email delivery failed. You can resend it from the success page.');
+              }
+
               // Fire confetti
               confetti({
                 particleCount: 150,

@@ -23,6 +23,7 @@ export interface Note {
   thumbnail_url: string;
   preview_images: string[];
   status: 'active' | 'draft';
+  semester?: string;
   created_at: string;
 }
 

@@ -32,6 +32,7 @@ CREATE TABLE IF NOT EXISTS public.notes (
     description     TEXT,
     course_id       UUID NOT NULL REFERENCES public.courses(id) ON DELETE RESTRICT,
     subject         TEXT NOT NULL,
+    semester        TEXT,
     price           NUMERIC(10, 2) NOT NULL CHECK (price >= 0),
     pdf_url         TEXT NOT NULL,
     thumbnail_url   TEXT NOT NULL,
@@ -77,6 +78,16 @@ CREATE TABLE IF NOT EXISTS public.reviews (
     UNIQUE (note_id, user_id)
 );
 
+-- 1.7 Email Logs
+CREATE TABLE IF NOT EXISTS public.email_logs (
+    id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    order_id      UUID REFERENCES public.orders(id) ON DELETE CASCADE,
+    email         TEXT NOT NULL,
+    status        TEXT NOT NULL CHECK (status IN ('success', 'failure')),
+    error_message TEXT,
+    created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
 
 -- ============================================================
 -- SECTION 2 — INDEXES
@@ -91,6 +102,7 @@ CREATE INDEX IF NOT EXISTS idx_order_items_order  ON public.order_items(order_id
 CREATE INDEX IF NOT EXISTS idx_order_items_note   ON public.order_items(note_id);
 CREATE INDEX IF NOT EXISTS idx_reviews_note_id    ON public.reviews(note_id);
 CREATE INDEX IF NOT EXISTS idx_reviews_user_id    ON public.reviews(user_id);
+CREATE INDEX IF NOT EXISTS idx_email_logs_order   ON public.email_logs(order_id);
 
 
 -- ============================================================
@@ -103,6 +115,7 @@ ALTER TABLE public.notes       ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.orders      ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.order_items ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.reviews     ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.email_logs  ENABLE ROW LEVEL SECURITY;
 
 
 -- 3.1 courses
@@ -201,6 +214,14 @@ CREATE POLICY "reviews: own update"
 
 CREATE POLICY "reviews: own delete"
     ON public.reviews FOR DELETE USING (auth.uid() = user_id);
+
+
+-- 3.7 email_logs
+CREATE POLICY "email_logs: admin full access"
+    ON public.email_logs FOR ALL
+    USING (EXISTS (
+        SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin'
+    ));
 
 
 -- ============================================================
