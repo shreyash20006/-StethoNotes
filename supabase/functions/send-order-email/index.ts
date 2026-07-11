@@ -87,8 +87,8 @@ serve(async (req) => {
     // 4. Config variables
     const brevoApiKey = Deno.env.get('BREVO_API_KEY')
     const brevoTemplateId = Deno.env.get('BREVO_TEMPLATE_ID')
-    const fromEmail = Deno.env.get('FROM_EMAIL') ?? 'support@stethonotes.com'
-    const fromName = Deno.env.get('FROM_NAME') ?? 'StethoNotes Support'
+    const fromEmail = Deno.env.get('FROM_EMAIL') ?? 'noreply@stethonotes.store'
+    const fromName = Deno.env.get('FROM_NAME') ?? 'StethoNotes'
 
     if (!brevoApiKey) {
       throw new Error('BREVO_API_KEY environment variable is not configured.')
@@ -119,7 +119,7 @@ serve(async (req) => {
             </div>
 
             <p style="font-size: 13px; color: #666666;">
-              If you have any issues downloading your notes or require academic assistance, please reply to this email or contact us at <a href="mailto:support@stethonotes.com" style="color:#1FB6D4">support@stethonotes.com</a>.
+              If you have any issues downloading your notes or require academic assistance, please reply to this email or contact us at <a href="mailto:support@stethonotes.store" style="color:#1FB6D4">support@stethonotes.store</a>.
             </p>
             <div style="border-top: 1px solid #EAF0F6; padding-top: 15px; margin-top: 30px; text-align: center; font-size: 11px; color: #888888;">
               <p>StethoNotes © 2026. Your Stethoscope to success.</p>
@@ -132,7 +132,7 @@ serve(async (req) => {
     let brevoPayload: any = {
       sender: { name: fromName, email: fromEmail },
       to: [{ email: order.customer_email, name: order.customer_name }],
-      subject: "Your StethoNotes Purchased PDFs are Ready!"
+      subject: "📚 Your StethoNotes Order is Ready!"
     }
 
     if (brevoTemplateId) {

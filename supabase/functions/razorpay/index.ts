@@ -101,7 +101,7 @@ async function generateAndSendEmail(
   let brevoPayload: any = {
     sender: { name: fromName, email: fromEmail },
     to: [{ email: order.customer_email, name: order.customer_name }],
-    subject: "📚 Your StethoNotes are Ready!"
+    subject: "📚 Your StethoNotes Order is Ready!"
   }
 
   if (brevoTemplateId) {
@@ -180,8 +180,8 @@ serve(async (req) => {
   // Brevo keys
   const brevoApiKey = Deno.env.get('BREVO_API_KEY') ?? ""
   const brevoTemplateId = Deno.env.get('BREVO_TEMPLATE_ID')
-  const fromEmail = Deno.env.get('FROM_EMAIL') ?? 'support@stethonotes.com'
-  const fromName = Deno.env.get('FROM_NAME') ?? 'StethoNotes Support'
+  const fromEmail = Deno.env.get('FROM_EMAIL') ?? 'noreply@stethonotes.store'
+  const fromName = Deno.env.get('FROM_NAME') ?? 'StethoNotes'
 
   try {
     // --------------------------------------------------------
