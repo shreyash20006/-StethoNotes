@@ -136,10 +136,25 @@ serve(async (req) => {
     }
 
     if (brevoTemplateId) {
+      const downloadListHtml = `
+        <ul style="padding-left: 20px; margin: 0; font-family: sans-serif; font-size: 14px; line-height: 1.6;">
+          ${emailNotesList.map(item => `
+            <li style="margin-bottom: 12px;">
+              <strong>${item.title}</strong> (${item.subject})<br/>
+              <a href="${item.downloadUrl}" target="_blank" style="color: #1FB6D4; text-decoration: underline; font-weight: bold;">Download Notes</a>
+            </li>
+          `).join('')}
+        </ul>
+      `
       brevoPayload = {
         ...brevoPayload,
         templateId: parseInt(brevoTemplateId, 10),
         params: {
+          customer_name: order.customer_name,
+          order_id: order.id,
+          order_date: new Date(order.created_at).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" }),
+          download_list: downloadListHtml,
+          // Keep uppercase params for compatibility
           CUSTOMER_NAME: order.customer_name,
           ORDER_ID: order.id,
           TOTAL_AMOUNT: order.total_amount,
