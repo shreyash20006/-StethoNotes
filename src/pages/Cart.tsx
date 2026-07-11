@@ -108,73 +108,49 @@ export default function Cart() {
           throw new Error('Razorpay SDK failed to load. Please verify your connection.');
         }
 
-        // 1. Create Order inside Supabase
-        const { data: orderData, error: orderErr } = await supabase
-          .from('orders')
-          .insert({
-            user_id: user?.id || null,
-            customer_name: name.trim(),
-            customer_email: email.trim().toLowerCase(),
-            customer_phone: phone.trim(),
-            total_amount: orderTotal,
-            payment_status: 'pending',
-            email_status: 'pending',
-            razorpay_payment_id: null
-          })
-          .select()
-          .single();
+        // 1. Create Order via server-side Edge Function (creates Razorpay order and returns it)
+        const { data: orderData, error: orderErr } = await supabase.functions.invoke('razorpay/create-order', {
+          body: {
+            items: items.map(item => ({ id: item.note.id, price: item.note.price })),
+            userId: user?.id || null,
+            name: name.trim(),
+            email: email.trim().toLowerCase(),
+            phone: phone.trim()
+          }
+        });
 
-        if (orderErr || !orderData) throw orderErr;
+        if (orderErr || !orderData?.success) {
+          throw new Error(orderData?.message || orderErr?.message || 'Failed to create payment order.');
+        }
 
-        // 2. Insert Order Items mapping
-        const orderItemsPayload = items.map(item => ({
-          order_id: orderData.id,
-          note_id: item.note.id,
-          price: item.note.price
-        }));
-
-        const { error: itemsErr } = await supabase
-          .from('order_items')
-          .insert(orderItemsPayload);
-
-        if (itemsErr) throw itemsErr;
-
-        // 3. Initiate Razorpay Window Payment Options
+        // 2. Initiate Razorpay Window Payment Options
         const options = {
           key: import.meta.env.VITE_RAZORPAY_KEY_ID || 'rzp_test_mockkey',
-          amount: Math.round(orderTotal * 100), // paise
-          currency: 'INR',
+          amount: orderData.amount,
+          currency: orderData.currency,
           name: 'StethoNotes',
           description: 'Secure Digital Guides Checkout',
           image: 'https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?auto=format&fit=crop&q=80&w=150',
+          order_id: orderData.order_id, // Pass Razorpay order_id
           handler: async (response: any) => {
             setPaymentState('verifying');
             try {
-              // Update payment confirmation and receipt IDs in database
-              const { error: updateErr } = await supabase
-                .from('orders')
-                .update({
-                  payment_status: 'completed',
-                  razorpay_payment_id: response.razorpay_payment_id
-                })
-                .eq('id', orderData.id);
-
-              if (updateErr) throw updateErr;
-
-              // Trigger Brevo email delivery via Edge Function
-              try {
-                const { data: fnData, error: fnErr } = await supabase.functions.invoke('send-order-email', {
-                  body: { orderId: orderData.id }
-                });
-                if (fnErr || !fnData?.success) {
-                  console.error('Email auto-dispatch error:', fnErr || fnData?.message);
-                  addToast('info', 'Email Delayed', 'Payment succeeded, but notes email dispatch failed. You can resend it from the confirmation page.');
-                } else {
-                  addToast('success', 'Email Dispatched', 'Your purchased note guides have been sent to your email.');
+              // 3. Verify Payment Signature & Create DB Order on the Server
+              const { data: verifyData, error: verifyErr } = await supabase.functions.invoke('razorpay/verify-payment', {
+                body: {
+                  razorpay_payment_id: response.razorpay_payment_id,
+                  razorpay_order_id: response.razorpay_order_id,
+                  razorpay_signature: response.razorpay_signature,
+                  note_ids: items.map(item => item.note.id),
+                  user_id: user?.id || null,
+                  customer_name: name.trim(),
+                  customer_email: email.trim().toLowerCase(),
+                  customer_phone: phone.trim()
                 }
-              } catch (emailErr) {
-                console.error('Email auto-dispatch failed:', emailErr);
-                addToast('info', 'Email Delayed', 'Notes email delivery failed. You can resend it from the success page.');
+              });
+
+              if (verifyErr || !verifyData?.success) {
+                throw new Error(verifyData?.message || verifyErr?.message || 'Payment signature verification failed.');
               }
 
               // Fire confetti
@@ -184,9 +160,9 @@ export default function Cart() {
                 origin: { y: 0.6 }
               });
 
-              addToast('success', 'Checkout Complete', 'Payment processed successfully.');
+              addToast('success', 'Checkout Complete', 'Payment processed and email delivered successfully.');
               
-              setCreatedOrderId(orderData.id);
+              setCreatedOrderId(verifyData.order_id); // DB Order ID
               setPaymentState('success');
               setSuccessOpen(true);
               clearCart();

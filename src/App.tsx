@@ -77,7 +77,7 @@ function App() {
           <Route path="notes/:id" element={<ProductDetailPage />} />
           <Route path="cart" element={<CartPage />} />
           <Route path="order-success" element={<OrderConfirmationPage />} />
-          <Route path="lookup" element={<OrderLookupPage />} />
+          <Route path="track-order" element={<OrderLookupPage />} />
           <Route path="login" element={<LoginPage />} />
 
           {/* Student Private Routes */}

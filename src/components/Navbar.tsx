@@ -57,7 +57,7 @@ export default function Navbar() {
               Courses
             </NavLink>
             <NavLink
-              to="/lookup"
+              to="/track-order"
               className={({ isActive }) =>
                 `font-display font-medium text-sm transition-colors ${
                   isActive ? 'text-accent' : 'text-primary hover:text-accent'
@@ -205,7 +205,7 @@ export default function Navbar() {
             Courses
           </NavLink>
           <NavLink
-            to="/lookup"
+            to="/track-order"
             onClick={() => setIsOpen(false)}
             className={({ isActive }) =>
               `font-display font-medium text-base p-2 rounded-xl ${
