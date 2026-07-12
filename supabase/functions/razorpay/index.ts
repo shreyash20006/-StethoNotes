@@ -1,6 +1,23 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 
+interface DebugLog {
+  stage: string
+  message: string
+  details?: any
+  stack?: string
+}
+
+function logDebug(entry: DebugLog) {
+  console.log(JSON.stringify({
+    timestamp: new Date().toISOString(),
+    stage: entry.stage,
+    message: entry.message,
+    details: entry.details,
+    stack: entry.stack
+  }))
+}
+
 function getCorsHeaders(origin: string | null) {
   const allowedOrigins = [
     "https://www.stethonotes.store",
@@ -15,7 +32,16 @@ function getCorsHeaders(origin: string | null) {
   }
 }
 
-// Helper to verify HMAC SHA256 signature using Web Crypto API (constant-time check for security)
+function createErrorResponse(stage: string, message: string, details?: any, stack?: string) {
+  return {
+    success: false,
+    stage,
+    message,
+    details,
+    stack
+  }
+}
+
 async function verifyHmacSignature(data: string, signature: string, secret: string): Promise<boolean> {
   const encoder = new TextEncoder()
   const keyData = encoder.encode(secret)
@@ -38,7 +64,6 @@ async function verifyHmacSignature(data: string, signature: string, secret: stri
   const hashArray = Array.from(new Uint8Array(signatureBuffer))
   const hashHex = hashArray.map(b => b.toString(16).padStart(2, "0")).join("")
   
-  // Timing-safe comparison to prevent side-channel attacks
   if (hashHex.length !== signature.length) {
     return false
   }
@@ -49,7 +74,6 @@ async function verifyHmacSignature(data: string, signature: string, secret: stri
   return result === 0
 }
 
-// Helper to generate fresh 48-hour signed URLs & send Brevo email
 async function generateAndSendEmail(
   supabaseAdmin: any,
   order: any,
@@ -61,15 +85,24 @@ async function generateAndSendEmail(
 ) {
   const emailNotesList: Array<{ title: string; subject: string; downloadUrl: string }> = []
   
+  logDebug({
+    stage: "generate_and_send_email",
+    message: "Starting email generation for order",
+    details: { orderId: order.id, itemCount: items.length }
+  })
+  
   for (const item of items) {
     if (item.note) {
-      // 48 hours = 172800 seconds
       const { data, error } = await supabaseAdmin.storage
         .from('notes-pdfs')
         .createSignedUrl(item.note.pdf_url, 172800)
 
       if (error || !data?.signedUrl) {
-        console.error(`Error generating signed URL for note ${item.note.id}:`, error)
+        logDebug({
+          stage: "generate_and_send_email",
+          message: "Failed to create signed URL",
+          details: { noteId: item.note.id, error }
+        })
         throw new Error(`Could not generate download link for ${item.note.title}`)
       }
 
@@ -81,7 +114,6 @@ async function generateAndSendEmail(
     }
   }
 
-  // Build notes HTML list for fallback email
   const notesHtml = emailNotesList.map(item => `
     <div style="margin-bottom: 20px; padding: 15px; border: 1px solid #E6F7FA; border-left: 4px solid #1FB6D4; background-color: #FAFCFD; border-radius: 8px;">
       <span style="font-size: 10px; text-transform: uppercase; color: #1FB6D4; font-weight: bold; font-family: sans-serif;">${item.subject}</span>
@@ -171,10 +203,19 @@ async function generateAndSendEmail(
 
   if (!response.ok) {
     const errorText = await response.text()
+    logDebug({
+      stage: "generate_and_send_email",
+      message: "Brevo SMTP request failed",
+      details: { status: response.status, errorText }
+    })
     throw new Error(`Brevo SMTP dispatch failed: ${errorText}`)
   }
 
-  // Update order status in DB to "sent"
+  logDebug({
+    stage: "generate_and_send_email",
+    message: "Brevo SMTP request succeeded"
+  })
+
   const { error: updateErr } = await supabaseAdmin
     .from('orders')
     .update({ email_status: 'sent' })
@@ -182,7 +223,6 @@ async function generateAndSendEmail(
 
   if (updateErr) throw updateErr
 
-  // Log success
   await supabaseAdmin.from('email_logs').insert({
     order_id: order.id,
     email: order.customer_email,
@@ -199,8 +239,42 @@ serve(async (req) => {
     return new Response('ok', { status: 200, headers: corsHeaders })
   }
 
-  const url = new URL(req.url)
-  const path = url.pathname.replace(/\/$/, "")
+  // Environment variables check
+  const envCheck = {
+    SUPABASE_URL: !!Deno.env.get('SUPABASE_URL'),
+    SUPABASE_SERVICE_ROLE_KEY: !!Deno.env.get('SUPABASE_SERVICE_ROLE_KEY'),
+    RAZORPAY_KEY_ID: !!Deno.env.get('RAZORPAY_KEY_ID'),
+    RAZORPAY_KEY_SECRET: !!Deno.env.get('RAZORPAY_KEY_SECRET'),
+    RAZORPAY_WEBHOOK_SECRET: !!Deno.env.get('RAZORPAY_WEBHOOK_SECRET'),
+    BREVO_API_KEY: !!Deno.env.get('BREVO_API_KEY')
+  }
+
+  const missingEnvVars = Object.entries(envCheck)
+    .filter(([_, exists]) => !exists)
+    .map(([name]) => name)
+
+  logDebug({
+    stage: "init",
+    message: "Environment variables check",
+    details: envCheck
+  })
+
+  if (missingEnvVars.length > 0) {
+    const error = createErrorResponse(
+      "init",
+      `Missing required environment variables: ${missingEnvVars.join(', ')}`,
+      envCheck
+    )
+    logDebug({
+      stage: "init",
+      message: "Missing environment variables",
+      details: missingEnvVars
+    })
+    return new Response(JSON.stringify(error), {
+      status: 500,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    })
+  }
 
   // Supabase keys
   const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? ""
@@ -219,8 +293,24 @@ serve(async (req) => {
   const fromName = Deno.env.get('FROM_NAME') ?? 'StethoNotes'
 
   try {
+    const url = new URL(req.url)
+    const path = url.pathname.replace(/\/$/, "")
+    
+    logDebug({
+      stage: "init",
+      message: "Incoming request",
+      details: {
+        method: req.method,
+        url: req.url,
+        path: path
+      }
+    })
+
     // Determine action route from subpath or headers or JSON payload
     let action = ""
+    let requestBody: any = null
+    let parsedJson: any = null
+
     if (path.endsWith('/create-order')) {
       action = "create-order"
     } else if (path.endsWith('/verify-payment')) {
@@ -232,114 +322,250 @@ serve(async (req) => {
       if (!action && req.method === "POST") {
         try {
           const clone = req.clone()
-          const bodyJson = await clone.json()
-          action = bodyJson.action || ""
-        } catch (_) {}
+          requestBody = await clone.text()
+          parsedJson = JSON.parse(requestBody)
+          action = parsedJson.action || ""
+        } catch (parseErr: any) {
+          logDebug({
+            stage: "parse_body",
+            message: "Failed to parse request body",
+            details: { body: requestBody },
+            stack: parseErr.stack
+          })
+        }
       }
     }
+
+    logDebug({
+      stage: "init",
+      message: "Action determined",
+      details: { action, hasParsedJson: !!parsedJson }
+    })
 
     // --------------------------------------------------------
     // ENDPOINT: /create-order
     // --------------------------------------------------------
     if (action === 'create-order') {
-      const { items, userId, name, email, phone, couponCode } = await req.json()
-
-      if (!items || items.length === 0 || !email) {
-        return new Response(JSON.stringify({ success: false, message: 'Missing fields' }), {
+      let bodyJson: any = null
+      try {
+        bodyJson = await req.json()
+        requestBody = bodyJson
+        logDebug({
+          stage: "create-order",
+          message: "Request body parsed",
+          details: { 
+            hasItems: !!bodyJson.items, 
+            itemCount: bodyJson.items?.length,
+            hasEmail: !!bodyJson.email,
+            userId: bodyJson.userId,
+            couponCode: bodyJson.couponCode
+          }
+        })
+      } catch (parseErr: any) {
+        logDebug({
+          stage: "create-order",
+          message: "Failed to parse JSON body",
+          stack: parseErr.stack
+        })
+        const error = createErrorResponse(
+          "create-order",
+          "Invalid JSON in request body",
+          { error: parseErr.message },
+          parseErr.stack
+        )
+        return new Response(JSON.stringify(error), {
           status: 400,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         })
       }
 
-      // Fetch note details from DB to calculate actual price (never trust frontend input)
-      const noteIds = items.map((i: any) => i.id)
-      const { data: dbNotes, error: notesErr } = await supabaseAdmin
-        .from('notes')
-        .select('id, price')
-        .in('id', noteIds)
+      const { items, userId, name, email, phone, couponCode } = bodyJson
 
-      if (notesErr || !dbNotes || dbNotes.length === 0) {
-        throw new Error('Notes not found or database query failed.')
+      if (!items || items.length === 0 || !email) {
+        const error = createErrorResponse(
+          "create-order",
+          'Missing required fields: items or email',
+          { items: items?.length, email }
+        )
+        return new Response(JSON.stringify(error), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        })
       }
 
-      const subtotal = dbNotes.reduce((sum: number, note: any) => sum + Number(note.price), 0)
+      try {
+        const noteIds = items.map((i: any) => i.id)
+        const { data: dbNotes, error: notesErr } = await supabaseAdmin
+          .from('notes')
+          .select('id, price')
+          .in('id', noteIds)
 
-      if (subtotal <= 0) {
-        throw new Error('Total checkout amount must be greater than zero.')
-      }
+        if (notesErr) {
+          logDebug({
+            stage: "create-order",
+            message: "Database query for notes failed",
+            details: notesErr
+          })
+          throw new Error(`Notes query failed: ${notesErr.message}`)
+        }
 
-      // Calculate discount if couponCode is provided
-      let discountAmount = 0
-      if (couponCode) {
-        const { data: couponData } = await supabaseAdmin
-          .from('coupon_codes')
-          .select('*')
-          .eq('code', couponCode.toUpperCase())
-          .eq('is_active', true)
-          .single()
+        if (!dbNotes || dbNotes.length === 0) {
+          throw new Error('Notes not found in catalog database.')
+        }
 
-        if (couponData) {
-          const isExpired = couponData.expiry_date && new Date(couponData.expiry_date) < new Date()
-          if (!isExpired) {
-            if (couponData.discount_type === 'percentage') {
-              discountAmount = (subtotal * Number(couponData.discount_value)) / 100
-            } else if (couponData.discount_type === 'fixed') {
-              discountAmount = Number(couponData.discount_value)
+        const subtotal = dbNotes.reduce((sum: number, note: any) => sum + Number(note.price), 0)
+
+        if (subtotal <= 0) {
+          throw new Error('Total checkout amount must be greater than zero.')
+        }
+
+        let discountAmount = 0
+        if (couponCode) {
+          const { data: couponData } = await supabaseAdmin
+            .from('coupon_codes')
+            .select('*')
+            .eq('code', couponCode.toUpperCase())
+            .eq('is_active', true)
+            .single()
+
+          if (couponData) {
+            const isExpired = couponData.expiry_date && new Date(couponData.expiry_date) < new Date()
+            if (!isExpired) {
+              if (couponData.discount_type === 'percentage') {
+                discountAmount = (subtotal * Number(couponData.discount_value)) / 100
+              } else if (couponData.discount_type === 'fixed') {
+                discountAmount = Number(couponData.discount_value)
+              }
             }
           }
         }
-      }
 
-      const afterDiscount = Math.max(0, subtotal - discountAmount)
-      const gst = Number((afterDiscount * 0.18).toFixed(2)) // 18% GST
-      const platformFee = 5.00 // Standard platform fee
-      const grandTotal = Number((afterDiscount + gst + platformFee).toFixed(2))
+        const afterDiscount = Math.max(0, subtotal - discountAmount)
+        const gst = Number((afterDiscount * 0.18).toFixed(2))
+        const platformFee = 5.00
+        const grandTotal = Number((afterDiscount + gst + platformFee).toFixed(2))
 
-      // Create Razorpay Order
-      const auth = btoa(`${razorpayKeyId}:${razorpayKeySecret}`)
-      const razorpayOrderRes = await fetch("https://api.razorpay.com/v1/orders", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Basic ${auth}`
-        },
-        body: JSON.stringify({
-          amount: Math.round(grandTotal * 100), // convert to paise
-          currency: "INR",
-          receipt: `receipt_${Date.now()}`,
-          notes: {
-            note_ids: noteIds.join(","),
-            user_id: userId || "",
-            customer_name: name,
-            customer_email: email.toLowerCase(),
-            customer_phone: phone,
-            coupon_code: couponCode || ""
-          }
+        logDebug({
+          stage: "create-order",
+          message: "Calculated totals",
+          details: { subtotal, discountAmount, afterDiscount, gst, platformFee, grandTotal }
         })
-      })
 
-      if (!razorpayOrderRes.ok) {
-        const errText = await razorpayOrderRes.text()
-        throw new Error(`Razorpay Order creation failed: ${errText}`)
+        const auth = btoa(`${razorpayKeyId}:${razorpayKeySecret}`)
+        const razorpayOrderRes = await fetch("https://api.razorpay.com/v1/orders", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Basic ${auth}`
+          },
+          body: JSON.stringify({
+            amount: Math.round(grandTotal * 100),
+            currency: "INR",
+            receipt: `receipt_${Date.now()}`,
+            notes: {
+              note_ids: noteIds.join(","),
+              user_id: userId || "",
+              customer_name: name,
+              customer_email: email.toLowerCase(),
+              customer_phone: phone,
+              coupon_code: couponCode || ""
+            }
+          })
+        })
+
+        logDebug({
+          stage: "create-order",
+          message: "Razorpay API response received",
+          details: { status: razorpayOrderRes.status, ok: razorpayOrderRes.ok }
+        })
+
+        if (!razorpayOrderRes.ok) {
+          const errText = await razorpayOrderRes.text()
+          logDebug({
+            stage: "create-order",
+            message: "Razorpay order creation failed",
+            details: { status: razorpayOrderRes.status, errorText: errText }
+          })
+          const error = createErrorResponse(
+            "create-order",
+            `Razorpay Order creation failed: ${errText}`,
+            { status: razorpayOrderRes.status }
+          )
+          return new Response(JSON.stringify(error), {
+            status: 502,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          })
+        }
+
+        const razorpayOrder = await razorpayOrderRes.json()
+        logDebug({
+          stage: "create-order",
+          message: "Razorpay order created successfully",
+          details: { orderId: razorpayOrder.id }
+        })
+
+        return new Response(JSON.stringify({
+          success: true,
+          order_id: razorpayOrder.id,
+          amount: razorpayOrder.amount,
+          currency: razorpayOrder.currency
+        }), {
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        })
+      } catch (createErr: any) {
+        logDebug({
+          stage: "create-order",
+          message: "Error in create-order flow",
+          details: createErr.message,
+          stack: createErr.stack
+        })
+        const error = createErrorResponse(
+          "create-order",
+          createErr.message,
+          createErr,
+          createErr.stack
+        )
+        return new Response(JSON.stringify(error), {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        })
       }
-
-      const razorpayOrder = await razorpayOrderRes.json()
-
-      return new Response(JSON.stringify({
-        success: true,
-        order_id: razorpayOrder.id,
-        amount: razorpayOrder.amount,
-        currency: razorpayOrder.currency
-      }), {
-        status: 200,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      })
     }
 
     // --------------------------------------------------------
     // ENDPOINT: /verify-payment
     // --------------------------------------------------------
     else if (action === 'verify-payment') {
+      let bodyJson: any = null
+      try {
+        bodyJson = await req.json()
+        logDebug({
+          stage: "verify-payment",
+          message: "Request body parsed",
+          details: {
+            paymentId: bodyJson.razorpay_payment_id,
+            orderId: bodyJson.razorpay_order_id
+          }
+        })
+      } catch (parseErr: any) {
+        logDebug({
+          stage: "verify-payment",
+          message: "Failed to parse JSON body",
+          stack: parseErr.stack
+        })
+        const error = createErrorResponse(
+          "verify-payment",
+          "Invalid JSON in request body",
+          { error: parseErr.message },
+          parseErr.stack
+        )
+        return new Response(JSON.stringify(error), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        })
+      }
+
       const {
         razorpay_payment_id,
         razorpay_order_id,
@@ -349,140 +575,176 @@ serve(async (req) => {
         customer_name,
         customer_email,
         customer_phone
-      } = await req.json()
+      } = bodyJson
 
-      // Signature Verification
-      const dataToVerify = `${razorpay_order_id}|${razorpay_payment_id}`
-      const isVerified = await verifyHmacSignature(dataToVerify, razorpay_signature, razorpayKeySecret)
+      try {
+        const dataToVerify = `${razorpay_order_id}|${razorpay_payment_id}`
+        const isVerified = await verifyHmacSignature(dataToVerify, razorpay_signature, razorpayKeySecret)
 
-      if (!isVerified) {
-        return new Response(JSON.stringify({ success: false, message: 'Invalid payment signature' }), {
-          status: 400,
+        if (!isVerified) {
+          const error = createErrorResponse(
+            "verify-payment",
+            'Invalid payment signature',
+            { paymentId: razorpay_payment_id }
+          )
+          return new Response(JSON.stringify(error), {
+            status: 400,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          })
+        }
+
+        const auth = btoa(`${razorpayKeyId}:${razorpayKeySecret}`)
+        const payRes = await fetch(`https://api.razorpay.com/v1/payments/${razorpay_payment_id}`, {
+          headers: { "Authorization": `Basic ${auth}` }
+        })
+
+        logDebug({
+          stage: "verify-payment",
+          message: "Payment verification response from Razorpay",
+          details: { status: payRes.status }
+        })
+
+        if (!payRes.ok) {
+          const errorText = await payRes.text()
+          throw new Error(`Failed to fetch payment details from Razorpay: ${errorText}`)
+        }
+
+        const paymentDetails = await payRes.json()
+        const paidAmount = Number(paymentDetails.amount) / 100
+
+        let { data: existingOrder } = await supabaseAdmin
+          .from('orders')
+          .select('*')
+          .eq('razorpay_payment_id', razorpay_payment_id)
+          .maybeSingle()
+
+        let dbOrder = existingOrder
+
+        if (!dbOrder) {
+          const { data: dbNotes } = await supabaseAdmin
+            .from('notes')
+            .select('*')
+            .in('id', note_ids)
+
+          if (!dbNotes || dbNotes.length === 0) {
+            throw new Error('Notes not found in catalog database.')
+          }
+
+          const { data: newOrder, error: orderErr } = await supabaseAdmin
+            .from('orders')
+            .insert({
+              user_id: user_id || null,
+              customer_name,
+              customer_email: customer_email.toLowerCase(),
+              customer_phone,
+              total_amount: paidAmount,
+              razorpay_payment_id,
+              payment_status: 'completed',
+              email_status: 'pending'
+            })
+            .select()
+            .single()
+
+          if (orderErr || !newOrder) throw orderErr
+          dbOrder = newOrder
+
+          const orderItemsPayload = dbNotes.map((note: any) => ({
+            order_id: dbOrder.id,
+            note_id: note.id,
+            price: note.price
+          }))
+
+          const { error: itemsErr } = await supabaseAdmin
+            .from('order_items')
+            .insert(orderItemsPayload)
+
+          if (itemsErr) throw itemsErr
+
+          await supabaseAdmin
+            .from('payments')
+            .insert({
+              order_id: dbOrder.id,
+              razorpay_payment_id,
+              razorpay_order_id,
+              razorpay_signature,
+              amount: paidAmount,
+              status: 'captured'
+            })
+        }
+
+        const { data: orderItemsData } = await supabaseAdmin
+          .from('order_items')
+          .select('*, note:notes(*)')
+          .eq('order_id', dbOrder.id)
+
+        try {
+          await generateAndSendEmail(
+            supabaseAdmin,
+            dbOrder,
+            orderItemsData || [],
+            brevoApiKey,
+            brevoTemplateId,
+            fromEmail,
+            fromName
+          )
+        } catch (emailErr: any) {
+          console.error('Email sending failed:', emailErr)
+          await supabaseAdmin
+            .from('orders')
+            .update({ email_status: 'failed' })
+            .eq('id', dbOrder.id)
+
+          await supabaseAdmin.from('email_logs').insert({
+            order_id: dbOrder.id,
+            email: dbOrder.customer_email,
+            status: 'failure',
+            error_message: emailErr.message
+          })
+        }
+
+        return new Response(JSON.stringify({ success: true, order_id: dbOrder.id }), {
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        })
+      } catch (verifyErr: any) {
+        logDebug({
+          stage: "verify-payment",
+          message: "Error in verify-payment flow",
+          details: verifyErr.message,
+          stack: verifyErr.stack
+        })
+        const error = createErrorResponse(
+          "verify-payment",
+          verifyErr.message,
+          verifyErr,
+          verifyErr.stack
+        )
+        return new Response(JSON.stringify(error), {
+          status: 500,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         })
       }
-
-      // Query Razorpay API for the actual payment details (ensures financial audit integrity)
-      const auth = btoa(`${razorpayKeyId}:${razorpayKeySecret}`)
-      const payRes = await fetch(`https://api.razorpay.com/v1/payments/${razorpay_payment_id}`, {
-        headers: { "Authorization": `Basic ${auth}` }
-      })
-
-      if (!payRes.ok) {
-        throw new Error(`Failed to fetch payment details from Razorpay: ${await payRes.text()}`)
-      }
-
-      const paymentDetails = await payRes.json()
-      const paidAmount = Number(paymentDetails.amount) / 100 // convert from paise to INR
-
-      // Check if order already exists (webhook could have created it first)
-      let { data: existingOrder } = await supabaseAdmin
-        .from('orders')
-        .select('*')
-        .eq('razorpay_payment_id', razorpay_payment_id)
-        .maybeSingle()
-
-      let dbOrder = existingOrder
-
-      if (!dbOrder) {
-        // Fetch note objects to calculate total amount & insert items
-        const { data: dbNotes } = await supabaseAdmin
-          .from('notes')
-          .select('*')
-          .in('id', note_ids)
-
-        if (!dbNotes || dbNotes.length === 0) {
-          throw new Error('Notes not found in catalog database.')
-        }
-
-        // Insert database order record with the actual paid amount from Razorpay
-        const { data: newOrder, error: orderErr } = await supabaseAdmin
-          .from('orders')
-          .insert({
-            user_id: user_id || null,
-            customer_name,
-            customer_email: customer_email.toLowerCase(),
-            customer_phone,
-            total_amount: paidAmount,
-            razorpay_payment_id,
-            payment_status: 'completed',
-            email_status: 'pending'
-          })
-          .select()
-          .single()
-
-        if (orderErr || !newOrder) throw orderErr
-        dbOrder = newOrder
-
-        // Insert order items
-        const orderItemsPayload = dbNotes.map((note: any) => ({
-          order_id: dbOrder.id,
-          note_id: note.id,
-          price: note.price
-        }))
-
-        const { error: itemsErr } = await supabaseAdmin
-          .from('order_items')
-          .insert(orderItemsPayload)
-
-        if (itemsErr) throw itemsErr
-
-        // Insert audit payment record
-        await supabaseAdmin
-          .from('payments')
-          .insert({
-            order_id: dbOrder.id,
-            razorpay_payment_id,
-            razorpay_order_id,
-            razorpay_signature,
-            amount: paidAmount,
-            status: 'captured'
-          })
-      }
-
-      // Fetch notes list with content to generate signed download URLs
-      const { data: orderItemsData } = await supabaseAdmin
-        .from('order_items')
-        .select('*, note:notes(*)')
-        .eq('order_id', dbOrder.id)
-
-      // Send Email via Brevo
-      try {
-        await generateAndSendEmail(
-          supabaseAdmin,
-          dbOrder,
-          orderItemsData || [],
-          brevoApiKey,
-          brevoTemplateId,
-          fromEmail,
-          fromName
-        )
-      } catch (emailErr: any) {
-        console.error('Email sending failed:', emailErr)
-        await supabaseAdmin
-          .from('orders')
-          .update({ email_status: 'failed' })
-          .eq('id', dbOrder.id)
-
-        await supabaseAdmin.from('email_logs').insert({
-          order_id: dbOrder.id,
-          email: dbOrder.customer_email,
-          status: 'failure',
-          error_message: emailErr.message
-        })
-      }
-
-      return new Response(JSON.stringify({ success: true, order_id: dbOrder.id }), {
-        status: 200,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      })
     }
 
     // --------------------------------------------------------
     // ENDPOINT: /webhook
     // --------------------------------------------------------
     else if (action === 'webhook') {
-      const webhookBody = await req.text()
+      let webhookBody: string = ""
+      try {
+        webhookBody = await req.text()
+      } catch (textErr: any) {
+        logDebug({
+          stage: "webhook",
+          message: "Failed to read webhook body",
+          stack: textErr.stack
+        })
+        return new Response(JSON.stringify({ success: false, message: 'Failed to read webhook body' }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        })
+      }
+
       const signature = req.headers.get('x-razorpay-signature') ?? ""
 
       const isVerified = await verifyHmacSignature(webhookBody, signature, razorpayWebhookSecret)
@@ -493,19 +755,38 @@ serve(async (req) => {
         })
       }
 
-      const payload = JSON.parse(webhookBody)
+      let payload: any = null
+      try {
+        payload = JSON.parse(webhookBody)
+      } catch (parseErr: any) {
+        logDebug({
+          stage: "webhook",
+          message: "Failed to parse webhook JSON",
+          stack: parseErr.stack
+        })
+        return new Response(JSON.stringify({ success: false, message: 'Invalid webhook payload' }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        })
+      }
+
       const event = payload.event
 
       if (event === 'order.paid' || event === 'payment.captured') {
         const payment = payload.payload.payment.entity
         const razorpay_payment_id = payment.id
         const razorpay_order_id = payment.order_id
-        const paidAmount = Number(payment.amount) / 100 // convert from paise to INR
+        const paidAmount = Number(payment.amount) / 100
 
-        // Fetch Razorpay Order notes metadata
         const auth = btoa(`${razorpayKeyId}:${razorpayKeySecret}`)
         const orderRes = await fetch(`https://api.razorpay.com/v1/orders/${razorpay_order_id}`, {
           headers: { "Authorization": `Basic ${auth}` }
+        })
+
+        logDebug({
+          stage: "webhook",
+          message: "Razorpay order lookup response",
+          details: { status: orderRes.status }
         })
 
         if (!orderRes.ok) {
@@ -517,7 +798,6 @@ serve(async (req) => {
         const note_ids = (meta.note_ids || "").split(",").filter(Boolean)
 
         if (note_ids.length > 0) {
-          // Check if order already exists in database
           let { data: existingOrder } = await supabaseAdmin
             .from('orders')
             .select('*')
@@ -533,7 +813,6 @@ serve(async (req) => {
               .in('id', note_ids)
 
             if (dbNotes && dbNotes.length > 0) {
-              // Insert order record
               const { data: newOrder } = await supabaseAdmin
                 .from('orders')
                 .insert({
@@ -552,7 +831,6 @@ serve(async (req) => {
               dbOrder = newOrder
 
               if (dbOrder) {
-                // Insert order items
                 const orderItemsPayload = dbNotes.map((note: any) => ({
                   order_id: dbOrder.id,
                   note_id: note.id,
@@ -563,7 +841,6 @@ serve(async (req) => {
                   .from('order_items')
                   .insert(orderItemsPayload)
 
-                // Insert payment log
                 await supabaseAdmin
                   .from('payments')
                   .insert({
@@ -583,7 +860,6 @@ serve(async (req) => {
               .select('*, note:notes(*)')
               .eq('order_id', dbOrder.id)
 
-            // Trigger Brevo Email Send
             try {
               await generateAndSendEmail(
                 supabaseAdmin,
@@ -624,8 +900,19 @@ serve(async (req) => {
     })
 
   } catch (err: any) {
-    console.error("Payment Service Error:", err)
-    return new Response(JSON.stringify({ success: false, message: err.message }), {
+    logDebug({
+      stage: "unknown",
+      message: "Unhandled error in Razorpay function",
+      details: err.message,
+      stack: err.stack
+    })
+    const error = createErrorResponse(
+      "unknown",
+      err.message,
+      err,
+      err.stack
+    )
+    return new Response(JSON.stringify(error), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     })
