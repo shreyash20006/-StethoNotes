@@ -27,6 +27,10 @@ async function sendBrevoEmail(payload: BrevoPayload): Promise<boolean> {
   }
 
   try {
+    if (!BREVO_API_URL) {
+      throw new Error("BREVO_API_URL is undefined");
+    }
+    console.log("Request URL:", BREVO_API_URL);
     const response = await fetch(BREVO_API_URL, {
       method: 'POST',
       headers: {

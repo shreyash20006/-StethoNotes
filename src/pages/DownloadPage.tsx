@@ -112,12 +112,38 @@ export default function DownloadPage() {
       addToast('info', 'Compiling Note', 'Generating your personalized watermarked copy...');
 
       // Call the Edge Function to watermark and download
-      const { data, error } = await supabase.functions.invoke('download-notes', {
-        body: { orderId, noteId }
-      });
+      const functionName = 'download-notes';
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
+      if (!supabaseUrl) {
+        throw new Error('Supabase URL is not configured. Cannot call Edge Function.');
+      }
+      const url = `${supabaseUrl}/functions/v1/${functionName}`;
+      console.log("Calling Edge Function:", functionName);
+      console.log("Request URL:", url);
 
-      if (error || !data?.signedUrl) {
-        throw new Error(data?.error || error?.message || 'Fulfillment function failed to generate note.');
+      let data = null;
+      let error = null;
+      try {
+        const res = await supabase.functions.invoke(functionName, {
+          body: { orderId, noteId }
+        });
+        data = res.data;
+        error = res.error;
+        if (error) {
+          throw error;
+        }
+      } catch (err: any) {
+        console.error(err);
+        if (err.context && typeof err.context.text === 'function') {
+          try {
+            console.error(await err.context.text());
+          } catch (e) {}
+        }
+        throw err;
+      }
+
+      if (!data?.signedUrl) {
+        throw new Error(data?.error || 'Fulfillment function failed to generate note.');
       }
 
       // Increment local count

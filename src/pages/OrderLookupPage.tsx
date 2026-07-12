@@ -69,11 +69,35 @@ export default function OrderLookupPage() {
 
     try {
       if (isLiveSupabase) {
-        // Live Edge Function request
-        const { data, error } = await supabase.functions.invoke('send-order-email', {
-          body: { orderId: order.id }
-        });
-        if (error) throw error;
+        const functionName = 'send-order-email';
+        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
+        if (!supabaseUrl) {
+          throw new Error('Supabase URL is not configured. Cannot call Edge Function.');
+        }
+        const url = `${supabaseUrl}/functions/v1/${functionName}`;
+        console.log("Calling Edge Function:", functionName);
+        console.log("Request URL:", url);
+
+        let data = null;
+        let error = null;
+        try {
+          const res = await supabase.functions.invoke(functionName, {
+            body: { orderId: order.id }
+          });
+          data = res.data;
+          error = res.error;
+          if (error) {
+            throw error;
+          }
+        } catch (err: any) {
+          console.error(err);
+          if (err.context && typeof err.context.text === 'function') {
+            try {
+              console.error(await err.context.text());
+            } catch (e) {}
+          }
+          throw err;
+        }
         if (data?.success) {
           addToast('success', 'Email Resent', 'Notes email successfully resent.');
         } else {

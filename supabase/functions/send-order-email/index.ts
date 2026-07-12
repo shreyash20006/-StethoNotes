@@ -165,7 +165,10 @@ serve(async (req) => {
       }
     }
 
-    const response = await fetch("https://api.brevo.com/v3/smtp/email", {
+    const brevoUrl = "https://api.brevo.com/v3/smtp/email";
+    if (!brevoUrl) throw new Error("Brevo SMTP URL is undefined");
+    console.log("Request URL:", brevoUrl);
+    const response = await fetch(brevoUrl, {
       method: 'POST',
       headers: {
         'accept': 'application/json',

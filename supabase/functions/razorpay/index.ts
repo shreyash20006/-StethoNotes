@@ -214,7 +214,10 @@ async function generateAndSendEmail(
     }
   }
 
-  const response = await fetch("https://api.brevo.com/v3/smtp/email", {
+  const brevoUrl = "https://api.brevo.com/v3/smtp/email";
+  if (!brevoUrl) throw new Error("Brevo SMTP URL is undefined");
+  console.log("Request URL:", brevoUrl);
+  const response = await fetch(brevoUrl, {
     method: 'POST',
     headers: {
       'accept': 'application/json',
@@ -478,7 +481,10 @@ serve(async (req) => {
         })
 
         const auth = btoa(`${razorpayKeyId}:${razorpayKeySecret}`)
-        const razorpayOrderRes = await fetch("https://api.razorpay.com/v1/orders", {
+        const razorpayOrdersUrl = "https://api.razorpay.com/v1/orders";
+        if (!razorpayOrdersUrl) throw new Error("Razorpay Orders URL is undefined");
+        console.log("Request URL:", razorpayOrdersUrl);
+        const razorpayOrderRes = await fetch(razorpayOrdersUrl, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -553,7 +559,7 @@ serve(async (req) => {
           createErr.stack
         )
         return new Response(JSON.stringify(error), {
-          status: 500,
+          status: 200,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         })
       }
@@ -620,7 +626,13 @@ serve(async (req) => {
         }
 
         const auth = btoa(`${razorpayKeyId}:${razorpayKeySecret}`)
-        const payRes = await fetch(`https://api.razorpay.com/v1/payments/${razorpay_payment_id}`, {
+        if (!razorpay_payment_id) {
+          throw new Error("razorpay_payment_id is undefined or empty");
+        }
+        const razorpayPaymentUrl = `https://api.razorpay.com/v1/payments/${razorpay_payment_id}`;
+        if (!razorpayPaymentUrl) throw new Error("Razorpay Payment URL is undefined");
+        console.log("Request URL:", razorpayPaymentUrl);
+        const payRes = await fetch(razorpayPaymentUrl, {
           headers: { "Authorization": `Basic ${auth}` }
         })
 
@@ -805,7 +817,13 @@ serve(async (req) => {
         const paidAmount = Number(payment.amount) / 100
 
         const auth = btoa(`${razorpayKeyId}:${razorpayKeySecret}`)
-        const orderRes = await fetch(`https://api.razorpay.com/v1/orders/${razorpay_order_id}`, {
+        if (!razorpay_order_id) {
+          throw new Error("razorpay_order_id is undefined or empty");
+        }
+        const razorpayOrderUrl = `https://api.razorpay.com/v1/orders/${razorpay_order_id}`;
+        if (!razorpayOrderUrl) throw new Error("Razorpay Order URL is undefined");
+        console.log("Request URL:", razorpayOrderUrl);
+        const orderRes = await fetch(razorpayOrderUrl, {
           headers: { "Authorization": `Basic ${auth}` }
         })
 

@@ -40,7 +40,10 @@ export default function ContactForm() {
       /*
       // FUTURE BREVO API CONFIGURATION:
       // You can replace this block with an Edge Function fetch or Brevo API call directly:
-      const response = await fetch('/api/contact', {
+      const apiPath = '/api/contact';
+      if (!apiPath) throw new Error("API path is undefined");
+      console.log("Request URL:", apiPath);
+      const response = await fetch(apiPath, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name, email, subject, message })

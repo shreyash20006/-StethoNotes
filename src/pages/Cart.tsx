@@ -73,8 +73,17 @@ export default function Cart() {
         resolve(true);
         return;
       }
+      const existingScript = document.querySelector('script[src="https://checkout.razorpay.com/v1/checkout.js"]');
+      if (existingScript) {
+        existingScript.addEventListener('load', () => resolve(true));
+        existingScript.addEventListener('error', () => resolve(false));
+        return;
+      }
+      const sdkUrl = 'https://checkout.razorpay.com/v1/checkout.js';
+      console.log("Loading Razorpay SDK URL:", sdkUrl);
       const script = document.createElement('script');
-      script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+      script.src = sdkUrl;
+      script.async = true;
       script.onload = () => resolve(true);
       script.onerror = () => resolve(false);
       document.body.appendChild(script);
@@ -110,25 +119,70 @@ export default function Cart() {
         }
 
         // 1. Create Order via server-side Edge Function (creates Razorpay order and returns it)
-        const { data: orderData, error: orderErr } = await supabase.functions.invoke('razorpay', {
-          headers: { 'x-action': 'create-order' },
-          body: {
-            items: items.map(item => ({ id: item.note.id, price: item.note.price })),
-            userId: user?.id || null,
-            name: name.trim(),
-            email: email.trim().toLowerCase(),
-            phone: phone.trim(),
-            couponCode: coupon || null
-          }
-        });
+        const createOrderFunctionName = 'razorpay';
+        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
+        if (!supabaseUrl) {
+          throw new Error('Supabase URL is not configured. Cannot call Edge Function.');
+        }
+        const createOrderUrl = `${supabaseUrl}/functions/v1/${createOrderFunctionName}`;
+        console.log("Calling Edge Function:", createOrderFunctionName);
+        console.log("Request URL:", createOrderUrl);
 
-        if (orderErr || !orderData?.success) {
-          throw new Error(orderData?.message || orderErr?.message || 'Failed to create payment order.');
+        let orderData = null;
+        let orderErr = null;
+        try {
+          const res = await supabase.functions.invoke(createOrderFunctionName, {
+            headers: { 'x-action': 'create-order' },
+            body: {
+              items: items.map(item => ({ id: item.note.id, price: item.note.price })),
+              userId: user?.id || null,
+              name: name.trim(),
+              email: email.trim().toLowerCase(),
+              phone: phone.trim(),
+              couponCode: coupon || null
+            }
+          });
+          orderData = res.data;
+          orderErr = res.error;
+          if (orderErr) {
+            throw orderErr;
+          }
+        } catch (err: any) {
+          console.error(err);
+          if (err.context && typeof err.context.text === 'function') {
+            try {
+              console.error(await err.context.text());
+            } catch (e) {}
+          }
+          throw err;
+        }
+
+        // Validation of key
+        const razorpayKey = import.meta.env.VITE_RAZORPAY_KEY_ID;
+        if (!razorpayKey) {
+          throw new Error("Razorpay Key ID (VITE_RAZORPAY_KEY_ID) is missing.");
+        }
+
+        // Validate orderData
+        if (!orderData) {
+          throw new Error("No response received from order creation service.");
+        }
+        if (orderData.success !== true) {
+          throw new Error(orderData.message || "Order creation failed on payment gateway.");
+        }
+        if (!orderData.order_id) {
+          throw new Error("Failed to create order on payment gateway: Order ID is missing.");
+        }
+        if (!(orderData.amount > 0)) {
+          throw new Error("Invalid order amount. Amount must be greater than zero.");
+        }
+        if (!orderData.currency) {
+          throw new Error("Currency code is missing in order details.");
         }
 
         // 2. Initiate Razorpay Window Payment Options
         const options = {
-          key: import.meta.env.VITE_RAZORPAY_KEY_ID || 'rzp_test_mockkey',
+          key: razorpayKey,
           amount: orderData.amount,
           currency: orderData.currency,
           name: 'StethoNotes',
@@ -139,22 +193,59 @@ export default function Cart() {
             setPaymentState('verifying');
             try {
               // 3. Verify Payment Signature & Create DB Order on the Server
-              const { data: verifyData, error: verifyErr } = await supabase.functions.invoke('razorpay', {
-                headers: { 'x-action': 'verify-payment' },
-                body: {
-                  razorpay_payment_id: response.razorpay_payment_id,
-                  razorpay_order_id: response.razorpay_order_id,
-                  razorpay_signature: response.razorpay_signature,
-                  note_ids: items.map(item => item.note.id),
-                  user_id: user?.id || null,
-                  customer_name: name.trim(),
-                  customer_email: email.trim().toLowerCase(),
-                  customer_phone: phone.trim()
-                }
-              });
+              const verifyFunctionName = 'razorpay';
+              const verifySupabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
+              if (!verifySupabaseUrl) {
+                throw new Error('Supabase URL is not configured. Cannot call Edge Function.');
+              }
+              const verifyUrl = `${verifySupabaseUrl}/functions/v1/${verifyFunctionName}`;
+              const verifyBody = {
+                action: "verify-payment",
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_signature: response.razorpay_signature,
+                note_ids: items.map(item => item.note.id),
+                user_id: user?.id || null,
+                customer_name: name.trim(),
+                customer_email: email.trim().toLowerCase(),
+                customer_phone: phone.trim()
+              };
 
-              if (verifyErr || !verifyData?.success) {
-                throw new Error(verifyData?.message || verifyErr?.message || 'Payment signature verification failed.');
+              console.log("Calling Edge Function:", verifyFunctionName);
+              console.log("Request URL:", verifyUrl);
+              console.log("Request Body:", verifyBody);
+
+              let verifyData = null;
+              let verifyErr = null;
+              try {
+                const res = await supabase.functions.invoke(verifyFunctionName, {
+                  headers: { 'x-action': 'verify-payment' },
+                  body: verifyBody
+                });
+                verifyData = res.data;
+                verifyErr = res.error;
+
+                if (verifyErr) {
+                  const statusCode = (verifyErr as any).status || 500;
+                  console.log("Returned status code:", statusCode);
+                  console.log("Returned JSON (Error):", verifyErr);
+                  throw verifyErr;
+                }
+
+                console.log("Returned status code: 200");
+                console.log("Returned JSON (Success):", verifyData);
+              } catch (err: any) {
+                console.error(err);
+                if (err.context && typeof err.context.text === 'function') {
+                  try {
+                    console.error(await err.context.text());
+                  } catch (e) {}
+                }
+                throw err;
+              }
+
+              if (!verifyData?.success) {
+                throw new Error(verifyData?.message || 'Payment signature verification failed.');
               }
 
               // Fire confetti
@@ -186,6 +277,10 @@ export default function Cart() {
             color: '#0F2D6B'
           }
         };
+
+        console.log("OrderData", orderData);
+        console.log("Razorpay Key", import.meta.env.VITE_RAZORPAY_KEY_ID);
+        console.log("Options", options);
 
         const rzp = new (window as any).Razorpay(options);
         rzp.on('payment.failed', (resp: any) => {
