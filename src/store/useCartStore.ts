@@ -13,6 +13,7 @@ interface CartState {
   removeItem: (noteId: string) => void;
   clearCart: () => void;
   isInCart: (noteId: string) => boolean;
+  syncItems: (dbNotes: any[]) => void;
   
   // Math selectors
   getSubtotal: () => number;
@@ -59,6 +60,27 @@ export const useCartStore = create<CartState>()(
 
       isInCart: (noteId: string) => {
         return get().items.some(item => item.note.id === noteId);
+      },
+
+      syncItems: (dbNotes: any[]) => {
+        const currentItems = get().items;
+        const updatedItems = currentItems
+          .map(item => {
+            const dbNote = dbNotes.find(n => n.id === item.note.id);
+            if (dbNote && dbNote.status === 'active') {
+              return {
+                ...item,
+                note: {
+                  ...item.note,
+                  ...dbNote
+                }
+              };
+            }
+            return null;
+          })
+          .filter((item): item is CartItem => item !== null);
+
+        set({ items: updatedItems });
       },
 
       getSubtotal: () => {

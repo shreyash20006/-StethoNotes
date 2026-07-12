@@ -32,7 +32,8 @@ export default function Cart() {
     getGrandTotal,
     paymentState,
     setPaymentState,
-    coupon
+    coupon,
+    syncItems
   } = useCartStore();
 
   // Form Fields
@@ -56,6 +57,35 @@ export default function Cart() {
         'Review your selected medical notes and complete your secure purchase. Instant email delivery after payment.'
       );
     }
+  }, []);
+
+  // Synchronize cart items with catalog database to get latest prices/details
+  useEffect(() => {
+    const syncCartWithCatalog = async () => {
+      if (items.length === 0) return;
+      try {
+        const noteIds = items.map(item => item.note.id);
+        if (isLiveSupabase) {
+          const { data: dbNotes, error } = await supabase
+            .from('notes')
+            .select('id, price, title, description, thumbnail_url, status')
+            .in('id', noteIds);
+          if (error) throw error;
+          if (dbNotes) {
+            syncItems(dbNotes);
+          }
+        } else {
+          // Mock local storage catalog sync
+          const localCatalog = JSON.parse(localStorage.getItem('stetho_notes') || '[]');
+          const matchingNotes = localCatalog.filter((n: any) => noteIds.includes(n.id));
+          syncItems(matchingNotes);
+        }
+      } catch (err) {
+        console.error('Failed to sync cart items with catalog database:', err);
+      }
+    };
+
+    syncCartWithCatalog();
   }, []);
 
   // Sync profile details if logged in
