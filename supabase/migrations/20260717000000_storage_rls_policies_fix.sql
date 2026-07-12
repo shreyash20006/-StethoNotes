@@ -1,7 +1,3 @@
--- Ensure Row Level Security is enabled on storage.objects
-ALTER TABLE storage.objects ENABLE ROW LEVEL SECURITY;
-
--- ============================================================
 -- 1. DROP ALL OLD/CONFLICTING POLICIES ON storage.objects
 -- ============================================================
 
