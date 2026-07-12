@@ -213,6 +213,7 @@ export default function NoteUploadWizard({ onClose, onSaveSuccess, note = null, 
       const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
       const pdfDocObj = await loadingTask.promise;
       const totalPages = pdfDocObj.numPages;
+      setPageCount(totalPages); // Set the page count immediately
       const pagesToExtract = Math.min(3, totalPages);
       
       const generatedUrls: string[] = [];
@@ -263,18 +264,18 @@ export default function NoteUploadWizard({ onClose, onSaveSuccess, note = null, 
           throw new Error(`Failed to convert canvas to JPEG for page ${pageNum}.`);
         }
 
-        // Upload to public preview-images bucket
+        // Upload to public previews bucket
         const sellerId = note?.seller_id || user?.id || 'admin';
         const uuid = Math.random().toString(36).substring(2, 10);
         const filePath = `previews/${sellerId}/${uuid}_p${pageNum}.jpg`;
         
         const { error: uploadErr } = await supabase.storage
-          .from('preview-images')
+          .from('previews')
           .upload(filePath, jpegBlob, { contentType: 'image/jpeg', upsert: true });
           
         if (uploadErr) throw uploadErr;
         
-        const { data } = supabase.storage.from('preview-images').getPublicUrl(filePath);
+        const { data } = supabase.storage.from('previews').getPublicUrl(filePath);
         generatedUrls.push(data.publicUrl);
       }
       
@@ -394,14 +395,26 @@ export default function NoteUploadWizard({ onClose, onSaveSuccess, note = null, 
     }
     setIsCompiling(true);
     try {
-      const pdfBytes = await pdfFile.arrayBuffer();
-      const pdfDoc = await PDFDocument.load(pdfBytes);
-      const pages = pdfDoc.getPageCount();
-      
-      setPageCount(pages);
       setFileSize(pdfFile.size);
+      // Try to load with pdf-lib first (to ensure basic parsing succeeds)
+      const pdfBytes = await pdfFile.arrayBuffer();
+      try {
+        const pdfDoc = await PDFDocument.load(pdfBytes, { ignoreEncryption: true });
+        const pages = pdfDoc.getPageCount();
+        setPageCount(pages);
+      } catch (pdfLibErr) {
+        console.warn('pdf-lib parsing failed, attempting fallback to PDF.js page count:', pdfLibErr);
+        // Fallback to PDF.js count (which was run during generatePreviews)
+        // If PDF.js hasn't set it yet, we can load it here
+        if (pageCount <= 0) {
+          const loadingTask = pdfjsLib.getDocument({ data: pdfBytes });
+          const pdfDocObj = await loadingTask.promise;
+          setPageCount(pdfDocObj.numPages);
+        }
+      }
       setStep(3);
     } catch (err: any) {
+      console.error('PDF parsing failed on all engines:', err);
       addToast('error', 'PDF Read Error', 'Invalid or protected PDF file.');
     } finally {
       setIsCompiling(false);
