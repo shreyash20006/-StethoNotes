@@ -1,6 +1,25 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 
+console.log({
+  SUPABASE_URL: Deno.env.get("SUPABASE_URL"),
+  RAZORPAY_KEY_ID: !!Deno.env.get("RAZORPAY_KEY_ID"),
+  RAZORPAY_KEY_SECRET: !!Deno.env.get("RAZORPAY_KEY_SECRET"),
+  RAZORPAY_WEBHOOK_SECRET: !!Deno.env.get("RAZORPAY_WEBHOOK_SECRET"),
+  BREVO_API_KEY: !!Deno.env.get("BREVO_API_KEY")
+});
+
+const RAZORPAY_KEY_ID = Deno.env.get("RAZORPAY_KEY_ID");
+const RAZORPAY_KEY_SECRET = Deno.env.get("RAZORPAY_KEY_SECRET");
+const RAZORPAY_WEBHOOK_SECRET = Deno.env.get("RAZORPAY_WEBHOOK_SECRET");
+const BREVO_API_KEY = Deno.env.get("BREVO_API_KEY");
+
+if (!Deno.env.get("SUPABASE_URL")) console.log("Missing environment variable: SUPABASE_URL");
+if (!RAZORPAY_KEY_ID) console.log("Missing environment variable: RAZORPAY_KEY_ID");
+if (!RAZORPAY_KEY_SECRET) console.log("Missing environment variable: RAZORPAY_KEY_SECRET");
+if (!RAZORPAY_WEBHOOK_SECRET) console.log("Missing environment variable: RAZORPAY_WEBHOOK_SECRET");
+if (!BREVO_API_KEY) console.log("Missing environment variable: BREVO_API_KEY");
+
 interface DebugLog {
   stage: string
   message: string
@@ -269,10 +288,10 @@ serve(async (req) => {
   const envCheck = {
     SUPABASE_URL: !!Deno.env.get('SUPABASE_URL'),
     SUPABASE_SERVICE_ROLE_KEY: !!Deno.env.get('SUPABASE_SERVICE_ROLE_KEY'),
-    RAZORPAY_KEY_ID: !!Deno.env.get('RAZORPAY_KEY_ID'),
-    RAZORPAY_KEY_SECRET: !!Deno.env.get('RAZORPAY_KEY_SECRET'),
-    RAZORPAY_WEBHOOK_SECRET: !!Deno.env.get('RAZORPAY_WEBHOOK_SECRET'),
-    BREVO_API_KEY: !!Deno.env.get('BREVO_API_KEY')
+    RAZORPAY_KEY_ID: !!RAZORPAY_KEY_ID,
+    RAZORPAY_KEY_SECRET: !!RAZORPAY_KEY_SECRET,
+    RAZORPAY_WEBHOOK_SECRET: !!RAZORPAY_WEBHOOK_SECRET,
+    BREVO_API_KEY: !!BREVO_API_KEY
   }
 
   const missingEnvVars = Object.entries(envCheck)
@@ -297,7 +316,7 @@ serve(async (req) => {
       details: missingEnvVars
     })
     return new Response(JSON.stringify(error), {
-      status: 500,
+      status: 200,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     })
   }
@@ -308,12 +327,12 @@ serve(async (req) => {
   const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey)
 
   // Razorpay keys
-  const razorpayKeyId = Deno.env.get('RAZORPAY_KEY_ID') ?? ""
-  const razorpayKeySecret = Deno.env.get('RAZORPAY_KEY_SECRET') ?? ""
-  const razorpayWebhookSecret = Deno.env.get('RAZORPAY_WEBHOOK_SECRET') ?? ""
+  const razorpayKeyId = RAZORPAY_KEY_ID ?? ""
+  const razorpayKeySecret = RAZORPAY_KEY_SECRET ?? ""
+  const razorpayWebhookSecret = RAZORPAY_WEBHOOK_SECRET ?? ""
 
   // Brevo keys
-  const brevoApiKey = Deno.env.get('BREVO_API_KEY') ?? ""
+  const brevoApiKey = BREVO_API_KEY ?? ""
   const brevoTemplateId = Deno.env.get('BREVO_TEMPLATE_ID')
   const fromEmail = Deno.env.get('FROM_EMAIL') ?? 'noreply@stethonotes.store'
   const fromName = Deno.env.get('FROM_NAME') ?? 'StethoNotes'
