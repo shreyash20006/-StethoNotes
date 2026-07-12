@@ -21,6 +21,7 @@ export default function SettingsLogs() {
   const [razorpayKey, setRazorpayKey] = useState('rzp_test_9D1s7Xj...');
   const [cloudinaryUrl, setCloudinaryUrl] = useState('cloudinary://58238128...');
   const [brevoKey, setBrevoKey] = useState('xkeysib-9281a81283d...');
+  const [directDownloadMode, setDirectDownloadMode] = useState(false);
 
   // Audit Logs State
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
@@ -44,6 +45,11 @@ export default function SettingsLogs() {
         if (s.key === 'razorpay_key') setRazorpayKey(s.value);
         if (s.key === 'cloudinary_url') setCloudinaryUrl(s.value);
         if (s.key === 'brevo_key') setBrevoKey(s.value);
+        if (s.key === 'direct_download_mode') {
+          const isEnabled = s.value === true || s.value === 'true';
+          setDirectDownloadMode(isEnabled);
+          localStorage.setItem('direct_download_mode', String(isEnabled));
+        }
       });
 
       // 2. Fetch audit logs
@@ -83,8 +89,11 @@ export default function SettingsLogs() {
         { key: 'custom_domain', value: customDomain, description: 'Canonical hostname binding values' },
         { key: 'razorpay_key', value: razorpayKey, description: 'Razorpay public checkout key credential' },
         { key: 'cloudinary_url', value: cloudinaryUrl, description: 'Cloudinary storage file reference path' },
-        { key: 'brevo_key', value: brevoKey, description: 'Brevo transactional SMTP credential key' }
+        { key: 'brevo_key', value: brevoKey, description: 'Brevo transactional SMTP credential key' },
+        { key: 'direct_download_mode', value: directDownloadMode, description: 'Bypass Razorpay checkout and download directly' }
       ]);
+
+      localStorage.setItem('direct_download_mode', String(directDownloadMode));
 
       // Record an audit log entry
       await supabase.from('audit_logs').insert({
@@ -204,6 +213,24 @@ export default function SettingsLogs() {
                   className="w-full px-4 py-2 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:border-cyan-500 bg-slate-50/20"
                   required
                 />
+              </div>
+
+              <div className="flex items-center gap-3 p-3 bg-cyan-500/5 border border-cyan-500/10 rounded-2xl mt-4">
+                <input
+                  type="checkbox"
+                  id="direct_download_mode"
+                  checked={directDownloadMode}
+                  onChange={(e) => setDirectDownloadMode(e.target.checked)}
+                  className="w-4 h-4 text-cyan-600 border-gray-300 rounded focus:ring-cyan-500"
+                />
+                <div className="flex flex-col">
+                  <label htmlFor="direct_download_mode" className="text-xs font-bold text-slate-850 cursor-pointer">
+                    Direct Download Mode
+                  </label>
+                  <span className="text-[10px] text-slate-500">
+                    Bypasses Payments, Brevo, and Checkout (Instant Download = ON)
+                  </span>
+                </div>
               </div>
             </div>
 

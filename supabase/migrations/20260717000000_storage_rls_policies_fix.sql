@@ -1,3 +1,4 @@
+-- ============================================================
 -- 1. DROP ALL OLD/CONFLICTING POLICIES ON storage.objects
 -- ============================================================
 
@@ -12,6 +13,10 @@ DROP POLICY IF EXISTS "notes-pdfs: admin read all, sellers read own" ON storage.
 DROP POLICY IF EXISTS "notes-pdfs: sellers can upload own PDFs" ON storage.objects;
 DROP POLICY IF EXISTS "notes-pdfs: admins and owners update" ON storage.objects;
 DROP POLICY IF EXISTS "notes-pdfs: admin delete all, sellers delete own" ON storage.objects;
+DROP POLICY IF EXISTS "notes-pdfs: select" ON storage.objects;
+DROP POLICY IF EXISTS "notes-pdfs: insert" ON storage.objects;
+DROP POLICY IF EXISTS "notes-pdfs: update" ON storage.objects;
+DROP POLICY IF EXISTS "notes-pdfs: delete" ON storage.objects;
 
 -- Drop previews policies
 DROP POLICY IF EXISTS "previews: public view" ON storage.objects;
@@ -25,6 +30,10 @@ DROP POLICY IF EXISTS "previews: public read" ON storage.objects;
 DROP POLICY IF EXISTS "previews: sellers and admins upload" ON storage.objects;
 DROP POLICY IF EXISTS "previews: admins and owners update" ON storage.objects;
 DROP POLICY IF EXISTS "previews: admins and owners delete" ON storage.objects;
+DROP POLICY IF EXISTS "previews: select" ON storage.objects;
+DROP POLICY IF EXISTS "previews: insert" ON storage.objects;
+DROP POLICY IF EXISTS "previews: update" ON storage.objects;
+DROP POLICY IF EXISTS "previews: delete" ON storage.objects;
 
 -- Drop thumbnails policies
 DROP POLICY IF EXISTS "thumbnails: staff upload" ON storage.objects;
@@ -35,30 +44,38 @@ DROP POLICY IF EXISTS "thumbnails: admin delete" ON storage.objects;
 DROP POLICY IF EXISTS "thumbnails: sellers and admins upload" ON storage.objects;
 DROP POLICY IF EXISTS "thumbnails: admins and owners update" ON storage.objects;
 DROP POLICY IF EXISTS "thumbnails: admins and owners delete" ON storage.objects;
+DROP POLICY IF EXISTS "thumbnails: select" ON storage.objects;
+DROP POLICY IF EXISTS "thumbnails: insert" ON storage.objects;
+DROP POLICY IF EXISTS "thumbnails: update" ON storage.objects;
+DROP POLICY IF EXISTS "thumbnails: delete" ON storage.objects;
 
 
 -- ============================================================
 -- 2. CREATE NEW POLICIES FOR notes-pdfs BUCKET (Private)
 -- ============================================================
 
--- SELECT: Admins can read all; Sellers can read only their own
+-- SELECT: Admins can read all; Sellers can read only their own; Or if direct download mode is enabled
 CREATE POLICY "notes-pdfs: select" ON storage.objects
     FOR SELECT USING (
         bucket_id = 'notes-pdfs'
-        AND auth.role() = 'authenticated'
         AND (
             public.is_admin(auth.uid())
             OR (
-                EXISTS (
+                auth.role() = 'authenticated'
+                AND EXISTS (
                     SELECT 1 FROM public.profiles 
                     WHERE id = auth.uid() AND role = 'seller'
                 )
                 AND owner = auth.uid()
             )
+            OR EXISTS (
+                SELECT 1 FROM public.settings 
+                WHERE key = 'direct_download_mode' AND value = 'true'::jsonb
+            )
         )
     );
 
--- INSERT: Admins can upload any; Sellers can upload only their own
+-- INSERT: Admins can upload any; Sellers can upload only their own (check path segment 3)
 CREATE POLICY "notes-pdfs: insert" ON storage.objects
     FOR INSERT WITH CHECK (
         bucket_id = 'notes-pdfs'
@@ -70,7 +87,7 @@ CREATE POLICY "notes-pdfs: insert" ON storage.objects
                     SELECT 1 FROM public.profiles 
                     WHERE id = auth.uid() AND role = 'seller'
                 )
-                AND (owner = auth.uid() OR owner IS NULL)
+                AND (storage.foldername(name))[3] = auth.uid()::text
             )
         )
     );
@@ -119,7 +136,7 @@ CREATE POLICY "previews: select" ON storage.objects
         bucket_id = 'previews' OR bucket_id = 'preview-images'
     );
 
--- INSERT: Admins can upload any; Sellers can upload previews
+-- INSERT: Admins can upload any; Sellers can upload previews (check path segment 2)
 CREATE POLICY "previews: insert" ON storage.objects
     FOR INSERT WITH CHECK (
         (bucket_id = 'previews' OR bucket_id = 'preview-images')
@@ -131,7 +148,7 @@ CREATE POLICY "previews: insert" ON storage.objects
                     SELECT 1 FROM public.profiles 
                     WHERE id = auth.uid() AND role = 'seller'
                 )
-                AND (owner = auth.uid() OR owner IS NULL)
+                AND (storage.foldername(name))[2] = auth.uid()::text
             )
         )
     );
@@ -180,7 +197,7 @@ CREATE POLICY "thumbnails: select" ON storage.objects
         bucket_id = 'thumbnails'
     );
 
--- INSERT: Admins can upload any; Sellers can upload thumbnails
+-- INSERT: Admins can upload any; Sellers can upload thumbnails (check path segment 4)
 CREATE POLICY "thumbnails: insert" ON storage.objects
     FOR INSERT WITH CHECK (
         bucket_id = 'thumbnails'
@@ -192,7 +209,7 @@ CREATE POLICY "thumbnails: insert" ON storage.objects
                     SELECT 1 FROM public.profiles 
                     WHERE id = auth.uid() AND role = 'seller'
                 )
-                AND (owner = auth.uid() OR owner IS NULL)
+                AND (storage.foldername(name))[4] = auth.uid()::text
             )
         )
     );

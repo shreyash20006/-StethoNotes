@@ -4,6 +4,7 @@ import { useAuthStore } from './store/useAuthStore';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import ToastContainer from './components/Toast';
+import { supabase } from './lib/supabase';
 
 // Pages
 import LandingPage from './pages/LandingPage';
@@ -129,6 +130,19 @@ function App() {
     }
 
     checkSession();
+
+    // Fetch direct download mode setting on startup
+    supabase.from('settings')
+      .select('*')
+      .eq('key', 'direct_download_mode')
+      .maybeSingle()
+      .then(({ data }: { data: any }) => {
+        if (data) {
+          const isEnabled = data.value === true || data.value === 'true';
+          localStorage.setItem('direct_download_mode', String(isEnabled));
+        }
+      })
+      .catch((err: any) => console.error('Failed to fetch direct download setting:', err));
   }, [checkSession]);
 
   return (

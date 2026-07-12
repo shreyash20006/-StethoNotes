@@ -5,6 +5,7 @@ import type { Note, Review, Comment } from '../types';
 import { useCartStore } from '../store/useCartStore';
 import { useToastStore } from '../store/useToastStore';
 import { useAuthStore } from '../store/useAuthStore';
+import { getDirectDownloadMode } from '../config/features';
 import {
   Star, ShoppingCart, ArrowLeft, Send,
   Heart, MessageSquare, CornerDownRight, ShieldCheck, UserCheck, Sparkles
@@ -24,6 +25,52 @@ export default function ProductDetailPage() {
   const [relatedNotes, setRelatedNotes] = useState<Note[]>([]);
   const [frequentNote, setFrequentNote] = useState<Note | null>(null);
   const [loading, setLoading] = useState(true);
+
+  const isDirectDownload = getDirectDownloadMode();
+  const [downloading, setDownloading] = useState(false);
+
+  const handleDirectDownload = async () => {
+    if (!note) return;
+    setDownloading(true);
+    try {
+      addToast('info', 'Preparing Download', 'Generating secure download link...');
+      
+      const urlOrPath = note.pdf_url;
+      let relativePath = urlOrPath;
+      if (urlOrPath.startsWith("http://") || urlOrPath.startsWith("https://")) {
+        const marker = "notes-pdfs/";
+        const index = urlOrPath.indexOf(marker);
+        if (index !== -1) {
+          relativePath = decodeURIComponent(urlOrPath.substring(index + marker.length));
+        }
+      }
+      
+      console.log(`Generating signed URL for: ${relativePath}`);
+      const { data, error } = await supabase.storage
+        .from('notes-pdfs')
+        .createSignedUrl(relativePath, 60);
+
+      if (error || !data?.signedUrl) {
+        throw new Error(error?.message || 'Signed URL generation failed');
+      }
+
+      console.log("Signed URL successfully generated:", data.signedUrl);
+      addToast('success', 'Download Started', 'Your PDF notes are downloading.');
+
+      const link = document.createElement('a');
+      link.href = data.signedUrl;
+      link.target = '_blank';
+      link.setAttribute('download', `${note.title}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (err: any) {
+      console.error('Direct download error:', err);
+      addToast('error', 'Download Failed', err.message || 'Could not download note.');
+    } finally {
+      setDownloading(false);
+    }
+  };
 
   // Wishlist and Viewed Stats
   const [inWishlist, setInWishlist] = useState(false);
@@ -424,26 +471,38 @@ export default function ProductDetailPage() {
             </div>
             
             <div className="flex flex-col sm:flex-row gap-3 sm:w-auto w-full">
-              <button
-                onClick={() => { addItem(note); navigate('/cart'); }}
-                className="py-3.5 px-6 font-bold text-sm bg-cyan-600 hover:bg-cyan-700 text-white rounded-xl shadow-md transition-colors"
-              >
-                Buy Now
-              </button>
-              {added ? (
-                <Link
-                  to="/cart"
-                  className="py-3.5 px-6 font-bold text-sm bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-700 rounded-xl flex items-center justify-center transition-all"
-                >
-                  Go to Cart
-                </Link>
-              ) : (
+              {isDirectDownload ? (
                 <button
-                  onClick={() => { addItem(note); addToast('success', 'Added to Cart', 'Product added to cart.'); }}
-                  className="py-3.5 px-6 font-bold text-sm bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-700 rounded-xl transition-all"
+                  onClick={handleDirectDownload}
+                  disabled={downloading}
+                  className="py-3.5 px-6 font-bold text-sm bg-cyan-600 hover:bg-cyan-700 text-white rounded-xl shadow-md transition-colors disabled:opacity-55"
                 >
-                  Add to Cart
+                  {downloading ? 'Downloading...' : 'Download Now'}
                 </button>
+              ) : (
+                <>
+                  <button
+                    onClick={() => { addItem(note); navigate('/cart'); }}
+                    className="py-3.5 px-6 font-bold text-sm bg-cyan-600 hover:bg-cyan-700 text-white rounded-xl shadow-md transition-colors"
+                  >
+                    Buy Now
+                  </button>
+                  {added ? (
+                    <Link
+                      to="/cart"
+                      className="py-3.5 px-6 font-bold text-sm bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-700 rounded-xl flex items-center justify-center transition-all"
+                    >
+                      Go to Cart
+                    </Link>
+                  ) : (
+                    <button
+                      onClick={() => { addItem(note); addToast('success', 'Added to Cart', 'Product added to cart.'); }}
+                      className="py-3.5 px-6 font-bold text-sm bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-700 rounded-xl transition-all"
+                    >
+                      Add to Cart
+                    </button>
+                  )}
+                </>
               )}
             </div>
           </div>

@@ -152,6 +152,45 @@ export default function NotesManager() {
     document.body.removeChild(link);
   };
 
+  const handleAdminDirectDownload = async (note: Note) => {
+    try {
+      addToast('info', 'Preparing Download', 'Generating secure download link...');
+      
+      const urlOrPath = note.pdf_url;
+      let relativePath = urlOrPath;
+      if (urlOrPath.startsWith("http://") || urlOrPath.startsWith("https://")) {
+        const marker = "notes-pdfs/";
+        const index = urlOrPath.indexOf(marker);
+        if (index !== -1) {
+          relativePath = decodeURIComponent(urlOrPath.substring(index + marker.length));
+        }
+      }
+      
+      console.log(`Generating signed URL for: ${relativePath}`);
+      const { data, error } = await supabase.storage
+        .from('notes-pdfs')
+        .createSignedUrl(relativePath, 60);
+
+      if (error || !data?.signedUrl) {
+        throw new Error(error?.message || 'Signed URL generation failed');
+      }
+
+      console.log("Signed URL successfully generated:", data.signedUrl);
+      addToast('success', 'Download Started', 'Your PDF notes are downloading.');
+
+      const link = document.createElement('a');
+      link.href = data.signedUrl;
+      link.target = '_blank';
+      link.setAttribute('download', `${note.title}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (err: any) {
+      console.error('Direct download error:', err);
+      addToast('error', 'Download Failed', err.message || 'Could not download note.');
+    }
+  };
+
   const handleCSVImport = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -409,6 +448,13 @@ export default function NotesManager() {
                     </td>
                     <td className="px-6 py-4 text-right shrink-0">
                       <div className="flex items-center justify-end gap-1.5">
+                        <button
+                          onClick={() => handleAdminDirectDownload(n)}
+                          className="p-1.5 bg-slate-50 border border-slate-200 text-slate-600 hover:text-emerald-600 hover:bg-emerald-50 hover:border-emerald-200 rounded-lg transition-all"
+                          title="Direct Download"
+                        >
+                          <Download className="w-3.5 h-3.5" />
+                        </button>
                         <button
                           onClick={() => handleEdit(n)}
                           className="p-1.5 bg-slate-50 border border-slate-200 text-slate-600 hover:text-cyan-600 hover:bg-cyan-50 hover:border-cyan-200 rounded-lg transition-all"
