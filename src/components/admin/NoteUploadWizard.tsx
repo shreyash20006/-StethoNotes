@@ -1,14 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { PDFDocument } from 'pdf-lib';
+import * as pdfjsLib from 'pdfjs-dist';
 import { supabase } from '../../lib/supabase';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useToastStore } from '../../store/useToastStore';
 import type { Note, Course } from '../../types';
 import {
   FileText, Image as ImageIcon, Upload, X, ArrowLeft, ArrowRight,
-  Trash2, Eye, ShieldCheck, CheckCircle2, ChevronRight, Loader2
+  Trash2, Eye, ShieldCheck, CheckCircle2, ChevronRight, Loader2, RefreshCw
 } from 'lucide-react';
+
+pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js`;
 
 interface NoteUploadWizardProps {
   onClose: () => void;
@@ -40,7 +43,11 @@ export default function NoteUploadWizard({ onClose, onSaveSuccess, note = null, 
   // Mode 1: PDF States
   const [pdfFile, setPdfFile] = useState<File | null>(null);
   const [coverFile, setCoverFile] = useState<File | null>(null);
-  const [pdfPreviews, setPdfPreviews] = useState<{ file: File; previewUrl: string }[]>([]);
+
+  // Auto Preview States
+  const [isGeneratingPreviews, setIsGeneratingPreviews] = useState(false);
+  const [previewProgress, setPreviewProgress] = useState(0);
+  const [previewError, setPreviewError] = useState<string | null>(null);
 
   // Mode 2: Images States
   const [noteImages, setNoteImages] = useState<{ file: File; previewUrl: string }[]>([]);
@@ -119,18 +126,6 @@ export default function NoteUploadWizard({ onClose, onSaveSuccess, note = null, 
     }
   });
 
-  const { getRootProps: getPdfPreviewsRootProps, getInputProps: getPdfPreviewsInputProps } = useDropzone({
-    accept: { 'image/*': ['.jpg', '.jpeg', '.png', '.webp'] },
-    maxFiles: 3,
-    onDrop: (acceptedFiles) => {
-      const newFiles = acceptedFiles.map(file => ({
-        file,
-        previewUrl: URL.createObjectURL(file)
-      }));
-      setPdfPreviews(prev => [...prev, ...newFiles].slice(0, 3));
-    }
-  });
-
   const { getRootProps: getImagesRootProps, getInputProps: getImagesInputProps } = useDropzone({
     accept: { 'image/*': ['.jpg', '.jpeg', '.png', '.webp'] },
     onDrop: (acceptedFiles) => {
@@ -158,13 +153,6 @@ export default function NoteUploadWizard({ onClose, onSaveSuccess, note = null, 
     URL.revokeObjectURL(updated[index].previewUrl);
     updated.splice(index, 1);
     setNoteImages(updated);
-  };
-
-  const removePdfPreview = (index: number) => {
-    const updated = [...pdfPreviews];
-    URL.revokeObjectURL(updated[index].previewUrl);
-    updated.splice(index, 1);
-    setPdfPreviews(updated);
   };
 
   // HTML5 Canvas Resizing of images to A4 Portrait 300 DPI equivalent
@@ -213,52 +201,132 @@ export default function NoteUploadWizard({ onClose, onSaveSuccess, note = null, 
       reader.readAsDataURL(file);
     });
   };
+  // PDF page preview auto-extractor using pdfjs-dist
+  const generatePreviews = async (pdfBlob: Blob) => {
+    setIsGeneratingPreviews(true);
+    setPreviewProgress(10);
+    setPreviewError(null);
+    setUploadedPreviewUrls([]);
 
-  // Dynamic Center Watermarking for Public Preview Pages
-  const applyPreviewWatermark = (file: File): Promise<Blob> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const img = new Image();
-        img.onload = () => {
-          const canvas = document.createElement('canvas');
-          canvas.width = img.width;
-          canvas.height = img.height;
+    try {
+      const arrayBuffer = await pdfBlob.arrayBuffer();
+      const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
+      const pdfDocObj = await loadingTask.promise;
+      const totalPages = pdfDocObj.numPages;
+      const pagesToExtract = Math.min(3, totalPages);
+      
+      const generatedUrls: string[] = [];
 
-          const ctx = canvas.getContext('2d');
-          if (!ctx) {
-            reject(new Error('Canvas context not supported.'));
-            return;
-          }
+      for (let pageNum = 1; pageNum <= pagesToExtract; pageNum++) {
+        setPreviewProgress(Math.floor(10 + ((pageNum - 1) / pagesToExtract) * 80));
+        
+        const page = await pdfDocObj.getPage(pageNum);
+        
+        // Calculate viewport scale for target width 1200px+ (maintain aspect ratio)
+        const viewport1 = page.getViewport({ scale: 1.0 });
+        const targetWidth = 1200;
+        const scale = targetWidth / viewport1.width;
+        const viewport = page.getViewport({ scale });
+        
+        const canvas = document.createElement('canvas');
+        canvas.width = viewport.width;
+        canvas.height = viewport.height;
+        
+        const ctx = canvas.getContext('2d');
+        if (!ctx) throw new Error('Canvas 2D context not available.');
+        
+        // Render PDF page to canvas
+        await page.render({ canvasContext: ctx, viewport }).promise;
+        
+        // Overlay diagonal Center Watermark before extracting JPEG Blob
+        ctx.save();
+        ctx.translate(canvas.width / 2, canvas.height / 2);
+        ctx.rotate(-45 * Math.PI / 180);
+        
+        const fontSize = Math.max(20, Math.floor(canvas.width / 12));
+        ctx.font = `bold ${fontSize}px sans-serif`;
+        ctx.fillStyle = 'rgba(239, 68, 68, 0.22)';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        
+        ctx.fillText('STETHONOTES PREVIEW', 0, -fontSize / 2);
+        ctx.fillText('NOT FOR DISTRIBUTION', 0, fontSize / 2);
+        
+        ctx.restore();
+        
+        // Extract canvas to high-quality JPEG blob (Quality 95%)
+        const jpegBlob = await new Promise<Blob | null>((resolve) => {
+          canvas.toBlob((blob) => resolve(blob), 'image/jpeg', 0.95);
+        });
+        
+        if (!jpegBlob) {
+          throw new Error(`Failed to convert canvas to JPEG for page ${pageNum}.`);
+        }
 
-          ctx.drawImage(img, 0, 0);
-
-          // Setup large red watermark text rotated diagonally
-          ctx.save();
-          ctx.translate(canvas.width / 2, canvas.height / 2);
-          ctx.rotate(-45 * Math.PI / 180);
-
-          const fontSize = Math.max(20, Math.floor(canvas.width / 12));
-          ctx.font = `bold ${fontSize}px sans-serif`;
-          ctx.fillStyle = 'rgba(239, 68, 68, 0.22)';
-          ctx.textAlign = 'center';
-          ctx.textBaseline = 'middle';
-
-          ctx.fillText('STETHONOTES PREVIEW', 0, -fontSize / 2);
-          ctx.fillText('NOT FOR DISTRIBUTION', 0, fontSize / 2);
-
-          ctx.restore();
-
-          canvas.toBlob((blob) => {
-            if (blob) resolve(blob);
-            else reject(new Error('Watermark canvas failed.'));
-          }, 'image/jpeg', 0.85);
-        };
-        img.src = e.target?.result as string;
-      };
-      reader.readAsDataURL(file);
-    });
+        // Upload to public preview-images bucket
+        const sellerId = note?.seller_id || user?.id || 'admin';
+        const uuid = Math.random().toString(36).substring(2, 10);
+        const filePath = `previews/${sellerId}/${uuid}_p${pageNum}.jpg`;
+        
+        const { error: uploadErr } = await supabase.storage
+          .from('preview-images')
+          .upload(filePath, jpegBlob, { contentType: 'image/jpeg', upsert: true });
+          
+        if (uploadErr) throw uploadErr;
+        
+        const { data } = supabase.storage.from('preview-images').getPublicUrl(filePath);
+        generatedUrls.push(data.publicUrl);
+      }
+      
+      setUploadedPreviewUrls(generatedUrls);
+      setPreviewProgress(100);
+      addToast('success', 'Previews Extracted', `Extracted ${pagesToExtract} pages automatically.`);
+    } catch (err: any) {
+      console.error('Error extracting previews:', err);
+      setPreviewError(err.message || 'Error occurred generating page previews.');
+      addToast('error', 'Preview Error', 'Failed to extract preview images automatically.');
+    } finally {
+      setIsGeneratingPreviews(false);
+    }
   };
+
+  const handleRegeneratePreviews = async () => {
+    let blobToUse: Blob | null = null;
+    if (uploadType === 'pdf' && pdfFile) {
+      blobToUse = pdfFile;
+    } else if (uploadType === 'images' && compiledPdfBlob) {
+      blobToUse = compiledPdfBlob;
+    } else if (note) {
+      setIsGeneratingPreviews(true);
+      setPreviewProgress(5);
+      try {
+        const { data, error } = await supabase.storage
+          .from('notes-pdfs')
+          .download(note.pdf_url);
+        if (error || !data) {
+          throw new Error(error?.message || 'Could not download original PDF for preview extraction.');
+        }
+        blobToUse = data;
+      } catch (err: any) {
+        setPreviewError(err.message);
+        setIsGeneratingPreviews(false);
+        return;
+      }
+    }
+
+    if (blobToUse) {
+      generatePreviews(blobToUse);
+    } else {
+      addToast('error', 'No Source Document', 'Please upload a PDF note document first.');
+    }
+  };
+
+  // Trigger preview generation when a PDF is dropped in Mode 1
+  useEffect(() => {
+    if (pdfFile && uploadType === 'pdf') {
+      generatePreviews(pdfFile);
+    }
+  }, [pdfFile, uploadType]);
 
   // Compilation Routine: Multi-Image to PDF Compiler
   const compileImages = async () => {
@@ -309,6 +377,7 @@ export default function NoteUploadWizard({ onClose, onSaveSuccess, note = null, 
 
       setCompilationProgress(100);
       addToast('success', 'PDF Compiled Successfully', `Standardized A4 PDF document generated (${total} pages).`);
+      generatePreviews(pdfBlob);
       setStep(3);
     } catch (err: any) {
       addToast('error', 'Compilation Error', err.message || 'Could not compile note images.');
@@ -387,56 +456,13 @@ export default function NoteUploadWizard({ onClose, onSaveSuccess, note = null, 
         
         const { data } = supabase.storage.from('thumbnails').getPublicUrl(filePath);
         coverUrl = data.publicUrl;
-      } else if (uploadType === 'images' && noteImages.length > 0 && !uploadedCoverUrl) {
-        // Use first page image as cover if not set explicitly
-        setCompilationProgress(50);
-        const filePath = `covers/${storageBaseDir}_cover.jpg`;
-        const { error } = await supabase.storage
-          .from('thumbnails')
-          .upload(filePath, noteImages[0].file, { overwrite: true });
-        if (error) throw error;
-
-        const { data } = supabase.storage.from('thumbnails').getPublicUrl(filePath);
-        coverUrl = data.publicUrl;
+      } else if (uploadedPreviewUrls.length > 0 && !uploadedCoverUrl) {
+        // Use first page of auto-generated previews as cover if not set explicitly
+        coverUrl = uploadedPreviewUrls[0];
       }
 
-      // 3. Watermark and Upload Public Preview Images
-      let previewUrlsList: string[] = [];
-      if (uploadType === 'pdf' && pdfPreviews.length > 0) {
-        setCompilationProgress(70);
-        for (let i = 0; i < pdfPreviews.length; i++) {
-          const item = pdfPreviews[i];
-          const watermarkedBlob = await applyPreviewWatermark(item.file);
-          const filePath = `${storageBaseDir}_preview_${i}.jpg`;
-          
-          const { error } = await supabase.storage
-            .from('preview-images')
-            .upload(filePath, watermarkedBlob, { overwrite: true });
-          if (error) throw error;
-
-          const { data } = supabase.storage.from('preview-images').getPublicUrl(filePath);
-          previewUrlsList.push(data.publicUrl);
-        }
-      } else if (uploadType === 'images' && noteImages.length > 0) {
-        setCompilationProgress(70);
-        // Upload up to first 3 watermarked pages as previews
-        const maxPreviews = Math.min(3, noteImages.length);
-        for (let i = 0; i < maxPreviews; i++) {
-          const item = noteImages[i];
-          const watermarkedBlob = await applyPreviewWatermark(item.file);
-          const filePath = `${storageBaseDir}_preview_${i}.jpg`;
-          
-          const { error } = await supabase.storage
-            .from('preview-images')
-            .upload(filePath, watermarkedBlob, { overwrite: true });
-          if (error) throw error;
-
-          const { data } = supabase.storage.from('preview-images').getPublicUrl(filePath);
-          previewUrlsList.push(data.publicUrl);
-        }
-      } else {
-        previewUrlsList = uploadedPreviewUrls;
-      }
+      // 3. Previews are automatically extracted and uploaded asynchronously in the background.
+      const previewUrlsList = uploadedPreviewUrls;
 
       setCompilationProgress(95);
       setUploadedPdfPath(pdfPath);
@@ -617,30 +643,72 @@ export default function NoteUploadWizard({ onClose, onSaveSuccess, note = null, 
                 </div>
               </div>
 
-              {/* Preview images list */}
-              <div className="space-y-2">
-                <label className="text-[10px] font-bold text-slate-400 uppercase">Upload Preview Images (Max 3 pages) *</label>
-                <div {...getPdfPreviewsRootProps()} className="border-2 border-dashed border-slate-200 hover:border-emerald-500 bg-white rounded-2xl p-6 text-center cursor-pointer transition-colors">
-                  <input {...getPdfPreviewsInputProps()} />
-                  <Upload className="w-6 h-6 text-slate-350 mx-auto mb-2" />
-                  <p className="text-xs font-bold text-slate-700">Add up to 3 preview pages</p>
-                  <p className="text-[10px] text-slate-400 mt-1">These will be watermarked and displayed on the product page.</p>
+              {/* Auto Generated Previews Status & List */}
+              <div className="space-y-3 bg-white p-5 border border-slate-200 rounded-2xl">
+                <div className="flex justify-between items-center border-b border-slate-100 pb-2">
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-400 uppercase block">Preview Pages (Auto-Generated)</label>
+                    <span className="text-[10px] text-emerald-600 font-medium font-sans">✓ System Extracted & Watermarked</span>
+                  </div>
+                  {(pdfFile || note) && (
+                    <button
+                      type="button"
+                      onClick={handleRegeneratePreviews}
+                      disabled={isGeneratingPreviews}
+                      className="py-1.5 px-3 bg-slate-100 hover:bg-slate-200 rounded-lg text-[10px] font-bold text-slate-700 transition-colors flex items-center gap-1 disabled:opacity-50"
+                    >
+                      <RefreshCw className="w-3 h-3" />
+                      <span>Regenerate Previews</span>
+                    </button>
+                  )}
                 </div>
-                {pdfPreviews.length > 0 && (
+
+                {/* Progress and status indicators */}
+                {isGeneratingPreviews && (
+                  <div className="space-y-1.5 py-2 font-sans">
+                    <div className="flex justify-between text-[10px] font-bold text-slate-500">
+                      <span className="flex items-center gap-1">
+                        <Loader2 className="w-3.5 h-3.5 animate-spin text-cyan-500" />
+                        <span>Generating high-quality previews ({previewProgress}%)...</span>
+                      </span>
+                    </div>
+                    <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
+                      <div className="bg-cyan-500 h-full transition-all duration-300" style={{ width: `${previewProgress}%` }} />
+                    </div>
+                  </div>
+                )}
+
+                {previewError && (
+                  <div className="bg-red-50 text-red-750 border border-red-100 rounded-xl p-3 text-xs leading-relaxed flex flex-col gap-1 text-left font-sans">
+                    <span className="font-bold">Preview Extraction Failed</span>
+                    <span>{previewError}</span>
+                    <button
+                      type="button"
+                      onClick={handleRegeneratePreviews}
+                      className="text-left font-bold underline mt-1 text-[10px]"
+                    >
+                      Click here to retry manual generation
+                    </button>
+                  </div>
+                )}
+
+                {uploadedPreviewUrls.length > 0 ? (
                   <div className="grid grid-cols-3 gap-4 pt-2">
-                    {pdfPreviews.map((p, i) => (
-                      <div key={i} className="relative aspect-[3/4] bg-slate-100 rounded-xl overflow-hidden border border-slate-200">
-                        <img src={p.previewUrl} alt="Preview" className="w-full h-full object-cover" />
-                        <button
-                          type="button"
-                          onClick={() => removePdfPreview(i)}
-                          className="absolute top-1.5 right-1.5 p-1 bg-red-500 text-white rounded-full hover:bg-red-650 transition-colors"
-                        >
-                          <X className="w-3.5 h-3.5" />
-                        </button>
+                    {uploadedPreviewUrls.map((url, i) => (
+                      <div key={i} className="group relative aspect-[3/4] bg-slate-50 border border-slate-200 rounded-xl overflow-hidden shadow-sm">
+                        <img src={url} alt={`Preview ${i+1}`} className="w-full h-full object-cover select-none pointer-events-none" />
+                        <span className="absolute top-2 left-2 bg-slate-900/60 backdrop-blur-xs text-white text-[9px] px-1.5 py-0.5 rounded-md font-bold font-mono">
+                          Page {i+1}
+                        </span>
                       </div>
                     ))}
                   </div>
+                ) : (
+                  !isGeneratingPreviews && (
+                    <p className="text-[10px] text-slate-400 italic py-2 font-sans">
+                      {pdfFile ? 'Preparing preview extraction...' : 'Upload PDF note file to extract previews automatically.'}
+                    </p>
+                  )
                 )}
               </div>
             </div>
@@ -768,6 +836,47 @@ export default function NoteUploadWizard({ onClose, onSaveSuccess, note = null, 
                 <span className="text-xs text-slate-800 font-bold">{(fileSize / (1024 * 1024)).toFixed(2)} MB</span>
               </div>
             </div>
+          </div>
+
+          {/* Previews display in Step 3 */}
+          <div className="bg-white border border-slate-200 rounded-2xl p-5 text-left space-y-3 font-sans">
+            <div className="flex justify-between items-center border-b border-slate-100 pb-2">
+              <div>
+                <label className="text-[10px] font-bold text-slate-400 uppercase block font-sans">Preview Pages</label>
+                <span className="text-[10px] text-emerald-600 font-semibold font-sans">✓ Auto Generated & Watermarked</span>
+              </div>
+              {isGeneratingPreviews && (
+                <span className="flex items-center gap-1 text-[10px] font-bold text-cyan-600 font-sans">
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  <span>Extracting...</span>
+                </span>
+              )}
+            </div>
+
+            {isGeneratingPreviews && (
+              <div className="space-y-1 py-1 font-sans">
+                <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
+                  <div className="bg-cyan-550 h-full transition-all duration-300" style={{ width: `${previewProgress}%` }} />
+                </div>
+              </div>
+            )}
+
+            {uploadedPreviewUrls.length > 0 ? (
+              <div className="grid grid-cols-3 gap-4">
+                {uploadedPreviewUrls.map((url, i) => (
+                  <div key={i} className="group relative aspect-[3/4] bg-slate-50 border border-slate-200 rounded-xl overflow-hidden shadow-sm">
+                    <img src={url} alt={`Preview ${i+1}`} className="w-full h-full object-cover select-none pointer-events-none" />
+                    <span className="absolute top-2 left-2 bg-slate-900/60 backdrop-blur-xs text-white text-[9px] px-1.5 py-0.5 rounded-md font-bold font-mono">
+                      Page {i+1}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              !isGeneratingPreviews && (
+                <p className="text-[10px] text-slate-400 italic py-1 font-sans">No previews generated yet.</p>
+              )
+            )}
           </div>
 
           {/* Upload Progress Bar if active */}

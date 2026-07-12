@@ -310,10 +310,9 @@ export default function ProductDetailPage() {
     ? (reviews.reduce((acc, r) => acc + r.rating, 0) / reviews.length).toFixed(1)
     : '4.8';
 
-  const previewGallery = [
-    note.thumbnail_url,
-    ...(note.preview_images || [])
-  ];
+  const previewGallery = note.preview_images && note.preview_images.length > 0
+    ? note.preview_images
+    : [note.thumbnail_url];
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 min-h-screen font-display">
