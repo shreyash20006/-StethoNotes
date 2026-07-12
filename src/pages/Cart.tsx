@@ -21,6 +21,7 @@ import FailureModal from '../components/cart/FailureModal';
 import { ChevronRight, Lock } from 'lucide-react';
 
 export default function Cart() {
+  console.log("Vite Env:", import.meta.env);
   console.log("VITE_RAZORPAY_KEY_ID:", import.meta.env.VITE_RAZORPAY_KEY_ID);
   const navigate = useNavigate();
   const { user } = useAuthStore();
