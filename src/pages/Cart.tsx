@@ -158,12 +158,6 @@ export default function Cart() {
           throw err;
         }
 
-        // Validation of key
-        const razorpayKey = import.meta.env.VITE_RAZORPAY_KEY_ID;
-        if (!razorpayKey) {
-          throw new Error("Razorpay Key ID (VITE_RAZORPAY_KEY_ID) is missing.");
-        }
-
         // Validate orderData
         if (!orderData) {
           throw new Error("No response received from order creation service.");
@@ -179,6 +173,12 @@ export default function Cart() {
         }
         if (!orderData.currency) {
           throw new Error("Currency code is missing in order details.");
+        }
+
+        // Validation of key
+        const razorpayKey = orderData.razorpay_key_id || import.meta.env.VITE_RAZORPAY_KEY_ID;
+        if (!razorpayKey) {
+          throw new Error("Razorpay Key ID (VITE_RAZORPAY_KEY_ID) is missing.");
         }
 
         // 2. Initiate Razorpay Window Payment Options

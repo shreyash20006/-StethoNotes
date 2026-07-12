@@ -559,7 +559,8 @@ serve(async (req) => {
           success: true,
           order_id: razorpayOrder.id,
           amount: razorpayOrder.amount,
-          currency: razorpayOrder.currency
+          currency: razorpayOrder.currency,
+          razorpay_key_id: razorpayKeyId
         }), {
           status: 200,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
