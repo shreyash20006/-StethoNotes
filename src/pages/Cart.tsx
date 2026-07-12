@@ -110,7 +110,8 @@ export default function Cart() {
         }
 
         // 1. Create Order via server-side Edge Function (creates Razorpay order and returns it)
-        const { data: orderData, error: orderErr } = await supabase.functions.invoke('razorpay/create-order', {
+        const { data: orderData, error: orderErr } = await supabase.functions.invoke('razorpay', {
+          headers: { 'x-action': 'create-order' },
           body: {
             items: items.map(item => ({ id: item.note.id, price: item.note.price })),
             userId: user?.id || null,
@@ -138,7 +139,8 @@ export default function Cart() {
             setPaymentState('verifying');
             try {
               // 3. Verify Payment Signature & Create DB Order on the Server
-              const { data: verifyData, error: verifyErr } = await supabase.functions.invoke('razorpay/verify-payment', {
+              const { data: verifyData, error: verifyErr } = await supabase.functions.invoke('razorpay', {
+                headers: { 'x-action': 'verify-payment' },
                 body: {
                   razorpay_payment_id: response.razorpay_payment_id,
                   razorpay_order_id: response.razorpay_order_id,

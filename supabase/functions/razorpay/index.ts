@@ -207,10 +207,29 @@ serve(async (req) => {
   const fromName = Deno.env.get('FROM_NAME') ?? 'StethoNotes'
 
   try {
+    // Determine action route from subpath or headers or JSON payload
+    let action = ""
+    if (path.endsWith('/create-order')) {
+      action = "create-order"
+    } else if (path.endsWith('/verify-payment')) {
+      action = "verify-payment"
+    } else if (path.endsWith('/webhook')) {
+      action = "webhook"
+    } else {
+      action = req.headers.get("x-action") || ""
+      if (!action && req.method === "POST") {
+        try {
+          const clone = req.clone()
+          const bodyJson = await clone.json()
+          action = bodyJson.action || ""
+        } catch (_) {}
+      }
+    }
+
     // --------------------------------------------------------
     // ENDPOINT: /create-order
     // --------------------------------------------------------
-    if (path.endsWith('/create-order')) {
+    if (action === 'create-order') {
       const { items, userId, name, email, phone, couponCode } = await req.json()
 
       if (!items || items.length === 0 || !email) {
@@ -308,7 +327,7 @@ serve(async (req) => {
     // --------------------------------------------------------
     // ENDPOINT: /verify-payment
     // --------------------------------------------------------
-    else if (path.endsWith('/verify-payment')) {
+    else if (action === 'verify-payment') {
       const {
         razorpay_payment_id,
         razorpay_order_id,
@@ -450,7 +469,7 @@ serve(async (req) => {
     // --------------------------------------------------------
     // ENDPOINT: /webhook
     // --------------------------------------------------------
-    else if (path.endsWith('/webhook')) {
+    else if (action === 'webhook') {
       const webhookBody = await req.text()
       const signature = req.headers.get('x-razorpay-signature') ?? ""
 
