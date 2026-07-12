@@ -500,7 +500,12 @@ export default function NoteUploadWizard({ onClose, onSaveSuccess, note = null, 
       return;
     }
 
-    const sellerId = note ? note.seller_id : (isAdmin ? null : (user?.id || null));
+    const isUuid = (val: any) => {
+      if (typeof val !== 'string') return false;
+      return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val);
+    };
+    const rawSellerId = note ? note.seller_id : (isAdmin ? null : (user?.id || null));
+    const sellerId = isUuid(rawSellerId) ? rawSellerId : null;
 
     const payload = {
       title: title.trim(),
