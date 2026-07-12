@@ -771,16 +771,19 @@ serve(async (req) => {
             order_id: dbOrder.id,
             email: dbOrder.customer_email,
             status: 'failure',
-            error_message: emailErr.message
+            error_message: emailErr.message,
+            created_at: new Date().toISOString()
           })
 
-          const error = createErrorResponse(
-            "verify-payment",
-            `Payment captured, but email delivery failed: ${emailErr.message}`,
-            emailErr
-          )
-          return new Response(JSON.stringify(error), {
-            status: 400,
+          // UX Safeguard: The customer's payment succeeded. Do not fail the checkout!
+          // Return success: true but flag the email failure.
+          return new Response(JSON.stringify({ 
+            success: true, 
+            order_id: dbOrder.id,
+            email_delivery_failed: true,
+            email_error: emailErr.message
+          }), {
+            status: 200,
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           })
         }
