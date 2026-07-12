@@ -45,6 +45,10 @@ export default function Cart() {
   const [createdOrderId, setCreatedOrderId] = useState<string | null>(null);
   const [paymentError, setPaymentError] = useState<string | null>(null);
 
+  // Shown after a few seconds of "redirecting" state, in case the embedded
+  // widget silently fails to render (ad blockers, Brave Shields, etc.)
+  const [showFallbackOption, setShowFallbackOption] = useState(false);
+
   // SEO Optimization
   useEffect(() => {
     document.title = 'Shopping Cart | StethoNotes';
@@ -90,7 +94,53 @@ export default function Cart() {
     });
   };
 
+  // Fallback checkout: instead of the embedded widget (which loads many
+  // cross-origin sub-resources that ad blockers pick off individually),
+  // this redirects the whole page to a Razorpay-hosted payment page.
+  // Top-level navigation is almost never blocked by content blockers.
+  const openPaymentLinkFallback = async () => {
+    try {
+      setShowFallbackOption(false);
+      setPaymentState('redirecting');
+      addToast('info', 'Opening secure payment page', 'Redirecting you to a Razorpay-hosted checkout page…');
+
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
+      if (!supabaseUrl) {
+        throw new Error('Supabase URL is not configured. Cannot call Edge Function.');
+      }
+
+      const res = await supabase.functions.invoke('razorpay', {
+        headers: { 'x-action': 'create-payment-link' },
+        body: {
+          items: items.map(item => ({ id: item.note.id, price: item.note.price })),
+          userId: user?.id || null,
+          name: name.trim(),
+          email: email.trim().toLowerCase(),
+          phone: phone.trim(),
+          couponCode: coupon || null,
+          callbackUrl: `${window.location.origin}/order-confirmation`
+        }
+      });
+
+      if (res.error) throw res.error;
+      const linkData = res.data;
+
+      if (!linkData?.success || !linkData?.short_url) {
+        throw new Error(linkData?.message || 'Could not generate a payment link.');
+      }
+
+      // Full-page redirect — not an embedded widget.
+      window.location.href = linkData.short_url;
+    } catch (err: any) {
+      console.error('Payment link fallback failed:', err);
+      setPaymentError(err.message || 'Could not open the secure payment page. Please try again or contact support.');
+      setPaymentState('failed');
+      setFailureOpen(true);
+    }
+  };
+
   const handleCheckoutPayment = async () => {
+    setShowFallbackOption(false);
     // Validations
     if (items.length === 0) {
       addToast('error', 'Cart Empty', 'Please select at least one study guide note before checking out.');
@@ -115,7 +165,9 @@ export default function Cart() {
         // Live Razorpay Flow
         const scriptLoaded = await loadRazorpayScript();
         if (!scriptLoaded) {
-          throw new Error('Razorpay SDK failed to load. Please verify your connection.');
+          console.warn('Razorpay checkout.js failed to load — falling back to hosted payment link.');
+          await openPaymentLinkFallback();
+          return;
         }
 
         // 1. Create Order via server-side Edge Function (creates Razorpay order and returns it)
@@ -180,6 +232,10 @@ export default function Cart() {
           throw new Error("Currency code is missing in order details.");
         }
 
+        // Local flag (not React state) so the watchdog below always sees
+        // the current value, even inside its setTimeout closure.
+        let paymentHandledByWidget = false;
+
         // 2. Initiate Razorpay Window Payment Options
         const options = {
           key: razorpayKey,
@@ -190,6 +246,8 @@ export default function Cart() {
           image: 'https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?auto=format&fit=crop&q=80&w=150',
           order_id: orderData.order_id, // Pass Razorpay order_id
           handler: async (response: any) => {
+            paymentHandledByWidget = true;
+            setShowFallbackOption(false);
             setPaymentState('verifying');
             try {
               // 3. Verify Payment Signature & Create DB Order on the Server
@@ -290,6 +348,33 @@ export default function Cart() {
         });
         rzp.open();
 
+        // Watchdog: Razorpay's widget mounts an iframe into the DOM almost
+        // immediately once open() succeeds. If a blocker silently ate one of
+        // the widget's own sub-resource requests (e.g. the 403 on
+        // checkout-static-next.razorpay.com/build/...), the iframe never
+        // appears and the user is left staring at nothing. Detect that and
+        // fall back automatically to the hosted payment link.
+        let widgetDetected = false;
+        const detectWidget = () => {
+          const frame = document.querySelector('iframe[src*="razorpay"], iframe[name*="razorpay"], .razorpay-checkout-frame');
+          if (frame) widgetDetected = true;
+        };
+        const watchdogInterval = window.setInterval(detectWidget, 400);
+
+        window.setTimeout(() => {
+          window.clearInterval(watchdogInterval);
+          detectWidget();
+          if (!widgetDetected && !paymentHandledByWidget) {
+            console.warn('Razorpay widget never mounted — falling back to hosted payment link.');
+            try { rzp.close(); } catch (e) { /* no-op */ }
+            openPaymentLinkFallback();
+          }
+        }, 6000);
+
+        // Give the user a manual way out sooner, in case the widget is
+        // half-broken (visible but non-functional) rather than fully absent.
+        window.setTimeout(() => setShowFallbackOption(true), 4000);
+
       } else {
         // DEMO local fallback simulation
         await new Promise((resolve) => setTimeout(resolve, 1500));
@@ -345,6 +430,7 @@ export default function Cart() {
       }
     } catch (err: any) {
       console.error(err);
+      setShowFallbackOption(false);
       setPaymentError(err.message || 'Payment processing failed.');
       setPaymentState('failed');
       setFailureOpen(true);
@@ -389,6 +475,22 @@ export default function Cart() {
           👜 {items.length} Note{items.length !== 1 ? 's' : ''} Selected
         </span>
       </div>
+
+      {/* Manual fallback: shown if the embedded widget seems stuck (e.g. an
+          ad blocker or Brave Shields is silently interfering) */}
+      {showFallbackOption && paymentState === 'redirecting' && (
+        <div className="mb-6 bg-amber-50 border border-amber-200 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <p className="text-xs sm:text-sm text-amber-800 font-sans">
+            Payment window not opening? An ad blocker or browser privacy shield may be interfering.
+          </p>
+          <button
+            onClick={openPaymentLinkFallback}
+            className="shrink-0 bg-amber-600 hover:bg-amber-700 text-white text-xs font-display font-bold px-4 py-2 rounded-lg transition-colors"
+          >
+            Pay via secure link instead
+          </button>
+        </div>
+      )}
 
       {/* Grid Layout Section */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start relative pb-24 lg:pb-0">
