@@ -66,11 +66,13 @@ export default function ProductDetailPage() {
 
       // 2. Log Recently Viewed (Fire-and-forget)
       if (user) {
-        supabase.from('recently_viewed').upsert({
-          user_id: user.id,
-          note_id: id,
-          viewed_at: new Date().toISOString()
-        }, { onConflict: 'user_id,note_id' }).catch(console.error);
+        Promise.resolve(
+          supabase.from('recently_viewed').upsert({
+            user_id: user.id,
+            note_id: id,
+            viewed_at: new Date().toISOString()
+          }, { onConflict: 'user_id,note_id' })
+        ).catch(console.error);
 
         // Check if item is in user's wishlist
         const { data: wish } = await supabase
