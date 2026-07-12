@@ -23,6 +23,7 @@ import SellerLoginPage from './pages/SellerLoginPage';
 import AdminLoginPage from './pages/AdminLoginPage';
 import SellerPendingPage from './pages/SellerPendingPage';
 import SellerDashboardPage from './pages/SellerDashboardPage';
+import DownloadPage from './pages/DownloadPage';
 
 // ============================================================
 // LAYOUT WRAPPERS
@@ -166,6 +167,7 @@ function App() {
           <Route path="cart" element={<CartPage />} />
           <Route path="order-success" element={<OrderConfirmationPage />} />
           <Route path="track-order" element={<OrderLookupPage />} />
+          <Route path="download/:orderId/:noteId" element={<DownloadPage />} />
           <Route path="login" element={<LoginPage />} />
           <Route path="privacy" element={<PrivacyPolicyPage />} />
           <Route path="terms" element={<TermsOfServicePage />} />

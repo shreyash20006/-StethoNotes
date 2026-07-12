@@ -61,25 +61,17 @@ serve(async (req) => {
       throw new Error(`No items found for order ${orderId}.`)
     }
 
-    // 3. Generate 48-hour secure signed download URLs for each purchased note PDF
+    // 3. Generate secure download page URLs for each purchased note
+    const siteUrl = Deno.env.get('SITE_URL') || 'https://stethonotes.store'
     const emailNotesList: Array<{ title: string; subject: string; downloadUrl: string }> = []
     
     for (const item of items) {
       if (item.note) {
-        // Generate signed URL valid for 48 hours (172800 seconds)
-        const { data, error } = await supabase.storage
-          .from('notes-pdfs')
-          .createSignedUrl(item.note.pdf_url, 172800)
-
-        if (error || !data?.signedUrl) {
-          console.error(`Error generating signed URL for note ${item.note.id}:`, error)
-          throw new Error(`Could not generate download key for ${item.note.title}`)
-        }
-
+        const downloadUrl = `${siteUrl}/download/${orderId}/${item.note.id}`
         emailNotesList.push({
           title: item.note.title,
           subject: item.note.subject,
-          downloadUrl: data.signedUrl
+          downloadUrl: downloadUrl
         })
       }
     }

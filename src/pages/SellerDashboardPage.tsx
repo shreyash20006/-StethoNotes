@@ -4,11 +4,12 @@ import { motion, AnimatePresence } from 'motion/react';
 import { useAuthStore } from '../store/useAuthStore';
 import { useToastStore } from '../store/useToastStore';
 import { supabase } from '../lib/supabase';
+import NoteUploadWizard from '../components/admin/NoteUploadWizard';
 import type { Order, Note, Course } from '../types';
 import {
   Store, BookOpen, DollarSign, Package,
   User, Mail, Phone, Save, LogOut, BarChart3,
-  Plus, Search, Trash2, Edit2, X, Upload, CheckCircle2
+  Plus, Search, Trash2, Edit2
 } from 'lucide-react';
 
 type SellerTab = 'overview' | 'products' | 'orders' | 'profile';
@@ -35,17 +36,6 @@ export default function SellerDashboardPage() {
   // Note Drawer States
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [editingNote, setEditingNote] = useState<Note | null>(null);
-  const [noteTitle, setNoteTitle] = useState('');
-  const [noteSubject, setNoteSubject] = useState('');
-  const [noteSemester, setNoteSemester] = useState('');
-  const [notePrice, setNotePrice] = useState('');
-  const [noteCourseId, setNoteCourseId] = useState('');
-  const [noteStatus, setNoteStatus] = useState<'active' | 'draft'>('active');
-  const [noteDescription, setNoteDescription] = useState('');
-  const [notePdfUrl, setNotePdfUrl] = useState('');
-  const [noteThumbnailUrl, setNoteThumbnailUrl] = useState('');
-  const [pdfUploading, setPdfUploading] = useState(false);
-  const [thumbnailUploading, setThumbnailUploading] = useState(false);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -77,10 +67,7 @@ export default function SellerDashboardPage() {
     try {
       // 1. Fetch courses
       const { data: coursesData } = await supabase.from('courses').select('*').order('name');
-      if (coursesData) {
-        setCourses(coursesData);
-        if (coursesData.length > 0) setNoteCourseId(coursesData[0].id);
-      }
+      if (coursesData) setCourses(coursesData);
 
       // 2. Fetch seller's notes
       const { data: notesData } = await supabase
@@ -91,7 +78,6 @@ export default function SellerDashboardPage() {
       if (notesData) setNotesList(notesData);
 
       // 3. Fetch orders (where seller notes were purchased)
-      // For now, load standard mock orders. Later joins note orders specifically.
       const { data: ordersData } = await supabase
         .from('orders')
         .select('*')
@@ -119,101 +105,7 @@ export default function SellerDashboardPage() {
     navigate('/seller/login');
   };
 
-  // Drawer Form Triggers
-  const handleOpenCreateDrawer = () => {
-    setEditingNote(null);
-    setNoteTitle('');
-    setNoteSubject('');
-    setNoteSemester('');
-    setNotePrice('');
-    if (courses.length > 0) setNoteCourseId(courses[0].id);
-    setNoteStatus('active');
-    setNoteDescription('');
-    setNotePdfUrl('');
-    setNoteThumbnailUrl('');
-    setIsDrawerOpen(true);
-  };
-
-  const handleOpenEditDrawer = (note: Note) => {
-    setEditingNote(note);
-    setNoteTitle(note.title);
-    setNoteSubject(note.subject);
-    setNoteSemester(note.semester || '');
-    setNotePrice(note.price.toString());
-    setNoteCourseId(note.course_id);
-    setNoteStatus(note.status as any);
-    setNoteDescription(note.description || '');
-    setNotePdfUrl(note.pdf_url);
-    setNoteThumbnailUrl(note.thumbnail_url);
-    setIsDrawerOpen(true);
-  };
-
-  const handleSimulatePdfUpload = () => {
-    setPdfUploading(true);
-    setTimeout(() => {
-      setNotePdfUrl(`pdfs/notes_anatomy_${Math.random().toString(36).substring(2, 6)}.pdf`);
-      setPdfUploading(false);
-      addToast('success', 'PDF Document Uploaded', 'Simulated note document attachment.');
-    }, 1200);
-  };
-
-  const handleSimulateThumbnailUpload = () => {
-    setThumbnailUploading(true);
-    setTimeout(() => {
-      setNoteThumbnailUrl('https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?auto=format&fit=crop&q=80&w=400');
-      setThumbnailUploading(false);
-      addToast('success', 'Thumbnail Uploaded', 'Simulated preview thumbnail upload.');
-    }, 1000);
-  };
-
-  const handleSaveNote = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!noteTitle.trim() || !noteSubject.trim() || !notePrice.trim() || !noteCourseId) {
-      addToast('error', 'Missing Fields', 'Please complete Title, Course, Subject, and Price.');
-      return;
-    }
-
-    const payload = {
-      title: noteTitle.trim(),
-      subject: noteSubject.trim(),
-      semester: noteSemester.trim() || null,
-      price: Number(notePrice),
-      course_id: noteCourseId,
-      status: noteStatus,
-      description: noteDescription.trim(),
-      pdf_url: notePdfUrl || 'pdfs/anatomy_upper_limb.pdf',
-      thumbnail_url: noteThumbnailUrl || 'https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?auto=format&fit=crop&q=80&w=400',
-      preview_images: [
-        'https://images.unsplash.com/photo-1532187643603-ba119ca4109e?auto=format&fit=crop&q=80&w=400'
-      ],
-      seller_id: user?.id
-    };
-
-    try {
-      if (editingNote) {
-        // Update Note
-        const { error } = await supabase
-          .from('notes')
-          .update(payload)
-          .eq('id', editingNote.id)
-          .eq('seller_id', user?.id);
-        if (error) throw error;
-        addToast('success', 'Note Updated', 'Your study notes details were successfully updated.');
-      } else {
-        // Insert Note
-        const { error } = await supabase
-          .from('notes')
-          .insert(payload);
-        if (error) throw error;
-        addToast('success', 'Note Published', 'Your study notes are now listed on StethoNotes.');
-      }
-
-      setIsDrawerOpen(false);
-      fetchData();
-    } catch (err: any) {
-      addToast('error', 'Save Failed', err.message);
-    }
-  };
+  // Note Form triggers are inline now
 
   const handleDeleteNote = async (noteId: string) => {
     if (!confirm('Are you sure you want to remove this note? This action is permanent.')) return;
@@ -364,7 +256,7 @@ export default function SellerDashboardPage() {
                     <p className="text-xs text-slate-400">List and manage your study notes available for students.</p>
                   </div>
                   <button
-                    onClick={handleOpenCreateDrawer}
+                    onClick={() => { setEditingNote(null); setIsDrawerOpen(true); }}
                     className="py-2.5 px-4 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl flex items-center gap-1.5 transition-colors shadow-sm shadow-emerald-200"
                   >
                     <Plus className="w-4 h-4" />
@@ -419,7 +311,7 @@ export default function SellerDashboardPage() {
                             <span className="text-slate-800 font-bold font-sans text-sm">₹{note.price}</span>
                             <div className="flex gap-2">
                               <button
-                                onClick={() => handleOpenEditDrawer(note)}
+                                onClick={() => { setEditingNote(note); setIsDrawerOpen(true); }}
                                 className="p-2 hover:bg-emerald-50 text-emerald-600 hover:text-emerald-700 rounded-lg transition-colors border border-emerald-100"
                               >
                                 <Edit2 className="w-3.5 h-3.5" />
@@ -553,11 +445,10 @@ export default function SellerDashboardPage() {
         </div>
       </div>
 
-      {/* NOTE UPLOAD DRAWER MODAL */}
+      {/* NOTE UPLOAD WIZARD DRAWER */}
       <AnimatePresence>
         {isDrawerOpen && (
           <div className="fixed inset-0 z-50 flex justify-end">
-            {/* Backdrop */}
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -565,187 +456,22 @@ export default function SellerDashboardPage() {
               onClick={() => setIsDrawerOpen(false)}
               className="absolute inset-0 bg-[#0c1230]/40 backdrop-blur-xs"
             />
-            {/* Drawer Panel */}
             <motion.div
               initial={{ x: '100%' }}
               animate={{ x: 0 }}
               exit={{ x: '100%' }}
               transition={{ type: 'spring', damping: 25, stiffness: 220 }}
-              className="relative w-full max-w-lg h-full bg-white shadow-2xl flex flex-col justify-between border-l border-slate-100 z-10"
+              className="relative w-full max-w-4xl h-full bg-white shadow-2xl z-10 overflow-y-auto"
             >
-              {/* Drawer Header */}
-              <div className="p-6 border-b border-slate-100 flex items-center justify-between">
-                <div>
-                  <h3 className="text-base font-bold text-slate-900">{editingNote ? 'Edit Notes Details' : 'Upload Study Notes'}</h3>
-                  <p className="text-xs text-slate-400">Provide document credentials and media attachments.</p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setIsDrawerOpen(false)}
-                  className="p-1 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-50 transition-colors"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-
-              {/* Drawer Form Scroll Content */}
-              <form onSubmit={handleSaveNote} className="flex-grow overflow-y-auto p-6 space-y-6 text-left">
-                {/* Note Title */}
-                <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-slate-400 uppercase">Note Title *</label>
-                  <input
-                    type="text"
-                    required
-                    value={noteTitle}
-                    onChange={e => setNoteTitle(e.target.value)}
-                    placeholder="e.g. Upper Limb Anatomy — Hand & Wrist Bones"
-                    className="w-full px-3 py-2.5 border border-slate-200 rounded-xl focus:border-emerald-500 focus:outline-none text-xs transition-colors"
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  {/* Course select */}
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-slate-400 uppercase">Academic Course *</label>
-                    <select
-                      value={noteCourseId}
-                      onChange={e => setNoteCourseId(e.target.value)}
-                      className="w-full px-3 py-2.5 border border-slate-200 rounded-xl focus:border-emerald-500 focus:outline-none text-xs transition-colors"
-                    >
-                      {courses.map(course => (
-                        <option key={course.id} value={course.id}>{course.name}</option>
-                      ))}
-                    </select>
-                  </div>
-
-                  {/* Subject */}
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-slate-400 uppercase">Subject *</label>
-                    <input
-                      type="text"
-                      required
-                      value={noteSubject}
-                      onChange={e => setNoteSubject(e.target.value)}
-                      placeholder="e.g. Anatomy"
-                      className="w-full px-3 py-2.5 border border-slate-200 rounded-xl focus:border-emerald-500 focus:outline-none text-xs transition-colors"
-                    />
-                  </div>
-
-                  {/* Semester */}
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-slate-400 uppercase">Semester / Year</label>
-                    <input
-                      type="text"
-                      value={noteSemester}
-                      onChange={e => setNoteSemester(e.target.value)}
-                      placeholder="e.g. Semester 2"
-                      className="w-full px-3 py-2.5 border border-slate-200 rounded-xl focus:border-emerald-500 focus:outline-none text-xs transition-colors"
-                    />
-                  </div>
-
-                  {/* Price */}
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-slate-400 uppercase">Note Price (INR) *</label>
-                    <input
-                      type="number"
-                      required
-                      min="0"
-                      value={notePrice}
-                      onChange={e => setNotePrice(e.target.value)}
-                      placeholder="e.g. 199"
-                      className="w-full px-3 py-2.5 border border-slate-200 rounded-xl focus:border-emerald-500 focus:outline-none text-xs transition-colors font-mono"
-                    />
-                  </div>
-                </div>
-
-                {/* Status select */}
-                <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-slate-400 uppercase">Catalogue Status</label>
-                  <select
-                    value={noteStatus}
-                    onChange={e => setNoteStatus(e.target.value as any)}
-                    className="w-full px-3 py-2.5 border border-slate-200 rounded-xl focus:border-emerald-500 focus:outline-none text-xs transition-colors"
-                  >
-                    <option value="active">Active (Published)</option>
-                    <option value="draft">Draft (Private)</option>
-                  </select>
-                </div>
-
-                {/* Note Description */}
-                <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-slate-400 uppercase">Note Description</label>
-                  <textarea
-                    rows={4}
-                    value={noteDescription}
-                    onChange={e => setNoteDescription(e.target.value)}
-                    placeholder="Enter subjects covered, key lecture chapters included, authors..."
-                    className="w-full p-3 border border-slate-200 rounded-xl focus:border-emerald-500 focus:outline-none text-xs transition-colors resize-none leading-relaxed"
-                  />
-                </div>
-
-                {/* Media Attachment Simulators */}
-                <div className="space-y-4 pt-4 border-t border-slate-100">
-                  <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Note Media & Attachments</h4>
-                  <div className="grid grid-cols-2 gap-4">
-                    {/* PDF Document */}
-                    <div className="space-y-1">
-                      <label className="text-[9px] font-bold text-slate-400 uppercase">PDF Document File</label>
-                      <button
-                        type="button"
-                        onClick={() => handleSimulatePdfUpload()}
-                        disabled={pdfUploading}
-                        className="w-full py-3 border border-dashed border-slate-200 hover:border-emerald-500 rounded-xl text-xs font-semibold text-slate-700 flex items-center justify-center gap-1.5 transition-colors disabled:opacity-50"
-                      >
-                        {pdfUploading ? (
-                          <div className="w-3.5 h-3.5 border-2 border-emerald-400/30 border-t-emerald-500 rounded-full animate-spin" />
-                        ) : notePdfUrl ? (
-                          <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-                        ) : (
-                          <Upload className="w-4 h-4 text-slate-400" />
-                        )}
-                        <span>{pdfUploading ? 'Uploading...' : notePdfUrl ? 'Document Attached' : 'Attach PDF'}</span>
-                      </button>
-                    </div>
-
-                    {/* Cover Image */}
-                    <div className="space-y-1">
-                      <label className="text-[9px] font-bold text-slate-400 uppercase">Cover Thumbnail Image</label>
-                      <button
-                        type="button"
-                        onClick={handleSimulateThumbnailUpload}
-                        disabled={thumbnailUploading}
-                        className="w-full py-3 border border-dashed border-slate-200 hover:border-emerald-500 rounded-xl text-xs font-semibold text-slate-700 flex items-center justify-center gap-1.5 transition-colors disabled:opacity-50"
-                      >
-                        {thumbnailUploading ? (
-                          <div className="w-3.5 h-3.5 border-2 border-emerald-400/30 border-t-emerald-500 rounded-full animate-spin" />
-                        ) : noteThumbnailUrl ? (
-                          <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-                        ) : (
-                          <Upload className="w-4 h-4 text-slate-400" />
-                        )}
-                        <span>{thumbnailUploading ? 'Uploading...' : noteThumbnailUrl ? 'Cover Attached' : 'Attach Cover'}</span>
-                      </button>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Drawer Footer Actions */}
-                <div className="flex gap-3 pt-6 border-t border-slate-100 justify-end">
-                  <button
-                    type="button"
-                    onClick={() => setIsDrawerOpen(false)}
-                    className="py-2.5 px-5 hover:bg-slate-50 border border-slate-200 text-slate-650 font-bold text-xs rounded-xl transition-colors"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    className="py-2.5 px-6 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl transition-colors shadow-md shadow-emerald-100"
-                  >
-                    {editingNote ? 'Save Updates' : 'Publish Notes'}
-                  </button>
-                </div>
-              </form>
+              <NoteUploadWizard
+                note={editingNote}
+                isAdmin={false}
+                onClose={() => setIsDrawerOpen(false)}
+                onSaveSuccess={() => {
+                  setIsDrawerOpen(false);
+                  fetchData();
+                }}
+              />
             </motion.div>
           </div>
         )}

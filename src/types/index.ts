@@ -61,6 +61,11 @@ export interface Note {
   semester?: string;
   created_at: string;
   seller_id?: string;
+  content_type?: 'pdf' | 'images';
+  page_count?: number;
+  file_size?: number;
+  original_pdf?: string;
+  generated_pdf_path?: string;
 }
 
 export interface Order {
@@ -353,4 +358,24 @@ export interface SellerApplication {
   reviewed_at?: string;
   reviewed_by?: string;
   rejection_reason?: string;
+}
+
+export interface DownloadHistory {
+  id: string;
+  order_id: string;
+  note_id: string;
+  downloaded_at: string;
+  ip_address: string;
+  user_agent: string;
+  note?: Note;
+  order?: Order;
+}
+
+export interface WatermarkLog {
+  id: string;
+  order_id: string;
+  note_id: string;
+  watermarked_at: string;
+  watermark_payload: Record<string, any>;
+  cached_path: string;
 }

@@ -1,51 +1,13 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import type { Note, Course } from '../../types';
 import { useToastStore } from '../../store/useToastStore';
+import NoteUploadWizard from './NoteUploadWizard';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Search, Trash2, Edit2, CheckCircle2, Plus,
-  Download, Upload, Copy, FileSpreadsheet, X, Save
+  Download, Upload, Copy, FileSpreadsheet
 } from 'lucide-react';
-
-interface RichTextToolbarProps {
-  onCommand: (command: string, value?: string) => void;
-}
-
-function RichTextToolbar({ onCommand }: RichTextToolbarProps) {
-  return (
-    <div className="flex flex-wrap gap-1 p-2 bg-slate-50 border-b border-slate-200 rounded-t-xl text-slate-600">
-      {[
-        { label: "B", cmd: "bold", title: "Bold" },
-        { label: "I", cmd: "italic", title: "Italic" },
-        { label: "U", cmd: "underline", title: "Underline" },
-        { label: "H1", cmd: "formatBlock", val: "H1", title: "Heading 1" },
-        { label: "H2", cmd: "formatBlock", val: "H2", title: "Heading 2" },
-        { label: "• List", cmd: "insertUnorderedList", title: "Bullet List" },
-        { label: "1. List", cmd: "insertOrderedList", title: "Numbered List" },
-        { label: "</>", cmd: "formatBlock", val: "PRE", title: "Code Block" },
-        { label: "Link", cmd: "createLink", val: "prompt", title: "Insert Link" }
-      ].map((btn, idx) => (
-        <button
-          key={idx}
-          type="button"
-          onClick={() => {
-            if (btn.cmd === 'createLink') {
-              const url = prompt('Enter link URL:');
-              if (url) onCommand(btn.cmd, url);
-            } else {
-              onCommand(btn.cmd, btn.val);
-            }
-          }}
-          title={btn.title}
-          className="px-2 py-1 hover:bg-slate-200 rounded text-xs font-semibold font-mono"
-        >
-          {btn.label}
-        </button>
-      ))}
-    </div>
-  );
-}
 
 export default function NotesManager() {
   const { addToast } = useToastStore();
@@ -64,29 +26,6 @@ export default function NotesManager() {
   // Drawer & Form State
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [editingNote, setEditingNote] = useState<Note | null>(null);
-  
-  // Note Form Fields
-  const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
-  const [courseId, setCourseId] = useState('');
-  const [subject, setSubject] = useState('');
-  const [semester, setSemester] = useState('1st Semester');
-  const [price, setPrice] = useState('');
-  const [status, setStatus] = useState<'active' | 'draft'>('active');
-  
-  // Files
-  const [pdfUrl, setPdfUrl] = useState('');
-  const [thumbnailUrl, setThumbnailUrl] = useState('');
-  const [previewImages, setPreviewImages] = useState<string[]>([]);
-  
-  // SEO params
-  const [seoTitle, setSeoTitle] = useState('');
-  const [seoDesc, setSeoDesc] = useState('');
-  const [seoKeywords, setSeoKeywords] = useState('');
-  const [canonicalUrl, setCanonicalUrl] = useState('');
-
-  // Editor ref
-  const editorRef = useRef<HTMLDivElement>(null);
 
   // Import State
   const [importing, setImporting] = useState(false);
@@ -103,10 +42,7 @@ export default function NotesManager() {
       const { data: notesData } = await supabase.from('notes').select('*');
       const { data: coursesData } = await supabase.from('courses').select('*');
       if (notesData) setNotes(notesData);
-      if (coursesData) {
-        setCourses(coursesData);
-        if (coursesData.length > 0) setCourseId(coursesData[0].id);
-      }
+      if (coursesData) setCourses(coursesData);
     } catch (err) {
       console.error('Error loading notes:', err);
     } finally {
@@ -114,119 +50,9 @@ export default function NotesManager() {
     }
   };
 
-  const handleCommand = (cmd: string, val: string = '') => {
-    document.execCommand(cmd, false, val);
-  };
-
-  const handleSave = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    // Get rich editor content
-    const richDesc = editorRef.current?.innerHTML || description;
-
-    if (!title.trim() || !price.trim() || !subject.trim()) {
-      addToast('error', 'Missing Fields', 'Please complete note Title, Subject, and Price.');
-      return;
-    }
-
-    const payload = {
-      title,
-      description: richDesc,
-      course_id: courseId,
-      subject,
-      semester,
-      price: Number(price),
-      status,
-      pdf_url: pdfUrl || 'pdfs/anatomy_upper_limb.pdf', // Seed safe fallback
-      thumbnail_url: thumbnailUrl || 'https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?auto=format&fit=crop&q=80&w=400',
-      preview_images: previewImages.length > 0 ? previewImages : [
-        'https://images.unsplash.com/photo-1532187643603-ba119ca4109e?auto=format&fit=crop&q=80&w=400'
-      ]
-    };
-
-    try {
-      if (editingNote) {
-        // UPDATE
-        const { error } = await supabase
-          .from('notes')
-          .update(payload)
-          .eq('id', editingNote.id);
-        if (error) throw error;
-        
-        // Save SEO Meta
-        await supabase.from('seo_metadata').upsert({
-          path: `/notes/${editingNote.id}`,
-          meta_title: seoTitle || title,
-          meta_description: seoDesc || richDesc.substring(0, 150),
-          meta_keywords: seoKeywords,
-          canonical_url: canonicalUrl
-        });
-
-        addToast('success', 'Note Updated', 'The study notes details were updated successfully.');
-      } else {
-        // CREATE
-        const newId = `n-${Math.random().toString(36).substr(2, 9)}`;
-        const { error } = await supabase
-          .from('notes')
-          .insert({ id: newId, ...payload });
-        if (error) throw error;
-
-        // Save SEO Meta
-        await supabase.from('seo_metadata').upsert({
-          path: `/notes/${newId}`,
-          meta_title: seoTitle || title,
-          meta_description: seoDesc || richDesc.substring(0, 150),
-          meta_keywords: seoKeywords,
-          canonical_url: canonicalUrl
-        });
-
-        addToast('success', 'Note Created', 'The new note was published successfully.');
-      }
-
-      setIsDrawerOpen(false);
-      setEditingNote(null);
-      clearForm();
-      fetchNotesData();
-    } catch (err: any) {
-      addToast('error', 'Operation Failed', err.message);
-    }
-  };
-
-  const clearForm = () => {
-    setTitle('');
-    setDescription('');
-    setSubject('');
-    setSemester('1st Semester');
-    setPrice('');
-    setStatus('active');
-    setPdfUrl('');
-    setThumbnailUrl('');
-    setPreviewImages([]);
-    setSeoTitle('');
-    setSeoDesc('');
-    setSeoKeywords('');
-    setCanonicalUrl('');
-    if (editorRef.current) editorRef.current.innerHTML = '';
-  };
-
   const handleEdit = (note: Note) => {
     setEditingNote(note);
-    setTitle(note.title);
-    setDescription(note.description);
-    setCourseId(note.course_id);
-    setSubject(note.subject);
-    setSemester(note.semester || '1st Semester');
-    setPrice(note.price.toString());
-    setStatus(note.status);
-    setPdfUrl(note.pdf_url);
-    setThumbnailUrl(note.thumbnail_url);
-    setPreviewImages(note.preview_images || []);
     setIsDrawerOpen(true);
-    
-    // Set rich text content on editor load
-    setTimeout(() => {
-      if (editorRef.current) editorRef.current.innerHTML = note.description;
-    }, 100);
   };
 
   const handleDuplicate = async (note: Note) => {
@@ -421,7 +247,7 @@ export default function NotesManager() {
         </div>
         <div className="flex gap-2">
           <button
-            onClick={() => { clearForm(); setEditingNote(null); setIsDrawerOpen(true); }}
+            onClick={() => { setEditingNote(null); setIsDrawerOpen(true); }}
             className="px-4 py-2.5 bg-cyan-600 hover:bg-cyan-750 text-white rounded-xl text-xs font-semibold flex items-center gap-2 transition-all shadow-sm"
           >
             <Plus className="w-4 h-4" />
@@ -612,11 +438,10 @@ export default function NotesManager() {
         </div>
       </div>
 
-      {/* RIGHT DRAWER FOR ADD/EDIT NOTE */}
+      {/* NOTE UPLOAD WIZARD DRAWER */}
       <AnimatePresence>
         {isDrawerOpen && (
           <>
-            {/* Backdrop */}
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 0.4 }}
@@ -624,199 +449,22 @@ export default function NotesManager() {
               onClick={() => setIsDrawerOpen(false)}
               className="fixed inset-0 bg-slate-900 z-50 pointer-events-auto"
             />
-            {/* Drawer */}
             <motion.div
               initial={{ x: '100%' }}
               animate={{ x: 0 }}
               exit={{ x: '100%' }}
               transition={{ type: 'tween', duration: 0.35 }}
-              className="fixed top-0 right-0 bottom-0 w-full max-w-2xl bg-white shadow-2xl z-50 flex flex-col justify-between"
+              className="fixed top-0 right-0 bottom-0 w-full max-w-4xl bg-white shadow-2xl z-50 overflow-y-auto"
             >
-              {/* Drawer Header */}
-              <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
-                <div>
-                  <h3 className="text-lg font-bold text-slate-900">{editingNote ? 'Edit Study Note' : 'Publish New Note'}</h3>
-                  <p className="text-xs text-slate-450 mt-0.5">Define metadata, tags, and document references.</p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setIsDrawerOpen(false)}
-                  className="p-2 text-slate-450 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-
-              {/* Drawer Body Scroll */}
-              <form onSubmit={handleSave} className="flex-grow overflow-y-auto p-6 space-y-6">
-                {/* 1. Core Fields */}
-                <div className="space-y-4">
-                  <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest border-b border-slate-50 pb-2">Core Content</h4>
-                  
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-semibold text-slate-500">Note Title</label>
-                    <input
-                      type="text"
-                      placeholder="e.g. Pathology Cardiovascular Notes"
-                      value={title}
-                      onChange={(e) => setTitle(e.target.value)}
-                      className="w-full px-4 py-2 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:border-cyan-500 bg-slate-50/20"
-                      required
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-1.5">
-                      <label className="text-xs font-semibold text-slate-500">Course Type</label>
-                      <select
-                        value={courseId}
-                        onChange={(e) => setCourseId(e.target.value)}
-                        className="w-full px-4 py-2 border border-slate-200 rounded-xl text-xs text-slate-600 focus:outline-none focus:border-cyan-500 bg-slate-50/20"
-                      >
-                        {courses.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                      </select>
-                    </div>
-
-                    <div className="space-y-1.5">
-                      <label className="text-xs font-semibold text-slate-500">Subject Name</label>
-                      <input
-                        type="text"
-                        placeholder="e.g. Pathology"
-                        value={subject}
-                        onChange={(e) => setSubject(e.target.value)}
-                        className="w-full px-4 py-2 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:border-cyan-500 bg-slate-50/20"
-                        required
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-1.5">
-                      <label className="text-xs font-semibold text-slate-500">Semester</label>
-                      <select
-                        value={semester}
-                        onChange={(e) => setSemester(e.target.value)}
-                        className="w-full px-4 py-2 border border-slate-200 rounded-xl text-xs text-slate-600 focus:outline-none focus:border-cyan-500 bg-slate-50/20"
-                      >
-                        {['1st Semester', '2nd Semester', '3rd Semester', '4th Semester', '5th Semester', '6th Semester', '7th Semester', '8th Semester'].map(sem => (
-                          <option key={sem} value={sem}>{sem}</option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div className="space-y-1.5">
-                      <label className="text-xs font-semibold text-slate-500">Note Price (₹)</label>
-                      <input
-                        type="number"
-                        placeholder="e.g. 299"
-                        value={price}
-                        onChange={(e) => setPrice(e.target.value)}
-                        className="w-full px-4 py-2 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:border-cyan-500 bg-slate-50/20"
-                        required
-                      />
-                    </div>
-                  </div>
-
-                  {/* Rich Text Editor */}
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-semibold text-slate-500">Note Description (Rich Text Editor)</label>
-                    <div className="border border-slate-200 rounded-xl overflow-hidden bg-white">
-                      <RichTextToolbar onCommand={handleCommand} />
-                      <div
-                        ref={editorRef}
-                        contentEditable
-                        className="p-4 text-xs min-h-36 max-h-56 overflow-y-auto focus:outline-none text-slate-800 leading-relaxed font-sans"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* 2. Media Upload simulation paths */}
-                <div className="space-y-4 pt-4 border-t border-slate-100">
-                  <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest pb-2">Media & Documents</h4>
-                  <div className="space-y-3">
-                    <div className="space-y-1.5">
-                      <label className="text-xs font-semibold text-slate-500">PDF File Storage Path</label>
-                      <input
-                        type="text"
-                        placeholder="e.g. pdfs/my_notes.pdf"
-                        value={pdfUrl}
-                        onChange={(e) => setPdfUrl(e.target.value)}
-                        className="w-full px-4 py-2 border border-slate-200 rounded-xl text-xs text-slate-800 font-mono focus:outline-none bg-slate-50/20"
-                      />
-                    </div>
-                    <div className="space-y-1.5">
-                      <label className="text-xs font-semibold text-slate-500">Cover Thumbnail Image URL</label>
-                      <input
-                        type="text"
-                        placeholder="e.g. https://images.unsplash.com/..."
-                        value={thumbnailUrl}
-                        onChange={(e) => setThumbnailUrl(e.target.value)}
-                        className="w-full px-4 py-2 border border-slate-200 rounded-xl text-xs text-slate-800 font-sans focus:outline-none bg-slate-50/20"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* 3. SEO Settings */}
-                <div className="space-y-4 pt-4 border-t border-slate-100">
-                  <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest pb-2">SEO Configurations</h4>
-                  
-                  <div className="space-y-3">
-                    <div className="space-y-1.5">
-                      <label className="text-xs font-semibold text-slate-500">SEO Custom Title</label>
-                      <input
-                        type="text"
-                        placeholder="Target SEO Meta Title"
-                        value={seoTitle}
-                        onChange={(e) => setSeoTitle(e.target.value)}
-                        className="w-full px-4 py-2 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none bg-slate-50/20"
-                      />
-                    </div>
-                    <div className="space-y-1.5">
-                      <label className="text-xs font-semibold text-slate-500">SEO Meta Description</label>
-                      <textarea
-                        placeholder="Target SEO Description (150 chars)..."
-                        rows={2}
-                        value={seoDesc}
-                        onChange={(e) => setSeoDesc(e.target.value)}
-                        className="w-full px-4 py-2 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none bg-slate-50/20"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Status Switch */}
-                <div className="pt-4 border-t border-slate-100 flex items-center justify-between">
-                  <span className="text-xs font-semibold text-slate-500">Catalog Visibility</span>
-                  <select
-                    value={status}
-                    onChange={(e) => setStatus(e.target.value as any)}
-                    className="px-3 py-2 border border-slate-200 rounded-xl text-xs text-slate-600 focus:outline-none bg-slate-50/20 font-semibold"
-                  >
-                    <option value="active">Active (Visible)</option>
-                    <option value="draft">Draft (Hidden)</option>
-                  </select>
-                </div>
-
-                {/* Submit button */}
-                <div className="flex gap-3 pt-6 border-t border-slate-100 mt-8">
-                  <button
-                    type="submit"
-                    className="flex-grow py-3 bg-cyan-600 hover:bg-cyan-700 text-white text-xs font-semibold rounded-xl flex items-center justify-center gap-1 transition-colors"
-                  >
-                    <Save className="w-4 h-4" />
-                    <span>{editingNote ? 'Save Updates' : 'Publish Note'}</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setIsDrawerOpen(false)}
-                    className="px-6 py-3 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 text-xs font-semibold rounded-xl transition-all"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </form>
+              <NoteUploadWizard
+                note={editingNote}
+                isAdmin={true}
+                onClose={() => setIsDrawerOpen(false)}
+                onSaveSuccess={() => {
+                  setIsDrawerOpen(false);
+                  fetchNotesData();
+                }}
+              />
             </motion.div>
           </>
         )}

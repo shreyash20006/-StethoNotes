@@ -14,13 +14,14 @@ import ReviewsCoupons from '../components/admin/ReviewsCoupons';
 import EmailCenter from '../components/admin/EmailCenter';
 import StorageSEO from '../components/admin/StorageSEO';
 import SettingsLogs from '../components/admin/SettingsLogs';
+import LeakInvestigator from '../components/admin/LeakInvestigator';
 
 // Lucide Icons
 import {
   ShieldCheck, TrendingUp, Package, Users,
   Landmark, Tag, Mail, HardDrive, Settings, FolderOpen,
   ShoppingBag, Search, Plus, Trash2, ArrowRight,
-  LogOut, Menu, X
+  LogOut, Menu, X, ShieldAlert
 } from 'lucide-react';
 
 export default function AdminPage() {
@@ -182,6 +183,7 @@ export default function AdminPage() {
               { id: 'reviews_coupons', label: 'Reviews & Coupons', icon: <Tag className="w-4 h-4" /> },
               { id: 'email_center', label: 'Email Center', icon: <Mail className="w-4 h-4" /> },
               { id: 'storage_seo', label: 'Storage & SEO', icon: <HardDrive className="w-4 h-4" /> },
+              { id: 'leak_investigator', label: 'Leak Investigator', icon: <ShieldAlert className="w-4 h-4" /> },
               { id: 'settings_logs', label: 'Settings & Logs', icon: <Settings className="w-4 h-4" /> }
             ].map(tab => (
               <button
@@ -232,6 +234,7 @@ export default function AdminPage() {
         {activeTab === 'email_center' && <EmailCenter />}
         {activeTab === 'storage_seo' && <StorageSEO />}
         {activeTab === 'settings_logs' && <SettingsLogs />}
+        {activeTab === 'leak_investigator' && <LeakInvestigator />}
 
         {/* ==========================================
             COURSES MANAGER VIEW

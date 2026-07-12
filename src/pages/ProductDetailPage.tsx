@@ -6,7 +6,7 @@ import { useCartStore } from '../store/useCartStore';
 import { useToastStore } from '../store/useToastStore';
 import { useAuthStore } from '../store/useAuthStore';
 import {
-  Star, ShoppingCart, ArrowLeft, FileText, Send, Mail,
+  Star, ShoppingCart, ArrowLeft, Send,
   Heart, MessageSquare, CornerDownRight, ShieldCheck, UserCheck, Sparkles
 } from 'lucide-react';
 import { NoteDetailSkeleton } from '../components/Skeleton';
@@ -329,18 +329,30 @@ export default function ProductDetailPage() {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-start mb-16">
         {/* Left Column: Previews and Gallery */}
         <div className="lg:col-span-6 flex flex-col gap-4">
-          <div className="aspect-[4/3] w-full rounded-3xl border border-gray-150 bg-gray-50 shadow-sm overflow-hidden relative">
+          <div 
+            className="aspect-[4/3] w-full rounded-3xl border border-gray-150 bg-gray-50 shadow-sm overflow-hidden relative select-none"
+            onContextMenu={(e) => e.preventDefault()}
+          >
             <img
               src={previewGallery[activePreviewIndex]}
               alt={`${note.title} preview`}
-              className="w-full h-full object-cover"
+              className="w-full h-full object-cover pointer-events-none"
+              onDragStart={(e) => e.preventDefault()}
             />
+            
+            {/* Visual Diagonal Watermark Overlay */}
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none overflow-hidden">
+              <div className="rotate-[-30deg] text-[#0c1230]/10 font-black text-2xl tracking-widest whitespace-nowrap uppercase select-none">
+                STETHONOTES PREVIEW - Not For Distribution
+              </div>
+            </div>
+
             <div className="absolute inset-0 bg-gradient-to-t from-black/10 to-transparent pointer-events-none" />
             
             {/* Wishlist Heart */}
             <button
               onClick={handleWishlistToggle}
-              className="absolute top-4 right-4 p-3 bg-white/90 hover:bg-white border border-slate-100 rounded-full shadow-lg transition-transform hover:scale-105"
+              className="absolute top-4 right-4 p-3 bg-white/90 hover:bg-white border border-slate-100 rounded-full shadow-lg transition-transform hover:scale-105 z-10"
             >
               <Heart className={`w-5 h-5 transition-colors ${inWishlist ? 'fill-red-500 text-red-500' : 'text-slate-400'}`} />
             </button>
@@ -357,14 +369,20 @@ export default function ProductDetailPage() {
                     ? 'border-cyan-500 scale-95 shadow'
                     : 'border-transparent hover:border-gray-200'
                 }`}
+                onContextMenu={(e) => e.preventDefault()}
               >
-                <img src={imgUrl} alt="Thumbnail preview" className="w-full h-full object-cover" />
+                <img 
+                  src={imgUrl} 
+                  alt="Thumbnail preview" 
+                  className="w-full h-full object-cover pointer-events-none" 
+                  onDragStart={(e) => e.preventDefault()}
+                />
               </button>
             ))}
           </div>
 
-          <p className="text-gray-400 text-[10px] font-sans text-center mt-2 italic">
-            * PDF document will be delivered to your registered email address instantly.
+          <p className="text-gray-400 text-[10px] font-sans text-center mt-2 italic select-none">
+            * PDF document will be delivered securely to your account.
           </p>
         </div>
 
@@ -437,15 +455,41 @@ export default function ProductDetailPage() {
             </p>
           </div>
 
-          {/* Features */}
-          <div className="grid grid-cols-2 gap-4 border-t border-slate-100 pt-6">
-            <div className="flex items-center gap-2.5">
-              <FileText className="w-5 h-5 text-cyan-600" />
-              <span className="text-xs font-semibold text-slate-600">Printable A4 PDF Format</span>
+          {/* Content Protection & Delivery Info Box */}
+          <div className="bg-[#f8fafc] border border-slate-200/60 rounded-2xl p-5 flex flex-col gap-3.5 text-xs text-slate-600 shadow-sm text-left font-sans">
+            <div className="flex items-center gap-2 font-bold text-[#0c1230] text-sm">
+              <ShieldCheck className="w-5 h-5 text-cyan-600" />
+              <span>Protected Content & Secure Delivery</span>
             </div>
-            <div className="flex items-center gap-2.5">
-              <Mail className="w-5 h-5 text-cyan-600" />
-              <span className="text-xs font-semibold text-slate-600">Instant Email Delivery</span>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+              <div className="flex items-start gap-2.5">
+                <ShieldCheck className="w-4 h-4 text-emerald-500 mt-0.5 shrink-0" />
+                <div>
+                  <span className="font-semibold text-slate-800 block">Personal Watermark</span>
+                  <span className="text-[11px] text-slate-450">Every page of the delivered PDF contains your customer name, email, and order credentials.</span>
+                </div>
+              </div>
+              <div className="flex items-start gap-2.5">
+                <ShieldCheck className="w-4 h-4 text-emerald-500 mt-0.5 shrink-0" />
+                <div>
+                  <span className="font-semibold text-slate-800 block">Secure Download</span>
+                  <span className="text-[11px] text-slate-450">Fulfillment system compiles a uniquely signed watermarked copy of the notes for verified buyers.</span>
+                </div>
+              </div>
+              <div className="flex items-start gap-2.5">
+                <ShieldCheck className="w-4 h-4 text-emerald-500 mt-0.5 shrink-0" />
+                <div>
+                  <span className="font-semibold text-slate-800 block">48-Hour Link</span>
+                  <span className="text-[11px] text-slate-450">The private download link expires 48 hours post successful purchase.</span>
+                </div>
+              </div>
+              <div className="flex items-start gap-2.5">
+                <ShieldCheck className="w-4 h-4 text-emerald-500 mt-0.5 shrink-0" />
+                <div>
+                  <span className="font-semibold text-slate-800 block">Verified Purchase</span>
+                  <span className="text-[11px] text-slate-450">Only verified purchases via checkout get download access. Link logs your download metadata.</span>
+                </div>
+              </div>
             </div>
           </div>
         </div>
