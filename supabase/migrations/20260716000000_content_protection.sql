@@ -137,3 +137,6 @@ CREATE POLICY "previews: owner delete" ON storage.objects
             WHERE id = auth.uid() AND role IN ('admin', 'super_admin')
         ))
     );
+
+-- Reload PostgREST schema cache to make sure columns appear instantly
+NOTIFY pgrst, 'reload schema';
