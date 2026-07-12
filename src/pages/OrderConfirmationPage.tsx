@@ -9,59 +9,102 @@ export default function OrderConfirmationPage() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { addToast } = useToastStore();
-  const orderId = searchParams.get('order_id');
+  const orderIdParam = searchParams.get('order_id');
+  // Present when arriving here via the hosted Payment Link fallback instead
+  // of the embedded widget — the DB order doesn't exist yet at redirect
+  // time, so we have to resolve it by payment id (and wait for the
+  // webhook to create it).
+  const razorpayPaymentId = searchParams.get('razorpay_payment_id');
 
   const [order, setOrder] = useState<any>(null);
   const [purchasedNotes, setPurchasedNotes] = useState<Note[]>([]);
   const [loading, setLoading] = useState(true);
   const [resending, setResending] = useState(false);
+  const [waitingForWebhook, setWaitingForWebhook] = useState(false);
 
   useEffect(() => {
+    let cancelled = false;
+
+    const loadItemsForOrder = async (resolvedOrderId: string, orderData: any) => {
+      setOrder(orderData);
+      const { data: itemsData, error: itemsErr } = await supabase
+        .from('order_items')
+        .select('*, note:notes(*)')
+        .eq('order_id', resolvedOrderId);
+
+      if (itemsErr) throw itemsErr;
+      if (itemsData) {
+        const notesList = itemsData.map((item: any) => item.note).filter(Boolean);
+        setPurchasedNotes(notesList);
+      }
+    };
+
     const fetchOrderDetails = async () => {
-      if (!orderId) {
+      if (!orderIdParam && !razorpayPaymentId) {
         navigate('/courses');
         return;
       }
 
       setLoading(true);
       try {
-        // Fetch order details
-        const { data: orderData, error: orderErr } = await supabase
-          .from('orders')
-          .select('*')
-          .eq('id', orderId)
-          .single();
+        if (orderIdParam) {
+          // Normal embedded-widget flow — order already exists (created
+          // synchronously by verify-payment before this page ever loads).
+          const { data: orderData, error: orderErr } = await supabase
+            .from('orders')
+            .select('*')
+            .eq('id', orderIdParam)
+            .single();
 
-        if (orderErr || !orderData) {
-          throw new Error('Order details not found');
-        }
+          if (orderErr || !orderData) throw new Error('Order details not found');
+          await loadItemsForOrder(orderData.id, orderData);
+        } else if (razorpayPaymentId) {
+          // Hosted Payment Link flow — the order row is created by the
+          // /webhook handler, which can lag slightly behind the redirect.
+          // Poll briefly instead of failing immediately.
+          setWaitingForWebhook(true);
+          const maxAttempts = 10;
+          let found: any = null;
 
-        setOrder(orderData);
+          for (let attempt = 0; attempt < maxAttempts && !cancelled; attempt++) {
+            const { data: orderData } = await supabase
+              .from('orders')
+              .select('*')
+              .eq('razorpay_payment_id', razorpayPaymentId)
+              .maybeSingle();
 
-        // Fetch purchased items
-        const { data: itemsData, error: itemsErr } = await supabase
-          .from('order_items')
-          .select('*, note:notes(*)')
-          .eq('order_id', orderId);
+            if (orderData) {
+              found = orderData;
+              break;
+            }
+            await new Promise((resolve) => setTimeout(resolve, 1500));
+          }
 
-        if (itemsErr) throw itemsErr;
+          if (cancelled) return;
+          setWaitingForWebhook(false);
 
-        if (itemsData) {
-          const notesList = itemsData.map((item: any) => item.note).filter(Boolean);
-          setPurchasedNotes(notesList);
+          if (!found) {
+            throw new Error(
+              'Your payment is still being confirmed. This can take a minute — please check your email for the receipt, or use Order Lookup with your email shortly.'
+            );
+          }
+
+          await loadItemsForOrder(found.id, found);
         }
       } catch (err: any) {
         console.error(err);
         addToast('error', 'Receipt Retrieval Error', err.message || 'Could not load transaction receipt.');
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     };
 
     fetchOrderDetails();
-  }, [orderId, navigate]);
+    return () => { cancelled = true; };
+  }, [orderIdParam, razorpayPaymentId, navigate]);
 
   const handleResendEmail = async () => {
+    const orderId = order?.id;
     if (!orderId) return;
     setResending(true);
 
@@ -129,7 +172,36 @@ export default function OrderConfirmationPage() {
     return (
       <div className="max-w-4xl mx-auto px-4 py-24 min-h-[60vh] flex flex-col items-center justify-center gap-4">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-accent" />
-        <p className="text-gray-400 text-sm font-display">Verifying payment receipts...</p>
+        <p className="text-gray-400 text-sm font-display">
+          {waitingForWebhook
+            ? 'Confirming your payment… this can take up to a minute.'
+            : 'Verifying payment receipts...'}
+        </p>
+      </div>
+    );
+  }
+
+  if (!order) {
+    return (
+      <div className="max-w-2xl mx-auto px-4 py-24 min-h-[60vh] flex flex-col items-center justify-center gap-5 text-center">
+        <AlertCircle className="w-12 h-12 text-amber-500" />
+        <h1 className="text-2xl font-display font-extrabold text-primary">
+          Still confirming your payment
+        </h1>
+        <p className="text-gray-500 text-sm font-sans max-w-md">
+          {razorpayPaymentId
+            ? `We can see a payment attempt (ID: ${razorpayPaymentId}) but haven't finished confirming it on our end yet. If you were charged, your notes email will arrive shortly — or you can look your order up below in a minute.`
+            : "We couldn't find that order. If you were charged, check your email for the receipt, or look it up below."}
+        </p>
+        <div className="flex flex-col sm:flex-row gap-4 pt-2">
+          <Link to="/lookup" className="btn-secondary py-3 px-8 text-sm w-full sm:w-auto">
+            Order Lookup Portal
+          </Link>
+          <Link to="/courses" className="btn-primary py-3 px-8 text-sm w-full sm:w-auto">
+            <ShoppingBag className="w-4 h-4" />
+            Browse More Catalog
+          </Link>
+        </div>
       </div>
     );
   }
