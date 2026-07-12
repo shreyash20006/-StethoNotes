@@ -21,6 +21,7 @@ function logDebug(entry: DebugLog) {
 function getCorsHeaders(origin: string | null) {
   const allowedOrigins = [
     "https://www.stethonotes.store",
+    "https://stethonotes.store",
     "http://localhost:5173",
     "http://localhost:3000",
   ]
@@ -29,7 +30,28 @@ function getCorsHeaders(origin: string | null) {
     "Access-Control-Allow-Origin": resolvedOrigin,
     "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-action",
     "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+    "Access-Control-Allow-Credentials": "true",
   }
+}
+
+function getRelativeStoragePath(urlOrPath: string): string {
+  if (!urlOrPath) return "";
+  if (urlOrPath.startsWith("http://") || urlOrPath.startsWith("https://")) {
+    const marker = "notes-pdfs/";
+    const index = urlOrPath.indexOf(marker);
+    if (index !== -1) {
+      return decodeURIComponent(urlOrPath.substring(index + marker.length));
+    }
+    try {
+      const parsed = new URL(urlOrPath);
+      const segments = parsed.pathname.split("/");
+      const bucketIdx = segments.indexOf("notes-pdfs");
+      if (bucketIdx !== -1 && bucketIdx < segments.length - 1) {
+        return decodeURIComponent(segments.slice(bucketIdx + 1).join("/"));
+      }
+    } catch (_) {}
+  }
+  return urlOrPath;
 }
 
 function createErrorResponse(stage: string, message: string, details?: any, stack?: string) {
@@ -93,9 +115,10 @@ async function generateAndSendEmail(
   
   for (const item of items) {
     if (item.note) {
+      const relativePath = getRelativeStoragePath(item.note.pdf_url)
       const { data, error } = await supabaseAdmin.storage
         .from('notes-pdfs')
-        .createSignedUrl(item.note.pdf_url, 172800)
+        .createSignedUrl(relativePath, 172800)
 
       if (error || !data?.signedUrl) {
         logDebug({
@@ -154,7 +177,7 @@ async function generateAndSendEmail(
     subject: "📚 Your StethoNotes Order is Ready!"
   }
 
-  if (brevoTemplateId) {
+  if (brevoTemplateId && !isNaN(Number(brevoTemplateId))) {
     const downloadListHtml = `
       <ul style="padding-left: 20px; margin: 0; font-family: sans-serif; font-size: 14px; line-height: 1.6;">
         ${emailNotesList.map(item => `
@@ -325,6 +348,9 @@ serve(async (req) => {
           requestBody = await clone.text()
           parsedJson = JSON.parse(requestBody)
           action = parsedJson.action || ""
+          if (!action) {
+            action = parsedJson.razorpay_payment_id ? 'verify-payment' : 'create-order'
+          }
         } catch (parseErr: any) {
           logDebug({
             stage: "parse_body",
