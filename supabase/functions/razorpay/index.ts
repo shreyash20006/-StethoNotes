@@ -1,9 +1,18 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-action',
+function getCorsHeaders(origin: string | null) {
+  const allowedOrigins = [
+    "https://www.stethonotes.store",
+    "http://localhost:5173",
+    "http://localhost:3000",
+  ]
+  const resolvedOrigin = origin && allowedOrigins.includes(origin) ? origin : "https://www.stethonotes.store"
+  return {
+    "Access-Control-Allow-Origin": resolvedOrigin,
+    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-action",
+    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+  }
 }
 
 // Helper to verify HMAC SHA256 signature using Web Crypto API (constant-time check for security)
@@ -182,9 +191,12 @@ async function generateAndSendEmail(
 }
 
 serve(async (req) => {
+  const origin = req.headers.get("origin")
+  const corsHeaders = getCorsHeaders(origin)
+
   // CORS options preflight
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders })
+    return new Response('ok', { status: 200, headers: corsHeaders })
   }
 
   const url = new URL(req.url)
