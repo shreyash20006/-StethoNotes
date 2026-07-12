@@ -500,7 +500,7 @@ export default function NoteUploadWizard({ onClose, onSaveSuccess, note = null, 
       return;
     }
 
-    const sellerId = note ? note.seller_id : (isAdmin ? 'admin_central' : user?.id);
+    const sellerId = note ? note.seller_id : (isAdmin ? null : (user?.id || null));
 
     const payload = {
       title: title.trim(),
