@@ -53,7 +53,7 @@ CREATE POLICY "notes-pdfs: select" ON storage.objects
                     SELECT 1 FROM public.profiles 
                     WHERE id = auth.uid() AND role = 'seller'
                 )
-                AND owner = auth.uid()::text
+                AND owner = auth.uid()
             )
         )
     );
@@ -70,7 +70,7 @@ CREATE POLICY "notes-pdfs: insert" ON storage.objects
                     SELECT 1 FROM public.profiles 
                     WHERE id = auth.uid() AND role = 'seller'
                 )
-                AND (owner = auth.uid()::text OR owner IS NULL)
+                AND (owner = auth.uid() OR owner IS NULL)
             )
         )
     );
@@ -87,7 +87,7 @@ CREATE POLICY "notes-pdfs: update" ON storage.objects
                 SELECT 1 FROM public.profiles 
                 WHERE id = auth.uid() AND role = 'seller'
             )
-            AND owner = auth.uid()::text
+            AND owner = auth.uid()
         )
     );
 
@@ -103,7 +103,7 @@ CREATE POLICY "notes-pdfs: delete" ON storage.objects
                     SELECT 1 FROM public.profiles 
                     WHERE id = auth.uid() AND role = 'seller'
                 )
-                AND owner = auth.uid()::text
+                AND owner = auth.uid()
             )
         )
     );
@@ -131,7 +131,7 @@ CREATE POLICY "previews: insert" ON storage.objects
                     SELECT 1 FROM public.profiles 
                     WHERE id = auth.uid() AND role = 'seller'
                 )
-                AND (owner = auth.uid()::text OR owner IS NULL)
+                AND (owner = auth.uid() OR owner IS NULL)
             )
         )
     );
@@ -148,7 +148,7 @@ CREATE POLICY "previews: update" ON storage.objects
                 SELECT 1 FROM public.profiles 
                 WHERE id = auth.uid() AND role = 'seller'
             )
-            AND owner = auth.uid()::text
+            AND owner = auth.uid()
         )
     );
 
@@ -164,7 +164,7 @@ CREATE POLICY "previews: delete" ON storage.objects
                     SELECT 1 FROM public.profiles 
                     WHERE id = auth.uid() AND role = 'seller'
                 )
-                AND owner = auth.uid()::text
+                AND owner = auth.uid()
             )
         )
     );
@@ -192,7 +192,7 @@ CREATE POLICY "thumbnails: insert" ON storage.objects
                     SELECT 1 FROM public.profiles 
                     WHERE id = auth.uid() AND role = 'seller'
                 )
-                AND (owner = auth.uid()::text OR owner IS NULL)
+                AND (owner = auth.uid() OR owner IS NULL)
             )
         )
     );
@@ -209,7 +209,7 @@ CREATE POLICY "thumbnails: update" ON storage.objects
                 SELECT 1 FROM public.profiles 
                 WHERE id = auth.uid() AND role = 'seller'
             )
-            AND owner = auth.uid()::text
+            AND owner = auth.uid()
         )
     );
 
@@ -225,7 +225,7 @@ CREATE POLICY "thumbnails: delete" ON storage.objects
                     SELECT 1 FROM public.profiles 
                     WHERE id = auth.uid() AND role = 'seller'
                 )
-                AND owner = auth.uid()::text
+                AND owner = auth.uid()
             )
         )
     );
