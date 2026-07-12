@@ -8,12 +8,14 @@ import {
 
 interface EmailLogItem {
   id: string;
-  recipient: string;
+  recipient?: string;
+  email?: string;
   subject: string;
   template_id: string;
   status: 'sent' | 'delivered' | 'opened' | 'failed' | 'clicked' | 'bounce';
   error_message?: string;
   created_at: string;
+  order_id?: string;
 }
 
 export default function EmailCenter() {
@@ -25,6 +27,7 @@ export default function EmailCenter() {
   const [emailLogs, setEmailLogs] = useState<EmailLogItem[]>([]);
   const [logSearch, setLogSearch] = useState('');
   const [logFilter, setLogFilter] = useState('');
+  const [resending, setResending] = useState<string | null>(null);
 
   // Templates State
   const [templates, setTemplates] = useState<EmailTemplate[]>([]);
@@ -129,8 +132,34 @@ export default function EmailCenter() {
     }
   };
 
+  const handleResendEmail = async (orderId: string, recipient: string) => {
+    if (!confirm(`Are you sure you want to regenerate signed URLs and resend the email to ${recipient}?`)) {
+      return;
+    }
+    setResending(orderId);
+    try {
+      const { data, error } = await supabase.functions.invoke('razorpay', {
+        headers: { 'x-action': 'resend-email' },
+        body: { order_id: orderId }
+      });
+
+      if (error) throw error;
+      if (data && data.success === false) {
+        throw new Error(data.message || 'Resend failed.');
+      }
+
+      addToast('success', 'Email Resent', `Successfully resent purchase email to ${recipient}.`);
+      fetchEmailData();
+    } catch (err: any) {
+      console.error('Error resending email:', err);
+      addToast('error', 'Resend Failed', err.message || 'Server encountered an error.');
+    } finally {
+      setResending(null);
+    }
+  };
+
   const filteredLogs = emailLogs.filter(l => {
-    const matchesSearch = l.recipient.toLowerCase().includes(logSearch.toLowerCase()) ||
+    const matchesSearch = (l.email || l.recipient || '').toLowerCase().includes(logSearch.toLowerCase()) ||
                           l.subject.toLowerCase().includes(logSearch.toLowerCase());
     const matchesStatus = logFilter ? l.status === logFilter : true;
     return matchesSearch && matchesStatus;
@@ -213,6 +242,7 @@ export default function EmailCenter() {
                     <th className="px-6 py-4">Template</th>
                     <th className="px-6 py-4 text-center">Status</th>
                     <th className="px-6 py-4 text-right">Sent Time</th>
+                    <th className="px-6 py-4 text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-50 text-xs">
@@ -241,6 +271,17 @@ export default function EmailCenter() {
                           )}
                         </td>
                         <td className="px-6 py-4 text-right text-slate-400 font-sans">{new Date(log.created_at).toLocaleTimeString()}</td>
+                        <td className="px-6 py-4 text-right">
+                          {log.order_id && (
+                            <button
+                              onClick={() => log.order_id && handleResendEmail(log.order_id, log.email || log.recipient || '')}
+                              disabled={resending === log.order_id}
+                              className="px-3 py-1 bg-cyan-600 hover:bg-cyan-700 text-white rounded text-[10px] font-bold disabled:opacity-50 transition-all font-sans"
+                            >
+                              {resending === log.order_id ? 'Resending...' : 'Resend Email'}
+                            </button>
+                          )}
+                        </td>
                       </tr>
                     ))
                   )}

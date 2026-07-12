@@ -135,6 +135,26 @@ async function generateAndSendEmail(
   for (const item of items) {
     if (item.note) {
       const relativePath = getRelativeStoragePath(item.note.pdf_url)
+      
+      // Task 3: Verify the PDF exists in the private Storage bucket.
+      const folderPath = relativePath.substring(0, relativePath.lastIndexOf('/'))
+      const fileName = relativePath.substring(relativePath.lastIndexOf('/') + 1)
+      
+      console.log(`Verifying file existence in notes-pdfs storage: ${relativePath}`);
+      const { data: fileList, error: listError } = await supabaseAdmin.storage
+        .from('notes-pdfs')
+        .list(folderPath || undefined, {
+          search: fileName
+        })
+      
+      const fileExists = fileList?.some((f: any) => f.name === fileName)
+      if (!fileExists || listError) {
+        console.error(`Storage file verification failed: File ${relativePath} does not exist in bucket 'notes-pdfs'.`, listError);
+        throw new Error(`PDF file does not exist in private storage bucket: ${relativePath}`);
+      }
+      console.log(`Verified: File ${relativePath} exists in private storage bucket 'notes-pdfs'.`);
+
+      // Task 4 & 5: Verify createSignedUrl() succeeds and log it.
       const { data, error } = await supabaseAdmin.storage
         .from('notes-pdfs')
         .createSignedUrl(relativePath, 172800)
@@ -147,6 +167,8 @@ async function generateAndSendEmail(
         })
         throw new Error(`Could not generate download link for ${item.note.title}`)
       }
+
+      console.log(`Signed URL generated successfully: ${data.signedUrl}`);
 
       emailNotesList.push({
         title: item.note.title,
@@ -223,7 +245,11 @@ async function generateAndSendEmail(
           subject: item.subject,
           downloadUrl: item.downloadUrl
         })),
-        DOWNLOADS_HTML: notesHtml
+        DOWNLOADS_HTML: notesHtml,
+        // Transactional template variables (Task 9)
+        download_link: emailNotesList[0]?.downloadUrl || "",
+        product_name: emailNotesList[0]?.title || "Study Notes",
+        expiry_time: "48 hours"
       }
     }
   } else {
@@ -233,8 +259,10 @@ async function generateAndSendEmail(
     }
   }
 
+  // Task 6: Log Brevo API request payload.
+  console.log("Brevo request started with payload:", JSON.stringify(brevoPayload, null, 2));
+
   const brevoUrl = "https://api.brevo.com/v3/smtp/email";
-  if (!brevoUrl) throw new Error("Brevo SMTP URL is undefined");
   console.log("Request URL:", brevoUrl);
   const response = await fetch(brevoUrl, {
     method: 'POST',
@@ -246,32 +274,37 @@ async function generateAndSendEmail(
     body: JSON.stringify(brevoPayload)
   })
 
+  // Task 6: Log Brevo response.
+  const responseStatus = response.status;
+  const responseText = await response.text();
+  console.log(`Brevo response status: ${responseStatus}`);
+  console.log(`Brevo response JSON: ${responseText}`);
+
   if (!response.ok) {
-    const errorText = await response.text()
     logDebug({
       stage: "generate_and_send_email",
       message: "Brevo SMTP request failed",
-      details: { status: response.status, errorText }
+      details: { status: responseStatus, errorText: responseText }
     })
-    throw new Error(`Brevo SMTP dispatch failed: ${errorText}`)
+    throw new Error(`Brevo SMTP dispatch failed: ${responseText}`)
   }
 
-  logDebug({
-    stage: "generate_and_send_email",
-    message: "Brevo SMTP request succeeded"
-  })
+  console.log("Email sent successfully");
 
+  // Task 11: Update orders.email_status
   const { error: updateErr } = await supabaseAdmin
     .from('orders')
     .update({ email_status: 'sent' })
     .eq('id', order.id)
 
   if (updateErr) throw updateErr
+  console.log("Database updated: email_status set to sent");
 
   await supabaseAdmin.from('email_logs').insert({
     order_id: order.id,
     email: order.customer_email,
-    status: 'success'
+    status: 'success',
+    created_at: new Date().toISOString()
   })
 }
 
@@ -758,6 +791,16 @@ serve(async (req) => {
             status: 'failure',
             error_message: emailErr.message
           })
+
+          const error = createErrorResponse(
+            "verify-payment",
+            `Payment captured, but email delivery failed: ${emailErr.message}`,
+            emailErr
+          )
+          return new Response(JSON.stringify(error), {
+            status: 400,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          })
         }
 
         return new Response(JSON.stringify({ success: true, order_id: dbOrder.id }), {
@@ -778,7 +821,83 @@ serve(async (req) => {
           verifyErr.stack
         )
         return new Response(JSON.stringify(error), {
-          status: 500,
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        })
+      }
+    }
+
+    // --------------------------------------------------------
+    // ENDPOINT: /resend-email
+    // --------------------------------------------------------
+    else if (action === 'resend-email') {
+      let bodyJson: any = null
+      try {
+        bodyJson = await req.json()
+      } catch (parseErr: any) {
+        return new Response(JSON.stringify({ success: false, message: "Invalid JSON body" }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        })
+      }
+
+      const { order_id } = bodyJson
+      if (!order_id) {
+        return new Response(JSON.stringify({ success: false, message: "order_id is required" }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        })
+      }
+
+      try {
+        console.log(`Resend Email requested for order: ${order_id}`);
+        // Fetch order details
+        const { data: dbOrder, error: orderErr } = await supabaseAdmin
+          .from('orders')
+          .select('*')
+          .eq('id', order_id)
+          .single()
+
+        if (orderErr || !dbOrder) {
+          throw new Error(`Order not found: ${orderErr?.message || ''}`)
+        }
+
+        // Fetch order items with note details
+        const { data: orderItemsData, error: itemsErr } = await supabaseAdmin
+          .from('order_items')
+          .select('*, note:notes(*)')
+          .eq('order_id', order_id)
+
+        if (itemsErr || !orderItemsData || orderItemsData.length === 0) {
+          throw new Error(`Order items not found: ${itemsErr?.message || ''}`)
+        }
+
+        // Send email (this generates fresh signed URLs and dispatches via Brevo)
+        await generateAndSendEmail(
+          supabaseAdmin,
+          dbOrder,
+          orderItemsData,
+          brevoApiKey,
+          brevoTemplateId,
+          fromEmail,
+          fromName
+        )
+
+        return new Response(JSON.stringify({ success: true, message: "Email resent successfully" }), {
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        })
+      } catch (resendErr: any) {
+        logDebug({
+          stage: "resend-email",
+          message: "Error in resend-email flow",
+          details: resendErr.message
+        })
+        return new Response(JSON.stringify({
+          success: false,
+          message: `Resend failed: ${resendErr.message}`
+        }), {
+          status: 400,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         })
       }
