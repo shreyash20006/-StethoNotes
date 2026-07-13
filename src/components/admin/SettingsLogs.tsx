@@ -14,7 +14,7 @@ export default function SettingsLogs() {
 
   // Settings Fields State
   const [supportEmail, setSupportEmail] = useState('support@stethonotes.com');
-  const [brandLogo, setBrandLogo] = useState('https://stethonotes.com/logo.png');
+  const [brandLogo, setBrandLogo] = useState('https://res.cloudinary.com/dsqxboxoc/image/upload/v1783892715/file_00000000663871fa96d4e5a32de37be1_adwo6u.png');
   const [customDomain, setCustomDomain] = useState('stethonotes.com');
   
   // API credentials fields

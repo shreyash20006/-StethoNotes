@@ -21,6 +21,8 @@ export default function LoginPage() {
   const { user, signUp, signIn, signInWithOtp, verifyOtp, signInWithGoogle, error, clearError } = useAuthStore();
   const { addToast } = useToastStore();
 
+  const storedLogo = localStorage.getItem('brand_logo') || 'https://res.cloudinary.com/dsqxboxoc/image/upload/v1783892715/file_00000000663871fa96d4e5a32de37be1_adwo6u.png';
+
   const isSignUpParam = searchParams.get('signup') === 'true';
   const [isSignUp, setIsSignUp] = useState(isSignUpParam);
   const [email, setEmail] = useState('');
@@ -109,12 +111,8 @@ export default function LoginPage() {
 
           {/* Header */}
           <div className="text-center mb-7">
-            <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-accent/10 mb-4">
-              <svg className="w-8 h-8 text-accent" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M4.5 16.5c-1.5 1.26-2.5 3.19-2.5 5.5" />
-                <path d="M12 2v10a4 4 0 0 0 8 0V2" />
-                <path d="M12 12a4 4 0 0 1-8 0V2" />
-              </svg>
+            <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-accent/10 mb-4 overflow-hidden p-2">
+              <img src={storedLogo} alt="StethoNotes Logo" className="w-full h-full object-contain" />
             </div>
             <h1 className="font-display font-extrabold text-2xl text-primary tracking-tight">
               Student <span className="text-accent">Login</span>

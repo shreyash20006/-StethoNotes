@@ -213,13 +213,15 @@ export default function Cart() {
         }
 
         // 2. Initiate Razorpay Window Payment Options
+        const storedLogo = localStorage.getItem('brand_logo') || 'https://res.cloudinary.com/dsqxboxoc/image/upload/v1783892715/file_00000000663871fa96d4e5a32de37be1_adwo6u.png';
+
         const options = {
           key: razorpayKey,
           amount: orderData.amount,
           currency: orderData.currency,
           name: 'StethoNotes',
           description: 'Secure Digital Guides Checkout',
-          image: 'https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?auto=format&fit=crop&q=80&w=150',
+          image: storedLogo,
           order_id: orderData.order_id, // Pass Razorpay order_id
           handler: async (response: any) => {
             setPaymentState('verifying');

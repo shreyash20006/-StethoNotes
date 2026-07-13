@@ -2,6 +2,8 @@ import { Link } from 'react-router-dom';
 import { Mail, MapPin, FileText } from 'lucide-react';
 
 export default function Footer() {
+  const storedLogo = localStorage.getItem('brand_logo') || 'https://res.cloudinary.com/dsqxboxoc/image/upload/v1783892715/file_00000000663871fa96d4e5a32de37be1_adwo6u.png';
+
   return (
     <footer className="bg-primary-dark text-white font-sans pt-16 pb-8 border-t border-white/5">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -9,14 +11,8 @@ export default function Footer() {
           {/* Brand block */}
           <div className="flex flex-col gap-4">
             <Link to="/" className="flex items-center gap-3">
-              <div className="bg-white/10 p-2 rounded-xl flex items-center justify-center">
-                <svg className="w-6 h-6 text-accent" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M4.5 16.5c-1.5 1.26-2.5 3.19-2.5 5.5" />
-                  <path d="M12 2v10a4 4 0 0 0 8 0V2" />
-                  <path d="M12 12a4 4 0 0 1-8 0V2" />
-                  <path d="M22 2h-4" />
-                  <path d="M6 2H2" />
-                </svg>
+              <div className="bg-white/10 p-1 rounded-xl flex items-center justify-center w-8 h-8 shrink-0 overflow-hidden">
+                <img src={storedLogo} alt="StethoNotes Logo" className="w-full h-full object-contain" />
               </div>
               <span className="font-display font-bold text-xl tracking-tight">
                 Stetho<span className="text-accent">Notes</span>

@@ -14,6 +14,8 @@ export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
+  const storedLogo = localStorage.getItem('brand_logo') || 'https://res.cloudinary.com/dsqxboxoc/image/upload/v1783892715/file_00000000663871fa96d4e5a32de37be1_adwo6u.png';
+
   const cartCount = items.length;
 
   const isAdmin = user?.role === 'admin' || user?.role === 'super_admin';
@@ -58,15 +60,8 @@ export default function Navbar() {
           {/* Logo */}
           <div className="flex items-center">
             <Link to="/" className="flex items-center gap-3 group">
-              <div className="bg-primary/5 p-2 rounded-xl flex items-center justify-center transition-all duration-300 group-hover:bg-primary/10">
-                <svg className="w-8 h-8 text-primary group-hover:text-accent transition-colors" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M4.5 16.5c-1.5 1.26-2.5 3.19-2.5 5.5" />
-                  <path d="M12 2v10a4 4 0 0 0 8 0V2" />
-                  <path d="M12 12a4 4 0 0 1-8 0V2" />
-                  <path d="M22 2h-4" />
-                  <path d="M6 2H2" />
-                  <rect x="8" y="2" width="8" height="4" rx="1" fill="#1FB6D4" stroke="none" />
-                </svg>
+              <div className="bg-primary/5 p-1 rounded-xl flex items-center justify-center transition-all duration-300 group-hover:bg-primary/10 w-10 h-10 shrink-0 overflow-hidden">
+                <img src={storedLogo} alt="StethoNotes Logo" className="w-full h-full object-contain" />
               </div>
               <span className="font-display font-bold text-2xl tracking-tight text-primary">
                 Stetho<span className="text-accent">Notes</span>

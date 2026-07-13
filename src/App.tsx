@@ -143,6 +143,18 @@ function App() {
         }
       })
       .catch((err: any) => console.error('Failed to fetch direct download setting:', err));
+
+    // Fetch brand logo setting on startup
+    supabase.from('settings')
+      .select('*')
+      .eq('key', 'brand_logo')
+      .maybeSingle()
+      .then(({ data }: { data: any }) => {
+        if (data && data.value) {
+          localStorage.setItem('brand_logo', String(data.value));
+        }
+      })
+      .catch((err: any) => console.error('Failed to fetch brand logo setting:', err));
   }, [checkSession]);
 
   return (
