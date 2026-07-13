@@ -12,6 +12,17 @@ ALTER TABLE public.coupon_codes
     ADD COLUMN IF NOT EXISTS min_purchase NUMERIC(10, 2) DEFAULT 0.00 CHECK (min_purchase >= 0),
     ADD COLUMN IF NOT EXISTS max_discount NUMERIC(10, 2) DEFAULT NULL CHECK (max_discount > 0);
 
+-- Ensure all reviews columns exist on legacy reviews table
+ALTER TABLE public.reviews
+    ADD COLUMN IF NOT EXISTS rating INTEGER CHECK (rating BETWEEN 1 AND 5),
+    ADD COLUMN IF NOT EXISTS comment TEXT,
+    ADD COLUMN IF NOT EXISTS is_verified_purchase BOOLEAN DEFAULT false,
+    ADD COLUMN IF NOT EXISTS is_pinned BOOLEAN DEFAULT false,
+    ADD COLUMN IF NOT EXISTS is_hidden BOOLEAN DEFAULT false,
+    ADD COLUMN IF NOT EXISTS is_reported BOOLEAN DEFAULT false,
+    ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT now(),
+    ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT now();
+
 
 -- ==========================================
 -- SECTION 2: NEW TABLES
@@ -189,10 +200,19 @@ CREATE INDEX IF NOT EXISTS idx_product_views_note      ON public.product_views(n
 -- ==========================================
 
 -- Automatically update timestamps
+DROP TRIGGER IF EXISTS trg_reviews_updated_at ON public.reviews;
 CREATE TRIGGER trg_reviews_updated_at BEFORE UPDATE ON public.reviews FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
+DROP TRIGGER IF EXISTS trg_comments_updated_at ON public.comments;
 CREATE TRIGGER trg_comments_updated_at BEFORE UPDATE ON public.comments FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
+DROP TRIGGER IF EXISTS trg_comment_replies_updated_at ON public.comment_replies;
 CREATE TRIGGER trg_comment_replies_updated_at BEFORE UPDATE ON public.comment_replies FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
+DROP TRIGGER IF EXISTS trg_seo_metadata_updated_at ON public.seo_metadata;
 CREATE TRIGGER trg_seo_metadata_updated_at BEFORE UPDATE ON public.seo_metadata FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
+DROP TRIGGER IF EXISTS trg_email_templates_updated_at ON public.email_templates;
 CREATE TRIGGER trg_email_templates_updated_at BEFORE UPDATE ON public.email_templates FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 
 
@@ -224,23 +244,35 @@ CREATE POLICY "coupon_usage: own view" ON public.coupon_usage FOR SELECT USING (
 CREATE POLICY "coupon_usage: admin view" ON public.coupon_usage FOR SELECT USING (public.is_admin(auth.uid()));
 
 -- 5.3 reviews
+DROP POLICY IF EXISTS "reviews: public read" ON public.reviews;
 CREATE POLICY "reviews: public read" ON public.reviews FOR SELECT USING (is_hidden = false);
+DROP POLICY IF EXISTS "reviews: admin select all" ON public.reviews;
 CREATE POLICY "reviews: admin select all" ON public.reviews FOR SELECT USING (public.is_admin(auth.uid()));
+DROP POLICY IF EXISTS "reviews: own write" ON public.reviews;
 CREATE POLICY "reviews: own write" ON public.reviews FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+DROP POLICY IF EXISTS "reviews: admin manage" ON public.reviews;
 CREATE POLICY "reviews: admin manage" ON public.reviews FOR ALL USING (public.is_admin(auth.uid()));
 
 -- 5.4 review_votes
+DROP POLICY IF EXISTS "review_votes: public read" ON public.review_votes;
 CREATE POLICY "review_votes: public read" ON public.review_votes FOR SELECT USING (true);
+DROP POLICY IF EXISTS "review_votes: own vote" ON public.review_votes;
 CREATE POLICY "review_votes: own vote" ON public.review_votes FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
 
 -- 5.5 comments
+DROP POLICY IF EXISTS "comments: public read" ON public.comments;
 CREATE POLICY "comments: public read" ON public.comments FOR SELECT USING (true);
+DROP POLICY IF EXISTS "comments: own write" ON public.comments;
 CREATE POLICY "comments: own write" ON public.comments FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+DROP POLICY IF EXISTS "comments: admin manage" ON public.comments;
 CREATE POLICY "comments: admin manage" ON public.comments FOR ALL USING (public.is_admin(auth.uid()));
 
 -- 5.6 comment_replies
+DROP POLICY IF EXISTS "comment_replies: public read" ON public.comment_replies;
 CREATE POLICY "comment_replies: public read" ON public.comment_replies FOR SELECT USING (true);
+DROP POLICY IF EXISTS "comment_replies: own write" ON public.comment_replies;
 CREATE POLICY "comment_replies: own write" ON public.comment_replies FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+DROP POLICY IF EXISTS "comment_replies: admin manage" ON public.comment_replies;
 CREATE POLICY "comment_replies: admin manage" ON public.comment_replies FOR ALL USING (public.is_admin(auth.uid()));
 
 -- 5.7 recently_viewed

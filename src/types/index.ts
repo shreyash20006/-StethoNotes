@@ -108,6 +108,7 @@ export interface Review {
   created_at: string;
   updated_at?: string;
   note_title?: string;
+  image_url?: string;
 }
 
 export interface CartItem {
@@ -257,6 +258,8 @@ export interface Comment {
   created_at: string;
   updated_at?: string;
   replies?: CommentReply[];
+  likes_count?: number;
+  liked_by_me?: boolean;
 }
 
 export interface CommentReply {
@@ -270,6 +273,9 @@ export interface CommentReply {
   is_reported: boolean;
   created_at: string;
   updated_at?: string;
+  likes_count?: number;
+  liked_by_me?: boolean;
+  is_official?: boolean;
 }
 
 export interface RecentlyViewedItem {

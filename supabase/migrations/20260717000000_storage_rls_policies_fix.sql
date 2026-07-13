@@ -246,3 +246,45 @@ CREATE POLICY "thumbnails: delete" ON storage.objects
             )
         )
     );
+
+-- ============================================================
+-- 5. REVIEWS & DISCUSSION UPDATES
+-- ============================================================
+
+-- Add image_url column to reviews if it does not exist
+ALTER TABLE public.reviews ADD COLUMN IF NOT EXISTS image_url TEXT;
+
+-- Add is_official column to comment_replies if it does not exist
+ALTER TABLE public.comment_replies ADD COLUMN IF NOT EXISTS is_official BOOLEAN NOT NULL DEFAULT false;
+
+-- Create comment_likes table for discussion liking
+CREATE TABLE IF NOT EXISTS public.comment_likes (
+    id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    comment_id UUID REFERENCES public.comments(id) ON DELETE CASCADE,
+    reply_id   UUID REFERENCES public.comment_replies(id) ON DELETE CASCADE,
+    user_id    UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    UNIQUE (comment_id, user_id),
+    UNIQUE (reply_id, user_id),
+    CONSTRAINT check_only_one CHECK (
+        (comment_id IS NOT NULL AND reply_id IS NULL) OR
+        (comment_id IS NULL AND reply_id IS NOT NULL)
+    )
+);
+
+ALTER TABLE public.comment_likes ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "comment_likes: public read" ON public.comment_likes;
+CREATE POLICY "comment_likes: public read" ON public.comment_likes FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS "comment_likes: own write" ON public.comment_likes;
+CREATE POLICY "comment_likes: own write" ON public.comment_likes FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+
+-- Allow authenticated users to upload review images to reviews/ folder in previews bucket
+DROP POLICY IF EXISTS "previews: reviews upload" ON storage.objects;
+CREATE POLICY "previews: reviews upload" ON storage.objects
+    FOR INSERT WITH CHECK (
+        bucket_id = 'previews'
+        AND auth.role() = 'authenticated'
+        AND (split_part(name, '/', 1) = 'reviews')
+    );

@@ -132,7 +132,7 @@ CREATE POLICY "previews: owner delete" ON storage.objects
     FOR DELETE USING (
         (bucket_id = 'preview-images' OR bucket_id = 'previews')
         AND auth.role() = 'authenticated'
-        AND (owner = auth.uid()::text OR EXISTS (
+        AND (owner::text = auth.uid()::text OR EXISTS (
             SELECT 1 FROM public.profiles 
             WHERE id = auth.uid() AND role IN ('admin', 'super_admin')
         ))

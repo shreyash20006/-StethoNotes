@@ -32,6 +32,7 @@ CREATE TABLE IF NOT EXISTS public.seller_applications (
 ALTER TABLE public.seller_applications ENABLE ROW LEVEL SECURITY;
 
 -- 1. SELECT: Users can view their own application, admins can view all
+DROP POLICY IF EXISTS "seller_apps: select policy" ON public.seller_applications;
 CREATE POLICY "seller_apps: select policy" ON public.seller_applications
     FOR SELECT USING (
         auth.uid() = user_id 
@@ -43,10 +44,12 @@ CREATE POLICY "seller_apps: select policy" ON public.seller_applications
     );
 
 -- 2. INSERT: Authenticated users can insert their own application
+DROP POLICY IF EXISTS "seller_apps: insert policy" ON public.seller_applications;
 CREATE POLICY "seller_apps: insert policy" ON public.seller_applications
     FOR INSERT WITH CHECK (auth.uid() = user_id);
 
 -- 3. UPDATE: Only admins can update applications
+DROP POLICY IF EXISTS "seller_apps: update policy" ON public.seller_applications;
 CREATE POLICY "seller_apps: update policy" ON public.seller_applications
     FOR UPDATE USING (
         EXISTS (
