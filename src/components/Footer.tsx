@@ -54,6 +54,12 @@ export default function Footer() {
                 </Link>
               </li>
               <li>
+                <Link to="/collections" className="hover:text-accent transition-colors flex items-center gap-1.5">
+                  <FileText className="w-4 h-4 text-accent/80" />
+                  Collections
+                </Link>
+              </li>
+              <li>
                 <a href="/#about" className="hover:text-accent transition-colors">
                   About StethoNotes
                 </a>

@@ -15,13 +15,14 @@ import EmailCenter from '../components/admin/EmailCenter';
 import StorageSEO from '../components/admin/StorageSEO';
 import SettingsLogs from '../components/admin/SettingsLogs';
 import LeakInvestigator from '../components/admin/LeakInvestigator';
+import CollectionsManager from '../components/admin/CollectionsManager';
 
 // Lucide Icons
 import {
   ShieldCheck, TrendingUp, Package, Users,
   Landmark, Tag, Mail, HardDrive, Settings, FolderOpen,
   ShoppingBag, Search, Plus, Trash2, ArrowRight,
-  LogOut, Menu, X, ShieldAlert
+  LogOut, Menu, X, ShieldAlert, Layers, ChevronDown, ChevronRight
 } from 'lucide-react';
 
 export default function AdminPage() {
@@ -44,6 +45,7 @@ export default function AdminPage() {
   const [orderSearch, setOrderSearch] = useState('');
   const [customerSearch, setCustomerSearch] = useState('');
   const [resendingOrderId, setResendingOrderId] = useState<string | null>(null);
+  const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
 
   // Sync tab with URL search parameter
   useEffect(() => {
@@ -69,7 +71,10 @@ export default function AdminPage() {
     try {
       const { data: coursesData } = await supabase.from('courses').select('*');
       const { data: notesData } = await supabase.from('notes').select('*');
-      const { data: ordersData } = await supabase.from('orders').select('*').order('created_at', { ascending: false });
+      const { data: ordersData } = await supabase
+        .from('orders')
+        .select('*, items:order_items(*, note:notes(id,title,subject,price))')
+        .order('created_at', { ascending: false });
 
       if (coursesData) setCourses(coursesData);
       if (notesData) setNotes(notesData);
@@ -202,6 +207,7 @@ export default function AdminPage() {
               { id: 'analytics', label: 'Revenue Analytics', icon: <TrendingUp className="w-4 h-4" /> },
               { id: 'notes', label: 'Notes Catalogue', icon: <Package className="w-4 h-4" /> },
               { id: 'courses', label: 'Courses Manager', icon: <FolderOpen className="w-4 h-4" /> },
+              { id: 'collections', label: 'Collections', icon: <Layers className="w-4 h-4" /> },
               { id: 'orders', label: 'Order Audits', icon: <ShoppingBag className="w-4 h-4" /> },
               { id: 'customers', label: 'Customers Log', icon: <Users className="w-4 h-4" /> },
               { id: 'sellers', label: 'Seller Moderation', icon: <Users className="w-4 h-4" /> },
@@ -261,6 +267,7 @@ export default function AdminPage() {
         {activeTab === 'storage_seo' && <StorageSEO />}
         {activeTab === 'settings_logs' && <SettingsLogs />}
         {activeTab === 'leak_investigator' && <LeakInvestigator />}
+        {activeTab === 'collections' && <CollectionsManager />}
 
         {/* ==========================================
             COURSES MANAGER VIEW
@@ -414,38 +421,73 @@ export default function AdminPage() {
                           o.customer_email.toLowerCase().includes(orderSearch.toLowerCase())
                         )
                         .map(order => (
-                          <tr key={order.id} className="hover:bg-slate-50/60">
-                            <td className="px-6 py-4 font-mono font-bold text-slate-750">{order.id}</td>
-                            <td className="px-6 py-4">
-                              <p className="font-semibold text-slate-800">{order.customer_name}</p>
-                              <span className="text-[10px] text-slate-400 font-sans">{order.customer_email}</span>
-                            </td>
-                            <td className="px-6 py-4 font-bold text-slate-800 font-sans">₹{order.total_amount}</td>
-                            <td className="px-6 py-4 font-mono text-slate-500">{order.razorpay_payment_id || 'Cash/Demo checkout'}</td>
-                            <td className="px-6 py-4 text-center">
-                              <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${
-                                order.payment_status === 'completed'
-                                  ? 'bg-emerald-100 text-emerald-700'
-                                  : order.payment_status === 'failed'
-                                  ? 'bg-red-100 text-red-700'
-                                  : 'bg-amber-100 text-amber-700'
-                              }`}>
-                                {order.payment_status}
-                              </span>
-                            </td>
-                            <td className="px-6 py-4 text-right text-slate-400 font-sans">{new Date(order.created_at).toLocaleDateString()}</td>
-                            <td className="px-6 py-4 text-right">
-                              {order.payment_status === 'completed' && (
-                                <button
-                                  onClick={() => handleResendEmail(order.id, order.customer_email)}
-                                  disabled={resendingOrderId === order.id}
-                                  className="px-2.5 py-1 bg-cyan-600 hover:bg-cyan-700 text-white rounded text-[10px] font-bold disabled:opacity-50 transition-all font-sans"
-                                >
-                                  {resendingOrderId === order.id ? 'Sending...' : 'Resend Email'}
-                                </button>
-                              )}
-                            </td>
-                          </tr>
+                          <>
+                            <tr
+                              key={order.id}
+                              className="hover:bg-slate-50/60 cursor-pointer"
+                              onClick={() => setExpandedOrderId(expandedOrderId === order.id ? null : order.id)}
+                            >
+                              <td className="px-6 py-4 font-mono font-bold text-slate-750 text-xs">
+                                <div className="flex items-center gap-1.5">
+                                  {expandedOrderId === order.id
+                                    ? <ChevronDown className="w-3 h-3 text-cyan-500" />
+                                    : <ChevronRight className="w-3 h-3 text-slate-400" />}
+                                  {order.id.slice(0, 8)}…
+                                </div>
+                              </td>
+                              <td className="px-6 py-4">
+                                <p className="font-semibold text-slate-800 text-xs">{order.customer_name}</p>
+                                <span className="text-[10px] text-slate-400 font-sans">{order.customer_email}</span>
+                              </td>
+                              <td className="px-6 py-4 font-bold text-slate-800 font-sans text-xs">₹{order.total_amount}</td>
+                              <td className="px-6 py-4 font-mono text-slate-500 text-[10px]">{order.razorpay_payment_id || 'Cash/Demo'}</td>
+                              <td className="px-6 py-4 text-center">
+                                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${
+                                  order.payment_status === 'completed'
+                                    ? 'bg-emerald-100 text-emerald-700'
+                                    : order.payment_status === 'failed'
+                                    ? 'bg-red-100 text-red-700'
+                                    : 'bg-amber-100 text-amber-700'
+                                }`}>
+                                  {order.payment_status}
+                                </span>
+                              </td>
+                              <td className="px-6 py-4 text-right text-slate-400 font-sans text-[10px]">{new Date(order.created_at).toLocaleDateString()}</td>
+                              <td className="px-6 py-4 text-right" onClick={e => e.stopPropagation()}>
+                                {order.payment_status === 'completed' && (
+                                  <button
+                                    onClick={() => handleResendEmail(order.id, order.customer_email)}
+                                    disabled={resendingOrderId === order.id}
+                                    className="px-2.5 py-1 bg-cyan-600 hover:bg-cyan-700 text-white rounded text-[10px] font-bold disabled:opacity-50 transition-all font-sans"
+                                  >
+                                    {resendingOrderId === order.id ? 'Sending...' : 'Resend Email'}
+                                  </button>
+                                )}
+                              </td>
+                            </tr>
+                            {expandedOrderId === order.id && (
+                              <tr key={`${order.id}-items`} className="bg-cyan-50/30">
+                                <td colSpan={7} className="px-8 py-4">
+                                  <p className="text-[10px] font-bold text-cyan-700 uppercase tracking-widest mb-2">Purchased Notes</p>
+                                  {order.items && order.items.length > 0 ? (
+                                    <div className="space-y-1.5">
+                                      {order.items.map((item: any) => (
+                                        <div key={item.id} className="flex items-center justify-between bg-white border border-cyan-100 rounded-lg px-4 py-2">
+                                          <div>
+                                            <p className="text-xs font-semibold text-slate-800">{item.note?.title || 'Unknown Note'}</p>
+                                            <p className="text-[10px] text-slate-400">{item.note?.subject}</p>
+                                          </div>
+                                          <span className="text-xs font-bold text-emerald-700 font-sans">₹{item.note?.price ?? item.price ?? '—'}</span>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  ) : (
+                                    <p className="text-xs text-slate-400 italic">No items found for this order.</p>
+                                  )}
+                                </td>
+                              </tr>
+                            )}
+                          </>
                         ))
                     )}
                   </tbody>

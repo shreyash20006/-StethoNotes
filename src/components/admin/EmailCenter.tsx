@@ -11,12 +11,13 @@ interface EmailLogItem {
   id: string;
   recipient?: string;
   email?: string;
-  subject: string;
-  template_id: string;
-  status: 'sent' | 'delivered' | 'opened' | 'failed' | 'clicked' | 'bounce';
+  subject?: string;
+  template_id?: string;
+  status: 'sent' | 'delivered' | 'opened' | 'failed' | 'clicked' | 'bounce' | 'success' | 'failure';
   error_message?: string;
   created_at: string;
   order_id?: string;
+  order?: { customer_name: string; customer_email: string; };
 }
 
 export default function EmailCenter() {
@@ -64,21 +65,19 @@ export default function EmailCenter() {
         .select('*');
       if (tmps) setTemplates(tmps);
 
-      // 2. Fetch/seed email logs
+      // 2. Fetch email logs joined with orders for recipient/subject
       const { data: logs } = await supabase
         .from('email_logs')
-        .select('*')
+        .select('*, order:orders(customer_name, customer_email)')
         .order('created_at', { ascending: false });
 
-      if (logs) {
+      if (logs && logs.length > 0) {
         setEmailLogs(logs);
       } else {
         // Seed mock logs if table is empty
         const mockLogs: EmailLogItem[] = [
-          { id: '1', recipient: 'sb108750@gmail.com', subject: 'Order Confirmed — StethoNotes', template_id: 'order_confirmation', status: 'delivered', created_at: new Date(Date.now() - 3600000).toISOString() },
-          { id: '2', recipient: 'shreyashumedkumarborkar@gmail.com', subject: 'Seller Account Approved!', template_id: 'seller_approved', status: 'opened', created_at: new Date(Date.now() - 7200000).toISOString() },
-          { id: '3', recipient: 'test@stethonotes.com', subject: 'Welcome to StethoNotes', template_id: 'welcome', status: 'clicked', created_at: new Date(Date.now() - 12000000).toISOString() },
-          { id: '4', recipient: 'invalid-email-address', subject: 'PDF Notes Delivery', template_id: 'pdf_delivery', status: 'failed', error_message: 'Invalid Recipient Address Format (Brevo API code 400)', created_at: new Date(Date.now() - 15000000).toISOString() }
+          { id: '1', recipient: 'sb108750@gmail.com', subject: '📚 Your StethoNotes Order is Ready!', status: 'delivered', created_at: new Date(Date.now() - 3600000).toISOString() },
+          { id: '2', recipient: 'shreyashumedkumarborkar@gmail.com', subject: '📚 Your StethoNotes Order is Ready!', status: 'success', created_at: new Date(Date.now() - 7200000).toISOString() },
         ];
         setEmailLogs(mockLogs);
       }
@@ -277,7 +276,7 @@ export default function EmailCenter() {
 
   const filteredLogs = emailLogs.filter(l => {
     const matchesSearch = (l.email || l.recipient || '').toLowerCase().includes(logSearch.toLowerCase()) ||
-                          l.subject.toLowerCase().includes(logSearch.toLowerCase());
+                          (l.subject || '').toLowerCase().includes(logSearch.toLowerCase());
     const matchesStatus = logFilter ? l.status === logFilter : true;
     return matchesSearch && matchesStatus;
   });
@@ -376,39 +375,58 @@ export default function EmailCenter() {
                       <td colSpan={6} className="text-center py-12 text-slate-450">No email logs matched search query.</td>
                     </tr>
                   ) : (
-                    filteredLogs.map(log => (
-                      <tr key={log.id} className="hover:bg-slate-50/50">
-                        <td className="px-6 py-4 font-semibold text-slate-800 font-sans">{log.recipient}</td>
-                        <td className="px-6 py-4 text-slate-500 truncate max-w-[200px]">{log.subject}</td>
-                        <td className="px-6 py-4 font-mono text-slate-450">{log.template_id}</td>
-                        <td className="px-6 py-4 text-center">
-                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                            log.status === 'failed' 
-                              ? 'bg-red-105 text-red-700' 
-                              : log.status === 'clicked' || log.status === 'opened'
-                              ? 'bg-emerald-100 text-emerald-700'
-                              : 'bg-slate-100 text-slate-650'
-                          }`}>
-                            {log.status}
-                          </span>
-                          {log.error_message && (
-                            <p className="text-[9px] text-red-500 font-medium mt-1 font-sans">{log.error_message}</p>
-                          )}
-                        </td>
-                        <td className="px-6 py-4 text-right text-slate-400 font-sans">{new Date(log.created_at).toLocaleTimeString()}</td>
-                        <td className="px-6 py-4 text-right">
-                          {log.order_id && (
-                            <button
-                              onClick={() => log.order_id && handleResendEmail(log.order_id, log.email || log.recipient || '')}
-                              disabled={resending === log.order_id}
-                              className="px-3 py-1 bg-cyan-600 hover:bg-cyan-700 text-white rounded text-[10px] font-bold disabled:opacity-50 transition-all font-sans"
-                            >
-                              {resending === log.order_id ? 'Resending...' : 'Resend Email'}
-                            </button>
-                          )}
-                        </td>
-                      </tr>
-                    ))
+                    filteredLogs.map(log => {
+                      const displayRecipient = log.recipient || log.email || log.order?.customer_email || '—';
+                      const displaySubject = log.subject || '📚 Your StethoNotes Order is Ready!';
+                      const statusOk = log.status === 'success' || log.status === 'delivered' || log.status === 'sent';
+                      const statusEngaged = log.status === 'clicked' || log.status === 'opened';
+                      const statusFailed = log.status === 'failed' || log.status === 'failure';
+                      return (
+                        <tr key={log.id} className="hover:bg-slate-50/50">
+                          <td className="px-6 py-4 font-sans">
+                            <p className="font-semibold text-slate-800 text-xs">{displayRecipient}</p>
+                            {log.order?.customer_name && (
+                              <span className="text-[10px] text-slate-400">{log.order.customer_name}</span>
+                            )}
+                          </td>
+                          <td className="px-6 py-4 text-slate-500 text-xs max-w-[180px]">
+                            <span className="truncate block">{displaySubject}</span>
+                          </td>
+                          <td className="px-6 py-4 font-mono text-slate-450 text-[10px]">{log.template_id || 'order_delivery'}</td>
+                          <td className="px-6 py-4 text-center">
+                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                              statusFailed
+                                ? 'bg-red-100 text-red-700'
+                                : statusEngaged
+                                ? 'bg-emerald-100 text-emerald-700'
+                                : statusOk
+                                ? 'bg-cyan-100 text-cyan-700'
+                                : 'bg-slate-100 text-slate-650'
+                            }`}>
+                              {log.status}
+                            </span>
+                            {log.error_message && (
+                              <p className="text-[9px] text-red-500 font-medium mt-1 font-sans max-w-[200px] whitespace-normal">{log.error_message}</p>
+                            )}
+                          </td>
+                          <td className="px-6 py-4 text-right text-slate-400 font-sans text-[10px]">
+                            <p>{new Date(log.created_at).toLocaleDateString()}</p>
+                            <p>{new Date(log.created_at).toLocaleTimeString()}</p>
+                          </td>
+                          <td className="px-6 py-4 text-right">
+                            {log.order_id && (
+                              <button
+                                onClick={() => log.order_id && handleResendEmail(log.order_id, displayRecipient)}
+                                disabled={resending === log.order_id}
+                                className="px-3 py-1 bg-cyan-600 hover:bg-cyan-700 text-white rounded text-[10px] font-bold disabled:opacity-50 transition-all font-sans"
+                              >
+                                {resending === log.order_id ? 'Resending...' : 'Resend Email'}
+                              </button>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })
                   )}
                 </tbody>
               </table>

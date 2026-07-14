@@ -72,22 +72,9 @@ export default function Navbar() {
           {/* Desktop Nav Links */}
           {!isAdmin && (
             <div className="hidden md:flex items-center gap-8">
-              <NavLink
-                to="/courses"
-                className={({ isActive }) =>
-                  `font-display font-medium text-sm transition-colors ${isActive ? 'text-accent' : 'text-primary hover:text-accent'}`
-                }
-              >
-                Courses
-              </NavLink>
-              <NavLink
-                to="/track-order"
-                className={({ isActive }) =>
-                  `font-display font-medium text-sm transition-colors ${isActive ? 'text-accent' : 'text-primary hover:text-accent'}`
-                }
-              >
-                Track Order
-              </NavLink>
+              <NavLink to="/courses" className={({ isActive }) => `font-display font-medium text-sm transition-colors ${isActive ? 'text-accent' : 'text-primary hover:text-accent'}`}>Courses</NavLink>
+              <NavLink to="/collections" className={({ isActive }) => `font-display font-medium text-sm transition-colors ${isActive ? 'text-accent' : 'text-primary hover:text-accent'}`}>Collections</NavLink>
+              <NavLink to="/track-order" className={({ isActive }) => `font-display font-medium text-sm transition-colors ${isActive ? 'text-accent' : 'text-primary hover:text-accent'}`}>Track Order</NavLink>
               <Link to="/#about" className="font-display font-medium text-sm text-primary hover:text-accent transition-colors">
                 About Us
               </Link>

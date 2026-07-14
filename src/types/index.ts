@@ -79,6 +79,7 @@ export interface Order {
   payment_status: 'pending' | 'completed' | 'failed';
   email_status: 'pending' | 'sent' | 'failed';
   created_at: string;
+  items?: OrderItem[];
 }
 
 export interface OrderItem {

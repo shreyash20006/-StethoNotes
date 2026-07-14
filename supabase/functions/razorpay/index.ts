@@ -286,6 +286,8 @@ async function generateAndSendEmail(
   await supabaseAdmin.from('email_logs').insert({
     order_id: order.id,
     email: order.customer_email,
+    recipient: order.customer_email,
+    subject: '📚 Your StethoNotes Order is Ready!',
     status: 'success',
     created_at: new Date().toISOString()
   })

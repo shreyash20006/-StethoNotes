@@ -25,6 +25,7 @@ import AdminLoginPage from './pages/AdminLoginPage';
 import SellerPendingPage from './pages/SellerPendingPage';
 import SellerDashboardPage from './pages/SellerDashboardPage';
 import DownloadPage from './pages/DownloadPage';
+import CollectionsPage from './pages/CollectionsPage';
 
 // ============================================================
 // LAYOUT WRAPPERS
@@ -189,6 +190,7 @@ function App() {
         <Route path="/" element={<Layout />}>
           <Route index element={<LandingPage />} />
           <Route path="courses" element={<CoursesPage />} />
+          <Route path="collections" element={<CollectionsPage />} />
           <Route path="notes/:id" element={<ProductDetailPage />} />
           <Route path="cart" element={<CartPage />} />
           <Route path="order-success" element={<OrderConfirmationPage />} />
