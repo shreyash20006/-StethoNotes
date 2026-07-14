@@ -889,6 +889,92 @@ serve(async (req) => {
     }
 
     // --------------------------------------------------------
+    // ENDPOINT: /get-payment-log
+    // --------------------------------------------------------
+    else if (action === 'get-payment-log') {
+      let bodyJson: any = null
+      try {
+        bodyJson = await req.json()
+      } catch (parseErr: any) {
+        return new Response(JSON.stringify({ success: false, message: "Invalid JSON body" }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        })
+      }
+
+      const { payment_id } = bodyJson
+      if (!payment_id) {
+        return new Response(JSON.stringify({ success: false, message: "payment_id is required" }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        })
+      }
+
+      try {
+        console.log(`Fetching payment log from Razorpay for: ${payment_id}`);
+        const auth = btoa(`${razorpayKeyId}:${razorpayKeySecret}`)
+        const razorpayPaymentUrl = `https://api.razorpay.com/v1/payments/${payment_id}`;
+        const response = await fetch(razorpayPaymentUrl, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Basic ${auth}`
+          }
+        })
+
+        if (!response.ok) {
+          const errorText = await response.text()
+          throw new Error(`Razorpay API responded with status ${response.status}: ${errorText}`)
+        }
+
+        const paymentData = await response.json()
+        return new Response(JSON.stringify({ success: true, log: paymentData }), {
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        })
+      } catch (err: any) {
+        console.error("Error fetching payment log:", err)
+        return new Response(JSON.stringify({ success: false, message: err.message }), {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        })
+      }
+    }
+
+    // --------------------------------------------------------
+    // ENDPOINT: /list-payments
+    // --------------------------------------------------------
+    else if (action === 'list-payments') {
+      try {
+        console.log(`Listing payments from Razorpay`);
+        const auth = btoa(`${razorpayKeyId}:${razorpayKeySecret}`)
+        const razorpayListUrl = `https://api.razorpay.com/v1/payments?count=10`;
+        const response = await fetch(razorpayListUrl, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Basic ${auth}`
+          }
+        })
+
+        if (!response.ok) {
+          const errorText = await response.text()
+          throw new Error(`Razorpay API responded with status ${response.status}: ${errorText}`)
+        }
+
+        const paymentsList = await response.json()
+        return new Response(JSON.stringify({ success: true, payments: paymentsList.items }), {
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        })
+      } catch (err: any) {
+        console.error("Error listing payments:", err)
+        return new Response(JSON.stringify({ success: false, message: err.message }), {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        })
+      }
+    }
+
+    // --------------------------------------------------------
     // ENDPOINT: /webhook
     // --------------------------------------------------------
     else if (action === 'webhook') {
@@ -1062,10 +1148,148 @@ serve(async (req) => {
       })
     }
 
+
+    // --------------------------------------------------------
+    // ENDPOINT: resend-email (Admin Manual Trigger)
+    // --------------------------------------------------------
+    else if (action === 'resend-email') {
+      let bodyJson: any = null
+      try {
+        bodyJson = parsedJson ?? await req.json()
+      } catch (_) {
+        return new Response(JSON.stringify({ success: false, message: 'Invalid JSON body' }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        })
+      }
+
+      const { order_id } = bodyJson
+      if (!order_id) {
+        return new Response(JSON.stringify({ success: false, message: 'Missing order_id' }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        })
+      }
+
+      // Fetch the order from DB
+      const { data: order, error: orderErr } = await supabaseAdmin
+        .from('orders')
+        .select('*')
+        .eq('id', order_id)
+        .single()
+
+      if (orderErr || !order) {
+        return new Response(JSON.stringify({ success: false, message: `Order not found: ${order_id}` }), {
+          status: 404,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        })
+      }
+
+      if (order.payment_status !== 'completed') {
+        return new Response(JSON.stringify({ success: false, message: 'Cannot resend email for non-completed order.' }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        })
+      }
+
+      // Fetch order items with note details
+      const { data: items, error: itemsErr } = await supabaseAdmin
+        .from('order_items')
+        .select('*, note:notes(id, title, subject, pdf_url)')
+        .eq('order_id', order_id)
+
+      if (itemsErr || !items || items.length === 0) {
+        return new Response(JSON.stringify({ success: false, message: 'No order items found for this order.' }), {
+          status: 404,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        })
+      }
+
+      try {
+        await generateAndSendEmail(supabaseAdmin, order, items, brevoApiKey, brevoTemplateId, fromEmail, fromName)
+        logDebug({ stage: 'resend-email', message: 'Email resent successfully', details: { order_id } })
+        return new Response(JSON.stringify({ success: true, message: `Email resent to ${order.customer_email}` }), {
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        })
+      } catch (emailErr: any) {
+        logDebug({ stage: 'resend-email', message: 'Email resend failed', details: emailErr.message, stack: emailErr.stack })
+        return new Response(JSON.stringify({ success: false, message: emailErr.message }), {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        })
+      }
+    }
+
+    // --------------------------------------------------------
+    // ENDPOINT: list-payments (Fetch recent Razorpay payments)
+    // --------------------------------------------------------
+    else if (action === 'list-payments') {
+      const auth = btoa(`${razorpayKeyId}:${razorpayKeySecret}`)
+      const rzpRes = await fetch('https://api.razorpay.com/v1/payments?count=10&expand[]=card', {
+        headers: { 'Authorization': `Basic ${auth}` }
+      })
+      if (!rzpRes.ok) {
+        const errText = await rzpRes.text()
+        return new Response(JSON.stringify({ success: false, message: `Razorpay API error: ${errText}` }), {
+          status: 502,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        })
+      }
+      const rzpData = await rzpRes.json()
+      return new Response(JSON.stringify({ success: true, payments: rzpData.items ?? rzpData }), {
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
+
+    // --------------------------------------------------------
+    // ENDPOINT: get-payment-log (Fetch single payment from Razorpay)
+    // --------------------------------------------------------
+    else if (action === 'get-payment-log') {
+      let bodyJson: any = null
+      try {
+        bodyJson = parsedJson ?? await req.json()
+      } catch (_) {
+        return new Response(JSON.stringify({ success: false, message: 'Invalid JSON body' }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        })
+      }
+
+      const { payment_id } = bodyJson
+      if (!payment_id) {
+        return new Response(JSON.stringify({ success: false, message: 'Missing payment_id' }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        })
+      }
+
+      const auth = btoa(`${razorpayKeyId}:${razorpayKeySecret}`)
+      const rzpRes = await fetch(`https://api.razorpay.com/v1/payments/${payment_id}`, {
+        headers: { 'Authorization': `Basic ${auth}` }
+      })
+
+      if (!rzpRes.ok) {
+        const errText = await rzpRes.text()
+        return new Response(JSON.stringify({ success: false, message: `Razorpay API error: ${errText}` }), {
+          status: 502,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        })
+      }
+
+      const rzpData = await rzpRes.json()
+      return new Response(JSON.stringify({ success: true, payment: rzpData }), {
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
+
     return new Response(JSON.stringify({ success: false, message: 'Invalid endpoint route' }), {
       status: 404,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     })
+
 
   } catch (err: any) {
     logDebug({

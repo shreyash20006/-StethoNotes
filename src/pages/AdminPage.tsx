@@ -43,6 +43,7 @@ export default function AdminPage() {
   const [courseSearch, setCourseSearch] = useState('');
   const [orderSearch, setOrderSearch] = useState('');
   const [customerSearch, setCustomerSearch] = useState('');
+  const [resendingOrderId, setResendingOrderId] = useState<string | null>(null);
 
   // Sync tab with URL search parameter
   useEffect(() => {
@@ -84,6 +85,31 @@ export default function AdminPage() {
     setActiveTab(tab);
     setSearchParams({ tab });
     setMobileMenuOpen(false);
+  };
+
+  const handleResendEmail = async (orderId: string, recipient: string) => {
+    if (!confirm(`Are you sure you want to regenerate signed URLs and resend the email to ${recipient}?`)) {
+      return;
+    }
+    setResendingOrderId(orderId);
+    try {
+      const { data, error } = await supabase.functions.invoke('razorpay', {
+        headers: { 'x-action': 'resend-email' },
+        body: { order_id: orderId }
+      });
+
+      if (error) throw error;
+      if (data && data.success === false) {
+        throw new Error(data.message || 'Resend failed.');
+      }
+
+      addToast('success', 'Email Resent', `Successfully resent purchase email to ${recipient}.`);
+    } catch (err: any) {
+      console.error('Error resending email:', err);
+      addToast('error', 'Resend Failed', err.message || 'Server encountered an error.');
+    } finally {
+      setResendingOrderId(null);
+    }
   };
 
   // Course operations
@@ -368,6 +394,7 @@ export default function AdminPage() {
                       <th className="px-6 py-4">Payment ID (Razorpay)</th>
                       <th className="px-6 py-4 text-center">Status</th>
                       <th className="px-6 py-4 text-right">Date</th>
+                      <th className="px-6 py-4 text-right">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-50 text-xs">
@@ -407,6 +434,17 @@ export default function AdminPage() {
                               </span>
                             </td>
                             <td className="px-6 py-4 text-right text-slate-400 font-sans">{new Date(order.created_at).toLocaleDateString()}</td>
+                            <td className="px-6 py-4 text-right">
+                              {order.payment_status === 'completed' && (
+                                <button
+                                  onClick={() => handleResendEmail(order.id, order.customer_email)}
+                                  disabled={resendingOrderId === order.id}
+                                  className="px-2.5 py-1 bg-cyan-600 hover:bg-cyan-700 text-white rounded text-[10px] font-bold disabled:opacity-50 transition-all font-sans"
+                                >
+                                  {resendingOrderId === order.id ? 'Sending...' : 'Resend Email'}
+                                </button>
+                              )}
+                            </td>
                           </tr>
                         ))
                     )}

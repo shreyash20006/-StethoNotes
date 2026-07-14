@@ -612,6 +612,81 @@ class MockSupabase {
     }
     return { data: null, error: { message: `RPC ${funcName} not implemented in mock` } };
   }
+
+  functions = {
+    invoke: async (functionName: string, options?: any) => {
+      console.log(`[Mock Supabase Function] Invoking ${functionName}`, options);
+      await new Promise(resolve => setTimeout(resolve, 800));
+
+      if (functionName === 'razorpay') {
+        const action = options?.headers?.['x-action'] || options?.body?.action;
+        if (action === 'resend-email') {
+          const orderId = options?.body?.order_id;
+          const success = await triggerBrevoEmailSimulation(orderId);
+          return { data: { success, message: success ? 'Email resent successfully' : 'SMTP delivery failed' }, error: null };
+        }
+        if (action === 'get-payment-log') {
+          const paymentId = options?.body?.payment_id;
+          return {
+            data: {
+              success: true,
+              log: {
+                id: paymentId,
+                entity: "payment",
+                amount: 1822,
+                currency: "INR",
+                status: "captured",
+                order_id: "order_TD0R1jpF67I23j",
+                method: "upi",
+                amount_refunded: 0,
+                captured: true,
+                description: "StethoNotes Study Notes Purchase",
+                vpa: "shreyashumedkumarborkar@oksbi",
+                email: "shreyashumedkumarborkar@gmail.com",
+                contact: "+918668301185",
+                notes: {
+                  order_id: "96bfc7fa-eef1-490f-9b92-a5be4e9274f7"
+                },
+                fee: 36,
+                tax: 6,
+                created_at: Math.floor(Date.now() / 1000)
+              }
+            },
+            error: null
+          };
+        }
+        if (action === 'list-payments') {
+          return {
+            data: {
+              success: true,
+              payments: [
+                {
+                  id: "pay_TD0RP0l6249GQF",
+                  amount: 1822,
+                  status: "captured",
+                  method: "upi",
+                  email: "shreyashumedkumarborkar@gmail.com",
+                  contact: "+918668301185",
+                  created_at: Math.floor(Date.now() / 1000) - 86400
+                },
+                {
+                  id: "pay_TCuKUIw8mzhNAZ",
+                  amount: 1090,
+                  status: "captured",
+                  method: "card",
+                  email: "annantpathak@gmail.com",
+                  contact: "+919999999999",
+                  created_at: Math.floor(Date.now() / 1000) - 172800
+                }
+              ]
+            },
+            error: null
+          };
+        }
+      }
+      return { data: { success: true }, error: null };
+    }
+  };
 }
 
 const mockSupabase = new MockSupabase();

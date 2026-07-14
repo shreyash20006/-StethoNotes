@@ -37,10 +37,7 @@ CREATE POLICY "seller_apps: select policy" ON public.seller_applications
     FOR SELECT USING (
         auth.uid() = user_id 
         OR 
-        EXISTS (
-            SELECT 1 FROM public.profiles 
-            WHERE id = auth.uid() AND role IN ('admin', 'super_admin')
-        )
+        public.is_admin(auth.uid())
     );
 
 -- 2. INSERT: Authenticated users can insert their own application
@@ -52,10 +49,7 @@ CREATE POLICY "seller_apps: insert policy" ON public.seller_applications
 DROP POLICY IF EXISTS "seller_apps: update policy" ON public.seller_applications;
 CREATE POLICY "seller_apps: update policy" ON public.seller_applications
     FOR UPDATE USING (
-        EXISTS (
-            SELECT 1 FROM public.profiles 
-            WHERE id = auth.uid() AND role IN ('admin', 'super_admin')
-        )
+        public.is_admin(auth.uid())
     );
 
 -- ==========================================
