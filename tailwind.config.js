@@ -20,7 +20,7 @@ export default {
       },
       fontFamily: {
         sans: ['Inter', 'sans-serif'],
-        display: ['Poppins', 'sans-serif'],
+        display: ['Outfit', 'sans-serif'],
       },
       boxShadow: {
         'cyan-soft': '0 10px 30px -10px rgba(31, 182, 212, 0.15)',

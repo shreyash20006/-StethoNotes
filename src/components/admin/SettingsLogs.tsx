@@ -232,6 +232,21 @@ export default function SettingsLogs() {
                   </span>
                 </div>
               </div>
+
+              {/* Maintenance Mode & Commission Rates */}
+              <div className="grid grid-cols-2 gap-4 mt-4 p-3 bg-slate-50 border border-slate-200/60 rounded-2xl">
+                <div className="flex flex-col gap-1">
+                  <label className="text-[10px] font-bold text-slate-500 uppercase">Maintenance Mode</label>
+                  <div className="flex items-center gap-2 mt-1">
+                    <input type="checkbox" id="m_mode" className="w-4 h-4 text-cyan-600 rounded" />
+                    <span className="text-xs text-slate-600 font-semibold">Enable offline hold</span>
+                  </div>
+                </div>
+                <div className="flex flex-col gap-1">
+                  <label className="text-[10px] font-bold text-slate-500 uppercase">Base Commission Rate</label>
+                  <input type="number" defaultValue={70} className="w-full px-3 py-1 border border-slate-200 rounded-lg text-xs font-semibold font-sans mt-0.5" />
+                </div>
+              </div>
             </div>
 
             {/* API Credentials */}

@@ -24,18 +24,22 @@ ALTER TABLE public.collections ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.collection_items ENABLE ROW LEVEL SECURITY;
 
 -- Anyone can read active collections
+DROP POLICY IF EXISTS "collections: public read" ON public.collections;
 CREATE POLICY "collections: public read" ON public.collections
   FOR SELECT USING (is_active = TRUE);
 
 -- Admins can do everything
+DROP POLICY IF EXISTS "collections: admin manage" ON public.collections;
 CREATE POLICY "collections: admin manage" ON public.collections
   FOR ALL USING (public.is_admin(auth.uid()));
 
 -- Anyone can read collection items (to see what notes are in a collection)
+DROP POLICY IF EXISTS "collection_items: public read" ON public.collection_items;
 CREATE POLICY "collection_items: public read" ON public.collection_items
   FOR SELECT USING (TRUE);
 
 -- Admins can manage collection items
+DROP POLICY IF EXISTS "collection_items: admin manage" ON public.collection_items;
 CREATE POLICY "collection_items: admin manage" ON public.collection_items
   FOR ALL USING (public.is_admin(auth.uid()));
 

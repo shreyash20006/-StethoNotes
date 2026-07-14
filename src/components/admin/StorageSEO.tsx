@@ -247,12 +247,32 @@ Sitemap: https://stethonotes.com/sitemap.xml`);
               <div className="space-y-1.5">
                 <label className="text-xs font-semibold text-slate-500">Global Homepage Meta Description</label>
                 <textarea
-                  rows={4}
+                  rows={3}
                   value={globalSeoDesc}
                   onChange={(e) => setGlobalSeoDesc(e.target.value)}
                   className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-xs text-slate-850 focus:outline-none focus:border-cyan-500 bg-slate-50/20 leading-relaxed"
                   required
                 />
+              </div>
+
+              {/* Advanced Analytics / Search Console */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-slate-500">Google Analytics ID</label>
+                  <input
+                    type="text"
+                    placeholder="G-XXXXXXXXXX"
+                    className="w-full px-4 py-2 border border-slate-200 rounded-xl text-xs text-slate-850 focus:outline-none focus:border-cyan-500 bg-slate-50/20"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-slate-500">Google Site Verification</label>
+                  <input
+                    type="text"
+                    placeholder="verification-token-string"
+                    className="w-full px-4 py-2 border border-slate-200 rounded-xl text-xs text-slate-850 focus:outline-none focus:border-cyan-500 bg-slate-50/20"
+                  />
+                </div>
               </div>
             </div>
 
