@@ -1,8 +1,7 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import { useAuthStore } from './store/useAuthStore';
-import Navbar from './components/Navbar';
-import Footer from './components/Footer';
+import { Navbar, Footer } from '@/components/layout';
 import ToastContainer from './components/Toast';
 import { supabase } from './lib/supabase';
 
@@ -103,7 +102,7 @@ function SellerPendingRoute() {
 
 function LoadingSpinner() {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#07091a]">
+    <div className="min-h-screen flex items-center justify-center bg-white">
       <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-accent" />
     </div>
   );
