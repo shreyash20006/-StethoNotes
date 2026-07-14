@@ -1,0 +1,72 @@
+/* =============================================================
+   THEME SYSTEM (Light & Dark Mode)
+   ============================================================= */
+
+/* Light Theme (Default) */
+:root,
+[data-theme='light'] {
+  /* Primary Colors */
+  --bg-primary: #ffffff;
+  --bg-secondary: #f9fafb;
+  --bg-tertiary: #f3f4f6;
+  --text-primary: #0f172a;
+  --text-secondary: #64748b;
+  --text-tertiary: #94a3b8;
+
+  /* Accent */
+  --accent-primary: #1fb6d4;
+  --accent-hover: #189cb6;
+  --accent-light: #e6f7fa;
+
+  /* Borders */
+  --border-primary: #e5e7eb;
+  --border-secondary: #f3f4f6;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+  --shadow-cyan: 0 10px 30px -10px rgba(31, 182, 212, 0.15);
+
+  /* Glass Panel */
+  --glass-bg: rgba(255, 255, 255, 0.7);
+  --glass-border: rgba(255, 255, 255, 0.3);
+}
+
+/* Dark Theme */
+[data-theme='dark'] {
+  /* Primary Colors */
+  --bg-primary: #0f172a;
+  --bg-secondary: #1a2445;
+  --bg-tertiary: #243456;
+  --text-primary: #ffffff;
+  --text-secondary: #cbd5e1;
+  --text-tertiary: #94a3b8;
+
+  /* Accent */
+  --accent-primary: #1fb6d4;
+  --accent-hover: #189cb6;
+  --accent-light: #064e5c;
+
+  /* Borders */
+  --border-primary: #334155;
+  --border-secondary: #1e293b;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+  --shadow-cyan: 0 10px 30px -10px rgba(31, 182, 212, 0.25);
+
+  /* Glass Panel */
+  --glass-bg: rgba(15, 45, 107, 0.8);
+  --glass-border: rgba(255, 255, 255, 0.08);
+}
+
+/* Apply theme colors to elements */
+body[data-theme],
+:root {
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
