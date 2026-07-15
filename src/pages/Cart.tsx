@@ -289,7 +289,16 @@ export default function Cart() {
                 origin: { y: 0.6 }
               });
 
-              addToast('success', 'Checkout Complete', 'Payment processed and email delivered successfully.');
+              if (verifyData.email_delivery_failed) {
+                addToast(
+                  'info',
+                  'Payment Successful — Email Delayed',
+                  `Your order is confirmed (Order ID: ${verifyData.order_id}). We could not deliver the email right now. Please check your Dashboard → Orders to download, or contact support@stethonotes.store.`
+                );
+                console.warn('[Checkout] email_delivery_failed:', verifyData.email_error);
+              } else {
+                addToast('success', 'Checkout Complete', 'Payment processed and email delivered successfully.');
+              }
               
               setCreatedOrderId(verifyData.order_id); // DB Order ID
               setPaymentState('success');
