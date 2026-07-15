@@ -334,7 +334,7 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
           <div className="lg:col-span-5 relative">
             <img
-              src="https://images.unsplash.com/photo-1576091160550-2173dba999ef?auto=format&fit=crop&q=80&w=600"
+              src="https://res.cloudinary.com/dsqxboxoc/image/upload/v1784056611/ChatGPT_Image_Jul_15_2026_12_45_53_AM_edclrq.png"
               alt="Medical Students Studying"
               className="rounded-3xl shadow-cyan-soft border-2 border-gray-100 object-cover w-full h-[400px]"
             />
