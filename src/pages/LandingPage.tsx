@@ -333,11 +333,11 @@ export default function LandingPage() {
       <section id="about" className="bg-white py-24 px-4 sm:px-6 lg:px-8 border-b border-gray-100">
         <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
           <div className="lg:col-span-5 relative">
-            <img
-              src="https://images.unsplash.com/photo-1576091160550-2173dba999ef?auto=format&fit=crop&q=80&w=600"
-              alt="Medical Students Studying"
-              className="rounded-3xl shadow-cyan-soft border-2 border-gray-100 object-cover w-full h-[400px]"
-            />
+<img
+  src="/src/assets/hero.png"
+  alt="Medical Students Studying"
+  className="rounded-3xl shadow-cyan-soft border-2 border-gray-100 object-cover w-full h-[400px]"
+/>
           </div>
           <div className="lg:col-span-7 flex flex-col items-start gap-5">
             <h2 className="text-3xl font-display font-bold text-primary">
