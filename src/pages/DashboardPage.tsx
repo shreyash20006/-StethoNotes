@@ -4,7 +4,7 @@ import { useAuthStore } from '../store/useAuthStore';
 import { useToastStore } from '../store/useToastStore';
 import { supabase, isLiveSupabase, triggerBrevoEmailSimulation } from '../lib/supabase';
 import type { Note, Order } from '../types';
-import { BookOpen, User, Phone, Mail, Send, History, Save, RefreshCw } from 'lucide-react';
+import { BookOpen, User, Phone, Mail, Send, History, Save, RefreshCw, Undo2, X } from 'lucide-react';
 
 export default function DashboardPage() {
   const navigate = useNavigate();
@@ -26,6 +26,59 @@ export default function DashboardPage() {
 
   // Track which order contains which note to trigger resends
   const [noteToOrderMap, setNoteToOrderMap] = useState<Record<string, string>>({});
+
+  // Refund flow state
+  const [refundModalOrder, setRefundModalOrder] = useState<Order | null>(null);
+  const [refundReason, setRefundReason] = useState('');
+  const [submittingRefund, setSubmittingRefund] = useState(false);
+  const [refundedOrderIds, setRefundedOrderIds] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    if (!user?.id) return;
+    (async () => {
+      const { data } = await supabase
+        .from('refunds')
+        .select('order_id, status')
+        .eq('user_id', user.id);
+      if (data) {
+        setRefundedOrderIds(new Set(data.map((r: any) => r.order_id)));
+      }
+    })();
+  }, [user?.id, ordersHistory.length]);
+
+  const handleRefundRequest = async () => {
+    if (!refundModalOrder || !user) return;
+    if (refundReason.trim().length < 10) {
+      addToast('error', 'Reason too short', 'Please provide at least 10 characters describing why you need a refund.');
+      return;
+    }
+    setSubmittingRefund(true);
+    try {
+      const { error } = await supabase.from('refunds').insert({
+        order_id: refundModalOrder.id,
+        user_id: user.id,
+        razorpay_payment_id: refundModalOrder.razorpay_payment_id,
+        amount: refundModalOrder.total_amount,
+        reason: refundReason.trim(),
+        status: 'requested',
+      });
+      if (error) throw error;
+
+      await supabase
+        .from('orders')
+        .update({ refund_status: 'requested' })
+        .eq('id', refundModalOrder.id);
+
+      setRefundedOrderIds(prev => new Set([...prev, refundModalOrder.id]));
+      addToast('success', 'Refund Requested', 'Your refund request has been sent to our admin team. You will be notified within 3-5 business days.');
+      setRefundModalOrder(null);
+      setRefundReason('');
+    } catch (err: any) {
+      addToast('error', 'Refund Request Failed', err.message || 'Could not submit refund request.');
+    } finally {
+      setSubmittingRefund(false);
+    }
+  };
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -369,30 +422,127 @@ export default function DashboardPage() {
                 </div>
               ) : (
                 <div className="flex flex-col gap-4">
-                  {ordersHistory.map((order) => (
+                  {ordersHistory.map((order) => {
+                    const alreadyRefunded = refundedOrderIds.has(order.id);
+                    const orderAgeDays = (Date.now() - new Date(order.created_at).getTime()) / (1000 * 60 * 60 * 24);
+                    const eligibleForRefund = orderAgeDays <= 7 && !alreadyRefunded;
+                    return (
                     <div
                       key={order.id}
                       className="border border-gray-150 rounded-2xl p-5 flex flex-col sm:flex-row justify-between sm:items-center gap-4 text-xs"
+                      data-testid={`order-card-${order.id}`}
                     >
                       <div>
                         <p className="font-sans text-gray-400">Order ID: <span className="text-primary font-semibold">{order.id}</span></p>
                         <p className="font-sans text-gray-400 mt-1">Date: <span className="text-primary font-semibold">{new Date(order.created_at).toLocaleDateString()}</span></p>
                         <p className="font-sans text-gray-400 mt-1">Payment ID: <span className="text-primary font-semibold">{order.razorpay_payment_id || 'N/A'}</span></p>
                       </div>
-                      <div className="flex flex-col sm:items-end gap-1 shrink-0">
+                      <div className="flex flex-col sm:items-end gap-2 shrink-0">
                         <span className="font-display font-extrabold text-sm text-primary">₹{order.total_amount}</span>
                         <span className="bg-emerald-50 text-emerald-600 font-display font-bold text-[9px] px-2.5 py-0.5 rounded-full uppercase tracking-wider">
                           Completed
                         </span>
+                        {alreadyRefunded ? (
+                          <span
+                            data-testid={`refund-status-${order.id}`}
+                            className="bg-amber-50 text-amber-700 font-display font-bold text-[9px] px-2.5 py-0.5 rounded-full uppercase tracking-wider"
+                          >
+                            Refund In Review
+                          </span>
+                        ) : eligibleForRefund ? (
+                          <button
+                            data-testid={`request-refund-btn-${order.id}`}
+                            onClick={() => { setRefundModalOrder(order); setRefundReason(''); }}
+                            className="text-[10px] font-semibold text-red-600 hover:text-red-700 hover:underline flex items-center gap-1"
+                          >
+                            <Undo2 className="w-3 h-3" />
+                            Request Refund
+                          </button>
+                        ) : (
+                          <span className="text-[9px] text-gray-400 italic">Refund window closed</span>
+                        )}
                       </div>
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>
           )}
         </main>
       </div>
+
+      {/* Refund Request Modal */}
+      {refundModalOrder && (
+        <div
+          data-testid="refund-modal"
+          className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center px-4"
+          onClick={() => !submittingRefund && setRefundModalOrder(null)}
+        >
+          <div
+            className="bg-white rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl relative"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              data-testid="refund-modal-close"
+              onClick={() => setRefundModalOrder(null)}
+              disabled={submittingRefund}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 disabled:opacity-50"
+            >
+              <X className="w-5 h-5" />
+            </button>
+            <div className="flex items-center gap-3 mb-5">
+              <div className="w-11 h-11 rounded-2xl bg-red-50 flex items-center justify-center">
+                <Undo2 className="w-5 h-5 text-red-600" />
+              </div>
+              <div>
+                <h3 className="font-display font-bold text-lg text-primary">Request Refund</h3>
+                <p className="text-xs text-gray-400">Order #{refundModalOrder.id.substring(0, 8)}...</p>
+              </div>
+            </div>
+            <div className="bg-gray-50 rounded-xl p-3 mb-4 text-xs">
+              <div className="flex justify-between mb-1"><span className="text-gray-500">Amount</span><span className="font-semibold text-primary">₹{refundModalOrder.total_amount}</span></div>
+              <div className="flex justify-between"><span className="text-gray-500">Purchased on</span><span className="font-semibold text-primary">{new Date(refundModalOrder.created_at).toLocaleDateString()}</span></div>
+            </div>
+            <label className="block text-xs font-display font-semibold text-gray-500 mb-2">
+              Reason for refund <span className="text-red-500">*</span>
+            </label>
+            <textarea
+              data-testid="refund-reason-input"
+              value={refundReason}
+              onChange={(e) => setRefundReason(e.target.value)}
+              placeholder="Please describe why you'd like a refund (min 10 characters)..."
+              rows={4}
+              className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:border-accent focus:ring-1 focus:ring-accent outline-none resize-none"
+              disabled={submittingRefund}
+            />
+            <p className="text-[10px] text-gray-400 mt-1">
+              Refund requests are reviewed within 3-5 business days. Approved refunds are processed to your original payment method within 5-7 business days.
+            </p>
+            <div className="flex gap-2 mt-5">
+              <button
+                onClick={() => setRefundModalOrder(null)}
+                disabled={submittingRefund}
+                className="flex-1 py-2.5 border border-gray-200 rounded-xl text-xs font-semibold text-gray-600 hover:bg-gray-50 disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                data-testid="refund-submit-btn"
+                onClick={handleRefundRequest}
+                disabled={submittingRefund}
+                className="flex-1 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-semibold disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {submittingRefund ? (
+                  <><RefreshCw className="w-3.5 h-3.5 animate-spin" />Submitting...</>
+                ) : (
+                  'Submit Request'
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

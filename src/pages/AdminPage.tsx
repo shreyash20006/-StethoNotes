@@ -15,13 +15,15 @@ import EmailCenter from '../components/admin/EmailCenter';
 import StorageSEO from '../components/admin/StorageSEO';
 import SettingsLogs from '../components/admin/SettingsLogs';
 import LeakInvestigator from '../components/admin/LeakInvestigator';
+import RefundsManager from '../components/admin/RefundsManager';
+import PaymentLogsViewer from '../components/admin/PaymentLogsViewer';
 
 // Lucide Icons
 import {
   ShieldCheck, TrendingUp, Package, Users,
   Landmark, Tag, Mail, HardDrive, Settings, FolderOpen,
   ShoppingBag, Search, Plus, Trash2, ArrowRight,
-  LogOut, Menu, X, ShieldAlert
+  LogOut, Menu, X, ShieldAlert, Undo2, FileText
 } from 'lucide-react';
 
 export default function AdminPage() {
@@ -180,6 +182,8 @@ export default function AdminPage() {
               { id: 'customers', label: 'Customers Log', icon: <Users className="w-4 h-4" /> },
               { id: 'sellers', label: 'Seller Moderation', icon: <Users className="w-4 h-4" /> },
               { id: 'payouts', label: 'Payout Settlements', icon: <Landmark className="w-4 h-4" /> },
+              { id: 'refunds', label: 'Refund Requests', icon: <Undo2 className="w-4 h-4" /> },
+              { id: 'payment_logs', label: 'Payment & Webhook Logs', icon: <FileText className="w-4 h-4" /> },
               { id: 'reviews_coupons', label: 'Reviews & Coupons', icon: <Tag className="w-4 h-4" /> },
               { id: 'email_center', label: 'Email Center', icon: <Mail className="w-4 h-4" /> },
               { id: 'storage_seo', label: 'Storage & SEO', icon: <HardDrive className="w-4 h-4" /> },
@@ -230,6 +234,8 @@ export default function AdminPage() {
         {activeTab === 'notes' && <NotesManager />}
         {activeTab === 'sellers' && <SellerManager />}
         {activeTab === 'payouts' && <PayoutManager />}
+        {activeTab === 'refunds' && <RefundsManager />}
+        {activeTab === 'payment_logs' && <PaymentLogsViewer />}
         {activeTab === 'reviews_coupons' && <ReviewsCoupons />}
         {activeTab === 'email_center' && <EmailCenter />}
         {activeTab === 'storage_seo' && <StorageSEO />}

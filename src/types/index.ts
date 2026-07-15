@@ -76,9 +76,27 @@ export interface Order {
   customer_phone: string;
   total_amount: number;
   razorpay_payment_id: string | null;
-  payment_status: 'pending' | 'completed' | 'failed';
+  payment_status: 'pending' | 'completed' | 'failed' | 'refunded';
   email_status: 'pending' | 'sent' | 'failed';
+  refund_status?: 'none' | 'requested' | 'approved' | 'rejected' | 'processed';
   created_at: string;
+}
+
+export interface Refund {
+  id: string;
+  order_id: string;
+  user_id: string | null;
+  razorpay_payment_id: string;
+  razorpay_refund_id: string | null;
+  amount: number;
+  reason: string;
+  status: 'requested' | 'approved' | 'rejected' | 'processing' | 'processed' | 'failed';
+  admin_notes: string | null;
+  reviewed_by: string | null;
+  reviewed_at: string | null;
+  processed_at: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface OrderItem {

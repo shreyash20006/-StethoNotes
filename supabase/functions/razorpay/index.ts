@@ -377,6 +377,10 @@ serve(async (req) => {
       action = "verify-payment"
     } else if (path.endsWith('/webhook')) {
       action = "webhook"
+    } else if (path.endsWith('/create-refund')) {
+      action = "create-refund"
+    } else if (path.endsWith('/resend-email')) {
+      action = "resend-email"
     } else {
       action = req.headers.get("x-action") || ""
       if (!action && req.method === "POST") {
@@ -743,6 +747,17 @@ serve(async (req) => {
               amount: paidAmount,
               status: 'captured'
             })
+
+          await supabaseAdmin.from('payment_logs').insert({
+            order_id: dbOrder.id,
+            razorpay_payment_id,
+            razorpay_order_id,
+            stage: 'verify-payment',
+            status: 'success',
+            amount: paidAmount,
+            method: paymentDetails?.method || null,
+            metadata: { source: 'client_verify' }
+          })
         }
 
         const { data: orderItemsData } = await supabaseAdmin
@@ -889,6 +904,196 @@ serve(async (req) => {
     }
 
     // --------------------------------------------------------
+    // ENDPOINT: /create-refund   (admin-triggered)
+    // Body: { refund_id: UUID, admin_notes?: string }
+    // Requires the refund row to already exist with status='requested'
+    // Calls Razorpay refund API and updates the refund row.
+    // --------------------------------------------------------
+    else if (action === 'create-refund') {
+      let bodyJson: any = null
+      try {
+        bodyJson = await req.json()
+      } catch (parseErr: any) {
+        return new Response(JSON.stringify({ success: false, message: "Invalid JSON body" }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        })
+      }
+
+      const { refund_id, admin_notes, admin_user_id } = bodyJson
+      if (!refund_id) {
+        return new Response(JSON.stringify({ success: false, message: "refund_id is required" }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        })
+      }
+
+      try {
+        // Verify caller is admin (defence-in-depth on top of RLS)
+        if (admin_user_id) {
+          const { data: adminProfile } = await supabaseAdmin
+            .from('profiles')
+            .select('role')
+            .eq('id', admin_user_id)
+            .single()
+          if (!adminProfile || !['admin', 'super_admin'].includes(adminProfile.role)) {
+            return new Response(JSON.stringify({ success: false, message: "Unauthorized: admin role required" }), {
+              status: 403,
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            })
+          }
+        }
+
+        // Load refund row
+        const { data: refund, error: refundErr } = await supabaseAdmin
+          .from('refunds')
+          .select('*, orders(id, customer_email, customer_name, total_amount)')
+          .eq('id', refund_id)
+          .single()
+
+        if (refundErr || !refund) {
+          throw new Error(`Refund not found: ${refundErr?.message || ''}`)
+        }
+
+        if (refund.status !== 'requested' && refund.status !== 'approved') {
+          throw new Error(`Refund cannot be processed. Current status: ${refund.status}`)
+        }
+
+        // Mark processing
+        await supabaseAdmin
+          .from('refunds')
+          .update({ status: 'processing', reviewed_by: admin_user_id || null, reviewed_at: new Date().toISOString(), admin_notes: admin_notes || refund.admin_notes })
+          .eq('id', refund_id)
+
+        // Call Razorpay refund API
+        const auth = btoa(`${razorpayKeyId}:${razorpayKeySecret}`)
+        const rzpRefundUrl = `https://api.razorpay.com/v1/payments/${refund.razorpay_payment_id}/refund`
+        const refundRes = await fetch(rzpRefundUrl, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Basic ${auth}`
+          },
+          body: JSON.stringify({
+            amount: Math.round(Number(refund.amount) * 100),
+            speed: "normal",
+            notes: {
+              refund_id,
+              order_id: refund.order_id,
+              reason: refund.reason?.substring(0, 250) || ""
+            }
+          })
+        })
+
+        const refundRespText = await refundRes.text()
+        let refundResp: any = null
+        try { refundResp = JSON.parse(refundRespText) } catch (_) { refundResp = { raw: refundRespText } }
+
+        if (!refundRes.ok) {
+          await supabaseAdmin
+            .from('refunds')
+            .update({ status: 'failed', razorpay_error: refundResp })
+            .eq('id', refund_id)
+
+          await supabaseAdmin.from('payment_logs').insert({
+            order_id: refund.order_id,
+            razorpay_payment_id: refund.razorpay_payment_id,
+            stage: 'refund',
+            status: 'failure',
+            amount: refund.amount,
+            error_message: `Razorpay refund API failed: ${refundRespText.substring(0, 500)}`,
+            metadata: refundResp
+          })
+
+          throw new Error(`Razorpay refund failed: ${refundRespText}`)
+        }
+
+        // Update refund with Razorpay ID
+        await supabaseAdmin
+          .from('refunds')
+          .update({
+            razorpay_refund_id: refundResp.id,
+            status: refundResp.status === 'processed' ? 'processed' : 'processing',
+            processed_at: refundResp.status === 'processed' ? new Date().toISOString() : null
+          })
+          .eq('id', refund_id)
+
+        // Update parent order
+        await supabaseAdmin
+          .from('orders')
+          .update({ refund_status: 'approved' })
+          .eq('id', refund.order_id)
+
+        // Log
+        await supabaseAdmin.from('payment_logs').insert({
+          order_id: refund.order_id,
+          razorpay_payment_id: refund.razorpay_payment_id,
+          stage: 'refund',
+          status: 'success',
+          amount: refund.amount,
+          metadata: { razorpay_refund_id: refundResp.id, speed: refundResp.speed_processed }
+        })
+
+        // Fire Brevo email (best-effort — do not block)
+        try {
+          const refundEmailHtml = `
+            <html><body style="font-family: Arial, sans-serif; color: #0F2D6B; background:#FAFCFD; padding:20px;">
+              <div style="max-width:600px; margin:0 auto; background:#fff; padding:30px; border-radius:12px; border:1px solid #EAF0F6;">
+                <h2 style="color:#0F2D6B; text-align:center;">Refund <span style="color:#1FB6D4">Processed</span></h2>
+                <p>Dear ${refund.orders?.customer_name || 'Customer'},</p>
+                <p>Your refund of <strong>₹${Number(refund.amount).toFixed(2)}</strong> for Order <strong>${refund.order_id}</strong> has been initiated with Razorpay. It will reflect in your original payment method within 5–7 business days.</p>
+                <p style="font-size:12px;color:#666;">Razorpay Refund ID: ${refundResp.id}</p>
+                <p style="font-size:12px;color:#666;">Reason: ${refund.reason || 'N/A'}</p>
+                <p style="border-top:1px solid #EAF0F6; padding-top:15px; margin-top:20px; font-size:11px; color:#888; text-align:center;">
+                  Questions? Reply to this email or contact support@stethonotes.store<br/>
+                  StethoNotes © 2026
+                </p>
+              </div>
+            </body></html>
+          `
+          if (brevoApiKey && refund.orders?.customer_email) {
+            await fetch("https://api.brevo.com/v3/smtp/email", {
+              method: 'POST',
+              headers: { 'accept': 'application/json', 'api-key': brevoApiKey, 'content-type': 'application/json' },
+              body: JSON.stringify({
+                sender: { name: fromName, email: fromEmail },
+                to: [{ email: refund.orders.customer_email, name: refund.orders.customer_name }],
+                subject: "Your StethoNotes Refund Has Been Processed",
+                htmlContent: refundEmailHtml
+              })
+            })
+          }
+        } catch (emailErr: any) {
+          console.error('Refund confirmation email failed:', emailErr)
+        }
+
+        return new Response(JSON.stringify({
+          success: true,
+          refund_id,
+          razorpay_refund_id: refundResp.id,
+          status: refundResp.status
+        }), {
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        })
+      } catch (refundErr: any) {
+        logDebug({
+          stage: "create-refund",
+          message: "Error in create-refund flow",
+          details: refundErr.message,
+          stack: refundErr.stack
+        })
+        return new Response(JSON.stringify({
+          success: false,
+          message: refundErr.message
+        }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        })
+      }
+    }
+
+    // --------------------------------------------------------
     // ENDPOINT: /webhook
     // --------------------------------------------------------
     else if (action === 'webhook') {
@@ -908,24 +1113,56 @@ serve(async (req) => {
       }
 
       const signature = req.headers.get('x-razorpay-signature') ?? ""
+      const eventIdHeader = req.headers.get('x-razorpay-event-id') ?? null
 
       const isVerified = await verifyHmacSignature(webhookBody, signature, razorpayWebhookSecret)
+
+      // Attempt to parse regardless — we still want to log invalid attempts
+      let payload: any = null
+      try { payload = JSON.parse(webhookBody) } catch (_) { payload = null }
+
+      // Idempotency: if event_id already logged, skip re-processing
+      if (eventIdHeader) {
+        const { data: existing } = await supabaseAdmin
+          .from('webhook_logs')
+          .select('id, processing_status')
+          .eq('event_id', eventIdHeader)
+          .maybeSingle()
+        if (existing) {
+          await supabaseAdmin.from('webhook_logs').insert({
+            provider: 'razorpay',
+            event_id: eventIdHeader + '_dup_' + Date.now(),
+            event_type: payload?.event || 'unknown',
+            signature_valid: isVerified,
+            processing_status: 'duplicate',
+            payload,
+            received_at: new Date().toISOString(),
+          })
+          return new Response(JSON.stringify({ success: true, duplicate: true }), {
+            status: 200,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          })
+        }
+      }
+
       if (!isVerified) {
+        await supabaseAdmin.from('webhook_logs').insert({
+          provider: 'razorpay',
+          event_id: eventIdHeader,
+          event_type: payload?.event || 'unknown',
+          signature_valid: false,
+          processing_status: 'failed',
+          payload,
+          error_message: 'Invalid webhook signature',
+          received_at: new Date().toISOString(),
+        })
         return new Response(JSON.stringify({ success: false, message: 'Invalid webhook signature' }), {
           status: 400,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         })
       }
 
-      let payload: any = null
-      try {
-        payload = JSON.parse(webhookBody)
-      } catch (parseErr: any) {
-        logDebug({
-          stage: "webhook",
-          message: "Failed to parse webhook JSON",
-          stack: parseErr.stack
-        })
+      if (!payload) {
         return new Response(JSON.stringify({ success: false, message: 'Invalid webhook payload' }), {
           status: 400,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -933,6 +1170,36 @@ serve(async (req) => {
       }
 
       const event = payload.event
+
+      // Insert the initial log row (mark as received)
+      const { data: logRow } = await supabaseAdmin.from('webhook_logs').insert({
+        provider: 'razorpay',
+        event_id: eventIdHeader,
+        event_type: event,
+        razorpay_payment_id: payload.payload?.payment?.entity?.id || null,
+        razorpay_order_id: payload.payload?.payment?.entity?.order_id || null,
+        razorpay_refund_id: payload.payload?.refund?.entity?.id || null,
+        signature_valid: true,
+        processing_status: 'received',
+        payload,
+        received_at: new Date().toISOString(),
+      }).select().single()
+
+      const logRowId = logRow?.id
+      const markProcessed = async (status: string, errMsg?: string, orderId?: string) => {
+        if (!logRowId) return
+        await supabaseAdmin
+          .from('webhook_logs')
+          .update({
+            processing_status: status,
+            error_message: errMsg || null,
+            order_id: orderId || null,
+            processed_at: new Date().toISOString(),
+          })
+          .eq('id', logRowId)
+      }
+
+      try {
 
       if (event === 'order.paid' || event === 'payment.captured') {
         const payment = payload.payload.payment.entity
@@ -1018,6 +1285,17 @@ serve(async (req) => {
                     amount: paidAmount,
                     status: 'captured'
                   })
+
+                await supabaseAdmin.from('payment_logs').insert({
+                  order_id: dbOrder.id,
+                  razorpay_payment_id,
+                  razorpay_order_id,
+                  stage: 'webhook',
+                  status: 'success',
+                  amount: paidAmount,
+                  method: payment.method || null,
+                  metadata: { source: 'webhook_recovery', event }
+                })
               }
             }
           }
@@ -1053,7 +1331,89 @@ serve(async (req) => {
               })
             }
           }
+
+          await markProcessed('processed', undefined, dbOrder?.id)
+        } else {
+          await markProcessed('processed')
         }
+      } else if (event === 'payment.failed') {
+        const payment = payload.payload.payment.entity
+        await supabaseAdmin.from('payment_logs').insert({
+          razorpay_payment_id: payment.id,
+          razorpay_order_id: payment.order_id,
+          stage: 'webhook',
+          status: 'failure',
+          amount: Number(payment.amount) / 100,
+          method: payment.method || null,
+          error_code: payment.error_code || null,
+          error_message: payment.error_description || 'Payment failed',
+          metadata: { event, error_source: payment.error_source, error_step: payment.error_step, error_reason: payment.error_reason }
+        })
+        await markProcessed('processed')
+      } else if (event === 'refund.processed' || event === 'refund.failed') {
+        const refundEntity = payload.payload.refund.entity
+        const razorpayRefundId = refundEntity.id
+        const razorpayPaymentId = refundEntity.payment_id
+        const refundStatus = event === 'refund.processed' ? 'processed' : 'failed'
+
+        // Try to find our refund row via razorpay_refund_id (set when we called create-refund),
+        // fallback to matching by razorpay_payment_id if that's missing.
+        let { data: refundRow } = await supabaseAdmin
+          .from('refunds')
+          .select('*')
+          .eq('razorpay_refund_id', razorpayRefundId)
+          .maybeSingle()
+
+        if (!refundRow) {
+          const { data: fallback } = await supabaseAdmin
+            .from('refunds')
+            .select('*')
+            .eq('razorpay_payment_id', razorpayPaymentId)
+            .in('status', ['processing', 'approved', 'requested'])
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle()
+          refundRow = fallback
+        }
+
+        if (refundRow) {
+          await supabaseAdmin
+            .from('refunds')
+            .update({
+              status: refundStatus,
+              razorpay_refund_id: razorpayRefundId,
+              processed_at: event === 'refund.processed' ? new Date().toISOString() : refundRow.processed_at,
+            })
+            .eq('id', refundRow.id)
+
+          if (refundStatus === 'processed') {
+            await supabaseAdmin
+              .from('orders')
+              .update({ refund_status: 'processed', payment_status: 'refunded' })
+              .eq('id', refundRow.order_id)
+          }
+
+          await supabaseAdmin.from('payment_logs').insert({
+            order_id: refundRow.order_id,
+            razorpay_payment_id: razorpayPaymentId,
+            stage: 'refund',
+            status: refundStatus === 'processed' ? 'success' : 'failure',
+            amount: refundRow.amount,
+            metadata: { event, razorpay_refund_id: razorpayRefundId }
+          })
+
+          await markProcessed('processed', undefined, refundRow.order_id)
+        } else {
+          await markProcessed('processed', 'refund row not found for this razorpay_refund_id')
+        }
+      } else {
+        // Unhandled event type — still log as processed so we know it arrived
+        await markProcessed('processed', `unhandled event: ${event}`)
+      }
+
+      } catch (whErr: any) {
+        console.error('Webhook processing error:', whErr)
+        await markProcessed('failed', whErr.message)
       }
 
       return new Response(JSON.stringify({ success: true }), {
