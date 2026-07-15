@@ -15,6 +15,8 @@ import {
 } from 'lucide-react';
 import { NoteDetailSkeleton } from '../components/Skeleton';
 import { motion, AnimatePresence } from 'motion/react';
+import SEOHead from '../components/SEOHead';
+import { pageMeta, generateProductLD, generateBreadcrumbLD } from '../lib/seo';
 
 export default function ProductDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -592,8 +594,41 @@ export default function ProductDetailPage() {
     { icon: Lock, label: 'Secure Purchase', desc: 'Fully encrypted transaction processing with verified delivery logs.' }
   ];
 
+  const seoMeta = pageMeta.product({
+    id: note.id,
+    title: note.title,
+    description: note.description,
+    price: note.price,
+    thumbnail_url: note.thumbnail_url,
+    subject: note.subject,
+    course: (note as any).course,
+    avg_rating: parseFloat(averageRating),
+    review_count: visibleReviews.length
+  });
+
+  const productSchema = generateProductLD({
+    id: note.id,
+    title: note.title,
+    description: note.description,
+    price: note.price,
+    thumbnail_url: note.thumbnail_url,
+    subject: note.subject,
+    course: (note as any).course,
+    avg_rating: parseFloat(averageRating),
+    review_count: visibleReviews.length,
+    created_at: note.created_at
+  });
+
+  const breadcrumbSchema = generateBreadcrumbLD([
+    { name: 'Home', url: 'https://www.stethonotes.store/' },
+    { name: (note as any).course?.name || 'Courses', url: `https://www.stethonotes.store/courses` },
+    { name: note.subject || 'Notes', url: `https://www.stethonotes.store/courses` },
+    { name: note.title, url: `https://www.stethonotes.store/notes/${note.id}` }
+  ]);
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 min-h-screen font-display pb-24 lg:pb-12">
+      <SEOHead {...seoMeta} jsonLd={[productSchema, breadcrumbSchema]} />
       {/* Back Link */}
       <Link
         to="/courses"

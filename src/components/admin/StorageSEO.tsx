@@ -3,7 +3,7 @@ import { supabase } from '../../lib/supabase';
 import { useToastStore } from '../../store/useToastStore';
 import {
   HardDrive, FileText, Image as ImageIcon, Sparkles, Save, Info,
-  FileCode
+  FileCode, ExternalLink, AlertTriangle, CheckCircle2, Search
 } from 'lucide-react';
 
 export default function StorageSEO() {
@@ -24,11 +24,20 @@ export default function StorageSEO() {
   // SEO State
   const [globalSeoTitle, setGlobalSeoTitle] = useState('StethoNotes — Premium Medical & Paramedical Notes Marketplace');
   const [globalSeoDesc, setGlobalSeoDesc] = useState('Download highly structured medical study guides, notes, and prep materials created by expert sellers.');
+  const [googleVerification, setGoogleVerification] = useState('');
   const [robotsTxt, setRobotsTxt] = useState(`User-agent: *
 Allow: /
 Disallow: /admin/
 Disallow: /seller/application-pending
-Sitemap: https://stethonotes.com/sitemap.xml`);
+Sitemap: https://www.stethonotes.store/sitemap.xml`);
+
+  // SEO Audit State
+  const [seoAudit, setSeoAudit] = useState({
+    totalNotes: 0,
+    missingDesc: 0,
+    shortDesc: 0,
+    longTitle: 0
+  });
 
   const [savingSeo, setSavingSeo] = useState(false);
 
@@ -39,18 +48,37 @@ Sitemap: https://stethonotes.com/sitemap.xml`);
   const fetchStorageAndSeo = async () => {
     setLoading(true);
     try {
-      // 1. Fetch note counts to simulate storage details
-      const { data: notes } = await supabase.from('notes').select('pdf_url, thumbnail_url, preview_images');
+      // 1. Fetch notes with metadata and file columns
+      const { data: notes } = await supabase
+        .from('notes')
+        .select('pdf_url, thumbnail_url, preview_images, title, description');
       
       let pdfs = 0;
       let imgs = 0;
       let previews = 0;
+
+      // SEO Audit counters
+      let missingDescCount = 0;
+      let shortDescCount = 0;
+      let longTitleCount = 0;
 
       (notes || []).forEach((n: any) => {
         if (n.pdf_url) pdfs++;
         if (n.thumbnail_url) imgs++;
         if (n.preview_images && Array.isArray(n.preview_images)) {
           previews += n.preview_images.length;
+        }
+
+        // SEO calculations
+        const desc = n.description || '';
+        if (!desc.trim()) {
+          missingDescCount++;
+        } else if (desc.length < 100) {
+          shortDescCount++;
+        }
+
+        if (n.title && n.title.length > 60) {
+          longTitleCount++;
         }
       });
 
@@ -65,6 +93,13 @@ Sitemap: https://stethonotes.com/sitemap.xml`);
         storageLimitBytes: 1073741824
       });
 
+      setSeoAudit({
+        totalNotes: notes?.length || 0,
+        missingDesc: missingDescCount,
+        shortDesc: shortDescCount,
+        longTitle: longTitleCount
+      });
+
       // Seed mock largest files list
       setLargeFiles([
         { name: 'anatomy_cardiovascular_detailed.pdf', size: '4.8 MB', path: 'notes/pdfs/anatomy_cv.pdf' },
@@ -73,8 +108,22 @@ Sitemap: https://stethonotes.com/sitemap.xml`);
         { name: 'biochemistry_metabolism_cycles.pdf', size: '1.9 MB', path: 'notes/pdfs/biochemistry.pdf' }
       ]);
 
+      // 2. Fetch SEO settings
+      const { data: settings } = await supabase.from('settings').select('*');
+      if (settings) {
+        const titleSetting = settings.find((s: any) => s.key === 'global_seo_title');
+        const descSetting = settings.find((s: any) => s.key === 'global_seo_description');
+        const robotsSetting = settings.find((s: any) => s.key === 'robots_txt');
+        const gscSetting = settings.find((s: any) => s.key === 'google_site_verification');
+
+        if (titleSetting) setGlobalSeoTitle(titleSetting.value);
+        if (descSetting) setGlobalSeoDesc(descSetting.value);
+        if (robotsSetting) setRobotsTxt(robotsSetting.value);
+        if (gscSetting) setGoogleVerification(gscSetting.value);
+      }
+
     } catch (err) {
-      console.error('Error fetching storage metrics:', err);
+      console.error('Error fetching storage and SEO metrics:', err);
     } finally {
       setLoading(false);
     }
@@ -88,7 +137,8 @@ Sitemap: https://stethonotes.com/sitemap.xml`);
       await supabase.from('settings').upsert([
         { key: 'global_seo_title', value: globalSeoTitle, description: 'Sitemaps metadata default title' },
         { key: 'global_seo_description', value: globalSeoDesc, description: 'Sitemaps metadata default description' },
-        { key: 'robots_txt', value: robotsTxt, description: 'Standard robots configuration index values' }
+        { key: 'robots_txt', value: robotsTxt, description: 'Standard robots configuration index values' },
+        { key: 'google_site_verification', value: googleVerification, description: 'Google Search Console verification meta tag token' }
       ]);
 
       addToast('success', 'SEO Changes Saved', 'Global sitemap, robots, and open-graph definitions updated successfully.');
@@ -212,62 +262,142 @@ Sitemap: https://stethonotes.com/sitemap.xml`);
           </div>
         </div>
       ) : (
-        // ==========================================
-        // SEO MANAGEMENT VIEW
-        // ==========================================
-        <form onSubmit={handleSaveSeo} className="bg-white border border-slate-100 p-6 rounded-3xl shadow-sm space-y-6">
-          <div className="flex justify-between items-center border-b border-slate-50 pb-4">
-            <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
-              <Sparkles className="w-5 h-5 text-cyan-600" />
-              <span>Global Indexing Schema Parameters</span>
-            </h3>
-            <button
-              type="submit"
-              disabled={savingSeo}
-              className="px-4 py-2 bg-cyan-600 hover:bg-cyan-750 text-white rounded-xl text-xs font-semibold flex items-center gap-2 transition-all"
-            >
-              <Save className="w-4 h-4" />
-              <span>{savingSeo ? 'Saving...' : 'Save Config'}</span>
-            </button>
+        <div className="space-y-6">
+          {/* SEO AUDIT DASHBOARD PANEL */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="bg-slate-50 p-4 border border-slate-100 rounded-2xl">
+              <Search className="w-4 h-4 text-cyan-600 mb-1" />
+              <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider block">Total Indexed Products</span>
+              <p className="text-xl font-bold text-slate-800 mt-1 font-sans">{seoAudit.totalNotes}</p>
+            </div>
+            
+            <div className="bg-slate-50 p-4 border border-slate-100 rounded-2xl">
+              <AlertTriangle className={`w-4 h-4 mb-1 ${seoAudit.missingDesc > 0 ? 'text-red-500' : 'text-slate-400'}`} />
+              <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider block">Missing Descriptions</span>
+              <p className="text-xl font-bold text-slate-800 mt-1 font-sans">{seoAudit.missingDesc}</p>
+            </div>
+
+            <div className="bg-slate-50 p-4 border border-slate-100 rounded-2xl">
+              <AlertTriangle className={`w-4 h-4 mb-1 ${seoAudit.shortDesc > 0 ? 'text-amber-500' : 'text-slate-400'}`} />
+              <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider block">Descriptions &lt; 100 Chars</span>
+              <p className="text-xl font-bold text-slate-800 mt-1 font-sans">{seoAudit.shortDesc}</p>
+            </div>
+
+            <div className="bg-slate-50 p-4 border border-slate-100 rounded-2xl">
+              <AlertTriangle className={`w-4 h-4 mb-1 ${seoAudit.longTitle > 0 ? 'text-amber-500' : 'text-slate-400'}`} />
+              <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider block">Titles &gt; 60 Chars</span>
+              <p className="text-xl font-bold text-slate-800 mt-1 font-sans">{seoAudit.longTitle}</p>
+            </div>
           </div>
 
+          {/* SITEMAP & ROBOTS STATUS */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-4">
-              <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-slate-500">Global Homepage Meta Title</label>
-                <input
-                  type="text"
-                  value={globalSeoTitle}
-                  onChange={(e) => setGlobalSeoTitle(e.target.value)}
-                  className="w-full px-4 py-2 border border-slate-200 rounded-xl text-xs text-slate-850 focus:outline-none focus:border-cyan-500 bg-slate-50/20"
-                  required
-                />
+            <div className="bg-emerald-50/30 border border-emerald-100 p-5 rounded-2xl flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+                <div>
+                  <h4 className="text-xs font-bold text-emerald-800">Dynamic XML Sitemap</h4>
+                  <p className="text-[10px] text-emerald-600">Auto-updating product URLs & indexes</p>
+                </div>
               </div>
-
-              <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-slate-500">Global Homepage Meta Description</label>
-                <textarea
-                  rows={4}
-                  value={globalSeoDesc}
-                  onChange={(e) => setGlobalSeoDesc(e.target.value)}
-                  className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-xs text-slate-850 focus:outline-none focus:border-cyan-500 bg-slate-50/20 leading-relaxed"
-                  required
-                />
-              </div>
+              <a
+                href="/sitemap.xml"
+                target="_blank"
+                rel="noreferrer"
+                className="text-xs font-bold text-emerald-700 hover:text-emerald-900 inline-flex items-center gap-1 hover:underline"
+              >
+                <span>View Sitemap</span>
+                <ExternalLink className="w-3.5 h-3.5" />
+              </a>
             </div>
 
-            <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-slate-500">Robots.txt Configuration</label>
-              <textarea
-                rows={7}
-                value={robotsTxt}
-                onChange={(e) => setRobotsTxt(e.target.value)}
-                className="w-full px-4 py-3 border border-slate-200 rounded-xl text-xs text-slate-800 font-mono focus:outline-none focus:border-cyan-500 bg-slate-50/20 leading-relaxed"
-                required
-              />
+            <div className="bg-emerald-50/30 border border-emerald-100 p-5 rounded-2xl flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+                <div>
+                  <h4 className="text-xs font-bold text-emerald-800">Robots.txt Schema</h4>
+                  <p className="text-[10px] text-emerald-600">Rules configured for web crawlers</p>
+                </div>
+              </div>
+              <a
+                href="/robots.txt"
+                target="_blank"
+                rel="noreferrer"
+                className="text-xs font-bold text-emerald-700 hover:text-emerald-900 inline-flex items-center gap-1 hover:underline"
+              >
+                <span>View Robots</span>
+                <ExternalLink className="w-3.5 h-3.5" />
+              </a>
             </div>
           </div>
-        </form>
+
+          {/* SEO FORM */}
+          <form onSubmit={handleSaveSeo} className="bg-white border border-slate-100 p-6 rounded-3xl shadow-sm space-y-6">
+            <div className="flex justify-between items-center border-b border-slate-50 pb-4">
+              <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                <Sparkles className="w-5 h-5 text-cyan-600" />
+                <span>Global Indexing Schema Parameters</span>
+              </h3>
+              <button
+                type="submit"
+                disabled={savingSeo}
+                className="px-4 py-2 bg-cyan-600 hover:bg-cyan-700 text-white rounded-xl text-xs font-semibold flex items-center gap-2 transition-all"
+              >
+                <Save className="w-4 h-4" />
+                <span>{savingSeo ? 'Saving...' : 'Save Config'}</span>
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-4">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-slate-500">Global Homepage Meta Title</label>
+                  <input
+                    type="text"
+                    value={globalSeoTitle}
+                    onChange={(e) => setGlobalSeoTitle(e.target.value)}
+                    className="w-full px-4 py-2 border border-slate-200 rounded-xl text-xs text-slate-850 focus:outline-none focus:border-cyan-500 bg-slate-50/20"
+                    required
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-slate-500">Global Homepage Meta Description</label>
+                  <textarea
+                    rows={4}
+                    value={globalSeoDesc}
+                    onChange={(e) => setGlobalSeoDesc(e.target.value)}
+                    className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-xs text-slate-850 focus:outline-none focus:border-cyan-500 bg-slate-50/20 leading-relaxed"
+                    required
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-slate-500">Google Search Console Verification Tag</label>
+                  <input
+                    type="text"
+                    value={googleVerification}
+                    onChange={(e) => setGoogleVerification(e.target.value)}
+                    placeholder="e.g. google-site-verification=xxxxxx"
+                    className="w-full px-4 py-2 border border-slate-200 rounded-xl text-xs text-slate-850 focus:outline-none focus:border-cyan-500 bg-slate-50/20"
+                  />
+                  <p className="text-[10px] text-slate-400">Paste your verification tag content here to sync search indexing records.</p>
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-slate-500">Robots.txt Configuration</label>
+                <textarea
+                  rows={10}
+                  value={robotsTxt}
+                  onChange={(e) => setRobotsTxt(e.target.value)}
+                  className="w-full px-4 py-3 border border-slate-200 rounded-xl text-xs text-slate-800 font-mono focus:outline-none focus:border-cyan-500 bg-slate-50/20 leading-relaxed"
+                  required
+                />
+              </div>
+            </div>
+          </form>
+        </div>
       )}
     </div>
   );

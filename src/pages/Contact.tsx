@@ -1,24 +1,16 @@
-import { useEffect, useRef } from 'react';
+import { useRef } from 'react';
 import Hero from '../components/contact/Hero';
 import HelpCards from '../components/contact/HelpCards';
 import ContactCards from '../components/contact/ContactCards';
 import ContactForm from '../components/contact/ContactForm';
 import LocationCard from '../components/contact/LocationCard';
 import FAQ from '../components/contact/FAQ';
+import SEOHead from '../components/SEOHead';
+import { pageMeta } from '../lib/seo';
 
 export default function Contact() {
   const formRef = useRef<HTMLDivElement>(null);
   const faqRef = useRef<HTMLDivElement>(null);
-
-  // SEO updates on mount
-  useEffect(() => {
-    document.title = "Contact StethoNotes | Customer Support";
-    
-    const metaDesc = document.querySelector('meta[name="description"]');
-    if (metaDesc) {
-      metaDesc.setAttribute("content", "Contact StethoNotes for support related to medical notes, payments, order tracking, and digital downloads.");
-    }
-  }, []);
 
   const scrollToForm = () => {
     formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -28,8 +20,33 @@ export default function Contact() {
     faqRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
+  const meta = pageMeta.contact();
+  
+  const localBusinessSchema = {
+    "@context": "https://schema.org",
+    "@type": "LocalBusiness",
+    "name": "StethoNotes",
+    "image": "https://www.stethonotes.store/favicon.svg",
+    "@id": "https://www.stethonotes.store/#localbusiness",
+    "url": "https://www.stethonotes.store/",
+    "telephone": "",
+    "address": {
+      "@type": "PostalAddress",
+      "addressLocality": "Nagpur",
+      "addressRegion": "Maharashtra",
+      "postalCode": "440001",
+      "addressCountry": "IN"
+    },
+    "contactPoint": {
+      "@type": "ContactPoint",
+      "contactType": "customer support",
+      "email": "support@stethonotes.store"
+    }
+  };
+
   return (
     <div className="bg-white min-h-screen">
+      <SEOHead {...meta} jsonLd={localBusinessSchema} />
       {/* Hero Header */}
       <Hero />
 

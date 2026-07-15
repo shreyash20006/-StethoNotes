@@ -25,6 +25,7 @@ import AdminLoginPage from './pages/AdminLoginPage';
 import SellerPendingPage from './pages/SellerPendingPage';
 import SellerDashboardPage from './pages/SellerDashboardPage';
 import DownloadPage from './pages/DownloadPage';
+import NotFoundPage from './pages/NotFoundPage';
 
 // ============================================================
 // LAYOUT WRAPPERS
@@ -204,8 +205,8 @@ function App() {
             <Route path="dashboard" element={<DashboardPage />} />
           </Route>
 
-          {/* Catch-all */}
-          <Route path="*" element={<Navigate to="/" replace />} />
+          {/* Catch-all 404 */}
+          <Route path="*" element={<NotFoundPage />} />
         </Route>
       </Routes>
     </BrowserRouter>

@@ -1,0 +1,35 @@
+{
+  "name": "StethoNotes",
+  "short_name": "StethoNotes",
+  "description": "India's leading marketplace for medical study notes — MBBS, BHMS, BAMS, BSc Nursing, B.Pharma, BPT PDFs curated by toppers.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#07091a",
+  "theme_color": "#7c3aed",
+  "orientation": "portrait-primary",
+  "categories": ["education", "medical", "study"],
+  "lang": "en-IN",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "type": "image/svg+xml",
+      "sizes": "any",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/icon-192.png",
+      "type": "image/png",
+      "sizes": "192x192",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "any"
+    }
+  ],
+  "screenshots": [],
+  "related_applications": [],
+  "prefer_related_applications": false
+}

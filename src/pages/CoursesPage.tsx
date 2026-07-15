@@ -6,6 +6,8 @@ import { Search, Filter, SlidersHorizontal, ArrowUpDown, GraduationCap, Shopping
 import { useCartStore } from '../store/useCartStore';
 import { useToastStore } from '../store/useToastStore';
 import { NoteCardSkeleton } from '../components/Skeleton';
+import SEOHead from '../components/SEOHead';
+import { pageMeta, generateBreadcrumbLD } from '../lib/seo';
 
 export default function CoursesPage() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -107,8 +109,17 @@ export default function CoursesPage() {
     addToast('success', 'Added to Cart', `${note.title} has been added to your shopping cart.`);
   };
 
+  const activeCourseName = selectedCourse !== 'All' ? selectedCourse : undefined;
+  const seoMeta = pageMeta.courses(activeCourseName);
+  const breadcrumbSchema = generateBreadcrumbLD([
+    { name: 'Home', url: 'https://www.stethonotes.store/' },
+    { name: 'Courses', url: 'https://www.stethonotes.store/courses' },
+    ...(activeCourseName ? [{ name: activeCourseName, url: `https://www.stethonotes.store/courses?course=${encodeURIComponent(activeCourseName)}` }] : [])
+  ]);
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 min-h-screen">
+      <SEOHead {...seoMeta} jsonLd={breadcrumbSchema} />
       {/* Header and Title */}
       <div className="mb-10 flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>

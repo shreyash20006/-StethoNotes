@@ -3,6 +3,8 @@ import { motion } from 'framer-motion';
 import { Award, ShieldCheck, Star, ArrowRight, Activity, Users, Smile, ChevronLeft, ChevronRight, Mail, Trophy } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
+import SEOHead from '../components/SEOHead';
+import { pageMeta, generateOrganizationLD, generateFAQLD } from '../lib/seo';
 
 const CATEGORIES = [
   { id: 'c1', name: 'MBBS', desc: 'Bachelor of Medicine, Bachelor of Surgery', icon: '🩺', color: 'from-blue-500/10 to-cyan-500/10' },
@@ -96,8 +98,13 @@ export default function LandingPage() {
     return () => clearInterval(interval);
   }, []);
 
+  const meta = pageMeta.home();
+  const orgSchema = generateOrganizationLD();
+  const faqSchema = generateFAQLD();
+
   return (
     <div className="overflow-hidden">
+      <SEOHead {...meta} jsonLd={[orgSchema, faqSchema]} />
       {/* 1. Hero Section */}
       <section className="relative bg-dark-navy text-white pt-24 pb-32 px-4 sm:px-6 lg:px-8 overflow-hidden">
         {/* Animated Background Gradients */}

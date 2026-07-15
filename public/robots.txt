@@ -1,0 +1,15 @@
+User-agent: *
+Allow: /
+
+Disallow: /admin
+Disallow: /admin/
+Disallow: /dashboard
+Disallow: /api/
+Disallow: /auth/
+Disallow: /private/
+Disallow: /seller/dashboard
+Disallow: /seller/application-pending
+Disallow: /order-success
+Disallow: /download/
+
+Sitemap: https://www.stethonotes.store/sitemap.xml

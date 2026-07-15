@@ -1,8 +1,13 @@
 import { Shield } from 'lucide-react';
+import SEOHead from '../components/SEOHead';
+import { pageMeta } from '../lib/seo';
 
 export default function PrivacyPolicyPage() {
+  const meta = pageMeta.privacy();
+
   return (
     <div className="max-w-4xl mx-auto px-6 py-16 min-h-[8vh]" data-testid="privacy-policy-page">
+      <SEOHead {...meta} />
       <div className="bg-white border border-gray-100 rounded-3xl p-8 sm:p-12 shadow-cyan-soft relative overflow-hidden">
         {/* Decorative accent */}
         <div className="absolute top-0 right-0 w-32 h-32 bg-accent/5 rounded-bl-[100px] pointer-events-none" />

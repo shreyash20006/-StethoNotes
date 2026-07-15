@@ -194,6 +194,24 @@ CREATE INDEX IF NOT EXISTS idx_coupon_codes_code   ON public.coupon_codes(code);
 -- SECTION 4: TRIGGER FUNCTIONS & SECURITY
 -- ==========================================
 
+-- Helper function to check if user has admin privileges (admin or super_admin)
+CREATE OR REPLACE FUNCTION public.is_admin(user_id UUID)
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+    RETURN EXISTS (
+        SELECT 1 FROM public.profiles
+        WHERE id = user_id AND role IN ('admin', 'super_admin')
+    ) OR EXISTS (
+        SELECT 1 FROM public.admin_allowlist a
+        JOIN auth.users u ON a.email = u.email
+        WHERE u.id = user_id
+    );
+END;
+$$;
+
 -- 4.1 Update New User trigger function to sync new fields
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER
@@ -243,7 +261,7 @@ BEGIN
         END IF;
 
         -- For all other changes, verify caller is admin or super_admin
-        IF (SELECT role FROM public.profiles WHERE id = auth.uid()) NOT IN ('admin', 'super_admin') THEN
+        IF NOT public.is_admin(auth.uid()) THEN
             RAISE EXCEPTION 'Privilege Escalation Blocked: You cannot modify your role or status details.';
         END IF;
     END IF;
@@ -325,19 +343,6 @@ ALTER TABLE public.settings           ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.coupon_codes       ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.analytics_events   ENABLE ROW LEVEL SECURITY;
 
--- Helper function to check if user has admin privileges (admin or super_admin)
-CREATE OR REPLACE FUNCTION public.is_admin(user_id UUID)
-RETURNS BOOLEAN
-LANGUAGE plpgsql
-SECURITY DEFINER
-AS $$
-BEGIN
-    RETURN EXISTS (
-        SELECT 1 FROM public.profiles
-        WHERE id = user_id AND role IN ('admin', 'super_admin')
-    );
-END;
-$$;
 
 -- Helper function to check if user is an approved seller
 CREATE OR REPLACE FUNCTION public.is_seller(user_id UUID)
