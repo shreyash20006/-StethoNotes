@@ -20,15 +20,17 @@ export default function CoursesPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCourse, setSelectedCourse] = useState(searchParams.get('course') || 'All');
   const [selectedSubject, setSelectedSubject] = useState('All');
+  const [selectedSeller, setSelectedSeller] = useState(searchParams.get('seller_id') || 'All');
   const [sortBy, setSortBy] = useState('newest');
   const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
 
-  // Sync course from query param
+  // Sync course and seller from query param
   useEffect(() => {
     const courseParam = searchParams.get('course');
-    if (courseParam) {
-      setSelectedCourse(courseParam);
-    }
+    setSelectedCourse(courseParam || 'All');
+    
+    const sellerParam = searchParams.get('seller_id');
+    setSelectedSeller(sellerParam || 'All');
   }, [searchParams]);
 
   useEffect(() => {
@@ -41,8 +43,11 @@ export default function CoursesPage() {
           setCourses(coursesData);
         }
 
-        // Fetch notes (with course relation join to prevent filtering bugs in live database mode)
-        const { data: notesData } = await supabase.from('notes').select('*, course:courses(*)').eq('status', 'active');
+        // Fetch notes (with course relation join and seller store name)
+        const { data: notesData } = await supabase
+          .from('notes')
+          .select('*, course:courses(*), seller:seller_profiles(store_name)')
+          .eq('status', 'active');
         if (notesData) {
           setNotes(notesData);
         }
@@ -73,8 +78,9 @@ export default function CoursesPage() {
       const courseName = (note as any).course?.name;
       const matchesCourse = selectedCourse === 'All' || courseName === selectedCourse;
       const matchesSubject = selectedSubject === 'All' || note.subject === selectedSubject;
+      const matchesSeller = selectedSeller === 'All' || note.seller_id === selectedSeller;
 
-      return matchesSearch && matchesCourse && matchesSubject;
+      return matchesSearch && matchesCourse && matchesSubject && matchesSeller;
     })
     .sort((a, b) => {
       if (sortBy === 'price-low') return a.price - b.price;
@@ -112,6 +118,20 @@ export default function CoursesPage() {
           <p className="text-gray-500 text-sm mt-1">
             Browse through {filteredNotes.length} medical notes carefully structured for exam preparation.
           </p>
+          {selectedSeller !== 'All' && (
+            <div className="flex items-center gap-2 bg-accent/15 border border-accent/20 px-3 py-1.5 rounded-full text-accent text-xs font-semibold w-fit mt-2">
+              <span>Notes by {(notes.find(n => n.seller_id === selectedSeller) as any)?.seller?.store_name || 'Verified Seller'}</span>
+              <button 
+                onClick={() => {
+                  searchParams.delete('seller_id');
+                  setSearchParams(searchParams);
+                }} 
+                className="hover:text-primary transition-colors ml-1 font-bold text-sm"
+              >
+                ×
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Search Input bar */}

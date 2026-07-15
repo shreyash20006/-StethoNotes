@@ -1,7 +1,8 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Award, ShieldCheck, Star, ArrowRight, Activity, Users, Smile, ChevronLeft, ChevronRight, Mail } from 'lucide-react';
+import { Award, ShieldCheck, Star, ArrowRight, Activity, Users, Smile, ChevronLeft, ChevronRight, Mail, Trophy } from 'lucide-react';
 import { useState, useEffect } from 'react';
+import { supabase } from '../lib/supabase';
 
 const CATEGORIES = [
   { id: 'c1', name: 'MBBS', desc: 'Bachelor of Medicine, Bachelor of Surgery', icon: '🩺', color: 'from-blue-500/10 to-cyan-500/10' },
@@ -63,6 +64,7 @@ const TESTIMONIALS = [
 export default function LandingPage() {
   const navigate = useNavigate();
   const [currentTestimonial, setCurrentTestimonial] = useState(0);
+  const [featuredSellers, setFeaturedSellers] = useState<any[]>([]);
 
   const nextTestimonial = () => {
     setCurrentTestimonial((prev) => (prev + 1) % TESTIMONIALS.length);
@@ -71,6 +73,22 @@ export default function LandingPage() {
   const prevTestimonial = () => {
     setCurrentTestimonial((prev) => (prev - 1 + TESTIMONIALS.length) % TESTIMONIALS.length);
   };
+
+  // Fetch featured sellers
+  useEffect(() => {
+    const fetchSellers = async () => {
+      try {
+        const { data } = await supabase
+          .from('featured_sellers')
+          .select('*')
+          .limit(4);
+        if (data) setFeaturedSellers(data);
+      } catch (err) {
+        console.error('Error fetching featured sellers:', err);
+      }
+    };
+    fetchSellers();
+  }, []);
 
   // Auto scroll testimonials
   useEffect(() => {
@@ -231,6 +249,88 @@ export default function LandingPage() {
           </div>
         </div>
       </section>
+
+      {/* Featured Sellers Section */}
+      {featuredSellers.length > 0 && (
+        <section className="bg-white py-24 px-4 sm:px-6 lg:px-8 border-b border-gray-50">
+          <div className="max-w-7xl mx-auto">
+            <div className="text-center max-w-3xl mx-auto mb-16 flex flex-col items-center gap-3">
+              <h2 className="text-3xl sm:text-4xl font-display font-bold text-primary">
+                Top Verified Creators
+              </h2>
+              <div className="w-16 h-1 bg-accent rounded-full" />
+              <p className="text-gray-500 font-sans text-base mt-2">
+                Study from premium notes uploaded by university toppers, reviewed for accuracy and performance.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+              {featuredSellers.map((seller, idx) => (
+                <motion.div
+                  key={seller.id}
+                  initial={{ opacity: 0, y: 30 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.5, delay: idx * 0.1 }}
+                  className="bg-white rounded-3xl border border-gray-100 p-6 shadow-cyan-soft hover:shadow-cyan-hover hover:border-accent/15 transition-all duration-300 flex flex-col justify-between group"
+                >
+                  <div>
+                    {/* Seller header info */}
+                    <div className="flex items-center gap-3 mb-4">
+                      {seller.avatar_url ? (
+                        <img 
+                          src={seller.avatar_url} 
+                          alt={seller.store_name || seller.name} 
+                          className="w-12 h-12 rounded-2xl object-cover border-2 border-accent/20"
+                        />
+                      ) : (
+                        <div className="w-12 h-12 rounded-2xl bg-cyan-50 border border-cyan-100 flex items-center justify-center text-accent text-xl font-bold shrink-0">
+                          {(seller.store_name || seller.name || 'S').substring(0, 1).toUpperCase()}
+                        </div>
+                      )}
+                      <div>
+                        <h3 className="font-display font-bold text-slate-800 text-sm group-hover:text-accent transition-colors">
+                          {seller.store_name || seller.name}
+                        </h3>
+                        <div className="flex items-center gap-1 mt-0.5 text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full text-[10px] font-semibold w-fit">
+                          <ShieldCheck className="w-3 h-3" />
+                          <span>Verified Creator</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Bio */}
+                    <p className="text-gray-500 text-xs leading-relaxed mb-6 line-clamp-3">
+                      {seller.bio || 'No bio provided.'}
+                    </p>
+                  </div>
+
+                  <div>
+                    {/* Sales count and stats */}
+                    <div className="flex items-center justify-between border-t border-gray-50 pt-4 mb-4">
+                      <div className="flex items-center gap-1.5 text-gray-500 text-xs">
+                        <Trophy className="w-4 h-4 text-amber-500" />
+                        <span>{seller.total_sales}+ Sales</span>
+                      </div>
+                      <div className="text-[10px] text-gray-400">
+                        {seller.refund_rate < 0.1 ? 'Excellent Trust' : `${seller.refund_rate}% refund rate`}
+                      </div>
+                    </div>
+
+                    {/* View notes button */}
+                    <Link
+                      to={`/courses?seller_id=${seller.id}`}
+                      className="w-full btn-outline py-2.5 rounded-xl text-xs font-semibold text-center block group-hover:bg-accent group-hover:border-accent group-hover:text-white transition-all duration-300"
+                    >
+                      View Notes
+                    </Link>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* 3. Why StethoNotes Section */}
       <section id="why-us" className="bg-white py-24 px-4 sm:px-6 lg:px-8 border-b border-gray-50">

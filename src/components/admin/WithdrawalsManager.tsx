@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useToastStore } from '../../store/useToastStore';
-import { Landmark, RefreshCw, CheckCircle2, XCircle, Clock } from 'lucide-react';
+import { Landmark, RefreshCw, CheckCircle2, Clock } from 'lucide-react';
 
 interface WithdrawalRow {
   id: string;

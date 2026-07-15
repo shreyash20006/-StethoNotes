@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
-import { supabase } from '../../lib/supabase';
-import { useAuthStore } from '../../store/useAuthStore';
-import { useToastStore } from '../../store/useToastStore';
+import { supabase } from '../lib/supabase';
+import { useAuthStore } from '../store/useAuthStore';
+import { useToastStore } from '../store/useToastStore';
 import { Gift, Copy, Share2, Trophy, IndianRupee } from 'lucide-react';
 
 interface ReferralStat {
