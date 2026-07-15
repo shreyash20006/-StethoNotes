@@ -17,13 +17,16 @@ import SettingsLogs from '../components/admin/SettingsLogs';
 import LeakInvestigator from '../components/admin/LeakInvestigator';
 import RefundsManager from '../components/admin/RefundsManager';
 import PaymentLogsViewer from '../components/admin/PaymentLogsViewer';
+import SellerKYCReview from '../components/admin/SellerKYCReview';
+import WithdrawalsManager from '../components/admin/WithdrawalsManager';
+import SupportTickets from '../components/support/SupportTickets';
 
 // Lucide Icons
 import {
   ShieldCheck, TrendingUp, Package, Users,
   Landmark, Tag, Mail, HardDrive, Settings, FolderOpen,
   ShoppingBag, Search, Plus, Trash2, ArrowRight,
-  LogOut, Menu, X, ShieldAlert, Undo2, FileText
+  LogOut, Menu, X, ShieldAlert, Undo2, FileText, Wallet, LifeBuoy
 } from 'lucide-react';
 
 export default function AdminPage() {
@@ -181,9 +184,12 @@ export default function AdminPage() {
               { id: 'orders', label: 'Order Audits', icon: <ShoppingBag className="w-4 h-4" /> },
               { id: 'customers', label: 'Customers Log', icon: <Users className="w-4 h-4" /> },
               { id: 'sellers', label: 'Seller Moderation', icon: <Users className="w-4 h-4" /> },
+              { id: 'seller_kyc', label: 'Seller KYC Review', icon: <ShieldCheck className="w-4 h-4" /> },
               { id: 'payouts', label: 'Payout Settlements', icon: <Landmark className="w-4 h-4" /> },
+              { id: 'withdrawals', label: 'Seller Withdrawals', icon: <Wallet className="w-4 h-4" /> },
               { id: 'refunds', label: 'Refund Requests', icon: <Undo2 className="w-4 h-4" /> },
               { id: 'payment_logs', label: 'Payment & Webhook Logs', icon: <FileText className="w-4 h-4" /> },
+              { id: 'support', label: 'Support Tickets', icon: <LifeBuoy className="w-4 h-4" /> },
               { id: 'reviews_coupons', label: 'Reviews & Coupons', icon: <Tag className="w-4 h-4" /> },
               { id: 'email_center', label: 'Email Center', icon: <Mail className="w-4 h-4" /> },
               { id: 'storage_seo', label: 'Storage & SEO', icon: <HardDrive className="w-4 h-4" /> },
@@ -234,8 +240,11 @@ export default function AdminPage() {
         {activeTab === 'notes' && <NotesManager />}
         {activeTab === 'sellers' && <SellerManager />}
         {activeTab === 'payouts' && <PayoutManager />}
+        {activeTab === 'withdrawals' && <WithdrawalsManager />}
+        {activeTab === 'seller_kyc' && <SellerKYCReview />}
         {activeTab === 'refunds' && <RefundsManager />}
         {activeTab === 'payment_logs' && <PaymentLogsViewer />}
+        {activeTab === 'support' && <SupportTickets mode="admin" />}
         {activeTab === 'reviews_coupons' && <ReviewsCoupons />}
         {activeTab === 'email_center' && <EmailCenter />}
         {activeTab === 'storage_seo' && <StorageSEO />}

@@ -24,11 +24,13 @@ export default function LoginPage() {
   const storedLogo = localStorage.getItem('brand_logo') || 'https://res.cloudinary.com/dsqxboxoc/image/upload/v1783892715/file_00000000663871fa96d4e5a32de37be1_adwo6u.png';
 
   const isSignUpParam = searchParams.get('signup') === 'true';
+  const refCodeParam = searchParams.get('ref') || '';
   const [isSignUp, setIsSignUp] = useState(isSignUpParam);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
+  const [refCode, setRefCode] = useState(refCodeParam);
   const [submitting, setSubmitting] = useState(false);
   const [loginMethod, setLoginMethod] = useState<'password' | 'otp'>('password');
   const [otpSent, setOtpSent] = useState(false);
@@ -63,7 +65,32 @@ export default function LoginPage() {
       if (isSignUp) {
         if (!name.trim()) throw new Error('Please enter your full name.');
         const success = await signUp(email, password, name, phone, 'student');
-        if (success) addToast('success', 'Account Registered', `Welcome to StethoNotes, ${name}!`);
+        if (success) {
+          addToast('success', 'Account Registered', `Welcome to StethoNotes, ${name}!`);
+          // Attach referral if code provided
+          if (refCode.trim()) {
+            try {
+              const { supabase } = await import('../lib/supabase');
+              const { data: { session } } = await supabase.auth.getSession();
+              const newUserId = session?.user?.id;
+              const { data: referrer } = await supabase
+                .from('profiles')
+                .select('id')
+                .eq('referral_code', refCode.trim().toUpperCase())
+                .maybeSingle();
+              if (referrer && newUserId && referrer.id !== newUserId) {
+                await supabase.from('referrals').insert({
+                  referrer_id: referrer.id,
+                  referred_id: newUserId,
+                  referral_code: refCode.trim().toUpperCase(),
+                  status: 'signed_up',
+                });
+              }
+            } catch (refErr) {
+              console.error('Referral attribution failed:', refErr);
+            }
+          }
+        }
       } else {
         if (loginMethod === 'password') {
           const success = await signIn(email, password);
@@ -156,6 +183,20 @@ export default function LoginPage() {
                     <input type="tel" placeholder="9876543210" value={phone} onChange={e => setPhone(e.target.value)}
                       className="w-full pl-10 pr-4 py-3 border border-gray-200 focus:border-accent focus:ring-1 focus:ring-accent outline-none rounded-xl bg-white text-primary" />
                     <Phone className="w-4 h-4 text-gray-400 absolute left-3.5 top-3.5" />
+                  </div>
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <label className="font-display font-semibold text-gray-400">Referral Code <span className="text-gray-300 font-normal">(optional)</span></label>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      placeholder="FRIEND1234"
+                      value={refCode}
+                      onChange={e => setRefCode(e.target.value.toUpperCase())}
+                      className="w-full pl-10 pr-4 py-3 border border-gray-200 focus:border-accent focus:ring-1 focus:ring-accent outline-none rounded-xl bg-white text-primary font-mono uppercase tracking-widest"
+                      data-testid="signup-ref-code"
+                    />
+                    <KeyRound className="w-4 h-4 text-gray-400 absolute left-3.5 top-3.5" />
                   </div>
                 </div>
               </>

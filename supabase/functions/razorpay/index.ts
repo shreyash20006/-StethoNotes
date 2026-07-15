@@ -87,7 +87,7 @@ async function verifyHmacSignature(data: string, signature: string, secret: stri
 
   const hashArray = Array.from(new Uint8Array(signatureBuffer))
   const hashHex = hashArray.map(b => b.toString(16).padStart(2, "0")).join("")
-  
+
   if (hashHex.length !== signature.length) {
     return false
   }
@@ -96,6 +96,210 @@ async function verifyHmacSignature(data: string, signature: string, secret: stri
     result |= hashHex.charCodeAt(i) ^ signature.charCodeAt(i)
   }
   return result === 0
+}
+
+// ============================================================
+// PHASE 2 HELPERS — Wallet crediting, Referral rewards, Invoice queue
+// ============================================================
+const SELLER_COMMISSION_RATE = 0.70  // 70% to seller, 30% platform
+const REFERRAL_REWARD_AMOUNT = 50    // ₹50 to referrer on referred user's first purchase
+const REFERRAL_MIN_ORDER_VALUE = 199 // Only reward if first order ≥ this
+
+// Ensure a wallet exists for user; return wallet row
+async function ensureWallet(supabaseAdmin: any, userId: string): Promise<any> {
+  const { data: existing } = await supabaseAdmin
+    .from('wallets')
+    .select('*')
+    .eq('user_id', userId)
+    .maybeSingle()
+  if (existing) return existing
+  const { data: created } = await supabaseAdmin
+    .from('wallets')
+    .insert({ user_id: userId })
+    .select()
+    .single()
+  return created
+}
+
+async function creditWallet(
+  supabaseAdmin: any,
+  userId: string,
+  amount: number,
+  type: string,
+  refType: string,
+  refId: string,
+  description: string
+) {
+  if (!userId || amount <= 0) return
+  const wallet = await ensureWallet(supabaseAdmin, userId)
+  if (!wallet) return
+
+  const newBalance = Number(wallet.available_balance) + amount
+  const newLifetime = Number(wallet.lifetime_credit) + amount
+
+  await supabaseAdmin
+    .from('wallets')
+    .update({
+      available_balance: newBalance,
+      lifetime_credit: newLifetime,
+    })
+    .eq('id', wallet.id)
+
+  await supabaseAdmin
+    .from('wallet_transactions')
+    .insert({
+      wallet_id: wallet.id,
+      user_id: userId,
+      type,
+      amount,
+      balance_after: newBalance,
+      reference_type: refType,
+      reference_id: refId,
+      description,
+    })
+}
+
+// Credit seller wallets at 70% of each item's price
+async function creditSellerWalletsForOrder(supabaseAdmin: any, order: any) {
+  try {
+    const { data: items } = await supabaseAdmin
+      .from('order_items')
+      .select('*, note:notes(id, title, seller_id, price)')
+      .eq('order_id', order.id)
+
+    if (!items || items.length === 0) return
+
+    for (const item of items) {
+      const sellerId = item.note?.seller_id
+      if (!sellerId) continue
+      const commission = Number((Number(item.price) * SELLER_COMMISSION_RATE).toFixed(2))
+      if (commission <= 0) continue
+
+      // Idempotency: skip if already credited for this order+item
+      const { data: existing } = await supabaseAdmin
+        .from('wallet_transactions')
+        .select('id')
+        .eq('reference_type', 'order_item')
+        .eq('reference_id', item.id)
+        .maybeSingle()
+      if (existing) continue
+
+      await creditWallet(
+        supabaseAdmin,
+        sellerId,
+        commission,
+        'sale_commission',
+        'order_item',
+        item.id,
+        `Sale commission for "${item.note?.title || 'Note'}" (Order ${order.id})`
+      )
+    }
+  } catch (err: any) {
+    console.error('creditSellerWalletsForOrder failed:', err)
+  }
+}
+
+// If the buyer was referred by someone AND this is their first paid order → credit referrer
+async function processReferralRewardForOrder(supabaseAdmin: any, order: any) {
+  try {
+    if (!order.user_id) return
+    if (Number(order.total_amount) < REFERRAL_MIN_ORDER_VALUE) return
+
+    // Fetch the referral row for this user
+    const { data: referral } = await supabaseAdmin
+      .from('referrals')
+      .select('*')
+      .eq('referred_id', order.user_id)
+      .maybeSingle()
+    if (!referral) return
+    if (referral.status === 'rewarded' || referral.status === 'first_purchase') return
+
+    // Confirm this is genuinely their first completed order
+    const { count } = await supabaseAdmin
+      .from('orders')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', order.user_id)
+      .eq('payment_status', 'completed')
+    if ((count || 0) > 1) {
+      // Not first — but still mark as first_purchase to close the loop without rewarding
+      await supabaseAdmin
+        .from('referrals')
+        .update({ status: 'first_purchase', first_order_id: order.id })
+        .eq('id', referral.id)
+      return
+    }
+
+    // Credit the referrer
+    await creditWallet(
+      supabaseAdmin,
+      referral.referrer_id,
+      REFERRAL_REWARD_AMOUNT,
+      'referral_bonus',
+      'referral',
+      referral.id,
+      `Referral reward — ${order.customer_name || 'Friend'} made their first purchase`
+    )
+
+    await supabaseAdmin
+      .from('referrals')
+      .update({
+        status: 'rewarded',
+        first_order_id: order.id,
+        reward_amount: REFERRAL_REWARD_AMOUNT,
+        rewarded_at: new Date().toISOString(),
+      })
+      .eq('id', referral.id)
+  } catch (err: any) {
+    console.error('processReferralRewardForOrder failed:', err)
+  }
+}
+
+// Enqueue invoice generation (creates the invoices row; PDF generated by separate function)
+async function enqueueInvoiceGeneration(supabaseAdmin: any, order: any) {
+  try {
+    // Idempotency
+    const { data: existing } = await supabaseAdmin
+      .from('invoices')
+      .select('id')
+      .eq('order_id', order.id)
+      .maybeSingle()
+    if (existing) return
+
+    const { data: seqRow } = await supabaseAdmin.rpc('nextval', { seqname: 'invoice_seq' })
+    let invoiceNumber: string
+    if (seqRow && typeof seqRow === 'number') {
+      invoiceNumber = `STN/${new Date().getFullYear()}/${String(seqRow).padStart(6, '0')}`
+    } else {
+      // Fallback if rpc('nextval') not available — use timestamp
+      invoiceNumber = `STN/${new Date().getFullYear()}/${Date.now().toString().slice(-8)}`
+    }
+
+    const subtotal = Number(order.total_amount) / 1.18   // approximate reverse-calc (18% GST included in total)
+    const gst = Number(order.total_amount) - subtotal
+
+    await supabaseAdmin
+      .from('invoices')
+      .insert({
+        invoice_number: invoiceNumber,
+        order_id: order.id,
+        user_id: order.user_id || null,
+        customer_name: order.customer_name,
+        customer_email: order.customer_email,
+        subtotal: Number(subtotal.toFixed(2)),
+        gst: Number(gst.toFixed(2)),
+        total: order.total_amount,
+        generation_status: 'pending',
+      })
+  } catch (err: any) {
+    console.error('enqueueInvoiceGeneration failed:', err)
+  }
+}
+
+// Convenience wrapper — call all post-order side effects
+async function runPostOrderHooks(supabaseAdmin: any, order: any) {
+  await creditSellerWalletsForOrder(supabaseAdmin, order)
+  await processReferralRewardForOrder(supabaseAdmin, order)
+  await enqueueInvoiceGeneration(supabaseAdmin, order)
 }
 
 async function generateAndSendEmail(
@@ -758,6 +962,9 @@ serve(async (req) => {
             method: paymentDetails?.method || null,
             metadata: { source: 'client_verify' }
           })
+
+          // Fire post-order hooks (wallet credit + referral + invoice queue)
+          await runPostOrderHooks(supabaseAdmin, dbOrder)
         }
 
         const { data: orderItemsData } = await supabaseAdmin
@@ -1296,6 +1503,9 @@ serve(async (req) => {
                   method: payment.method || null,
                   metadata: { source: 'webhook_recovery', event }
                 })
+
+                // Fire post-order hooks (wallet credit + referral + invoice queue)
+                await runPostOrderHooks(supabaseAdmin, dbOrder)
               }
             }
           }

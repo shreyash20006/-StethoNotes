@@ -17,97 +17,105 @@
 
 **Frontend pages:** Landing, Login (student/seller/admin + Google OAuth), Cart, Checkout, Courses, Product Detail, Student Dashboard, Seller Dashboard, Admin Panel, Order Confirmation/Lookup, Download, Privacy/Terms.
 
-**Admin modules:** RevenueAnalytics, EmailCenter, NoteUploadWizard, NotesManager, PayoutManager, SellerManager, ReviewsCoupons, SettingsLogs, StorageSEO, LeakInvestigator.
-
-**Edge Functions:**
+**Edge Functions (baseline):**
 - `razorpay` — create-order, verify-payment, webhook, resend-email
 - `send-order-email` — standalone Brevo dispatcher
 - `download-notes` — signed URL + **PDF watermarking** (pdf-lib) with buyer name/email/order#/date
 
-**Buckets:** `notes-pdfs` (private, signed), `previews` (public), `thumbnails` (public).
+**Buckets (baseline):** `notes-pdfs` (private, signed), `previews` (public), `thumbnails` (public).
 
 ---
 
-## PHASE 1 — Payment & Security Hardening (Jan 18, 2026)
+## PHASE 1 — Payment & Security Hardening (Jan 18, 2026) ✅
 
-### What was implemented
+- **Refund system end-to-end** (Student modal + Admin manager + Razorpay refund API + Brevo email)
+- **Enhanced webhook** (idempotency, refund events, failed events, `webhook_logs` persistence)
+- **Full audit trail** (`payment_logs`, `webhook_logs`, `refunds` tables + `PaymentLogsViewer` admin UI)
+- **Bug fix**: Cart no longer silently claims "email delivered" when it failed
+- New migration: `20260118000000_phase1_payment_hardening.sql`
 
-**1. Refund System (end-to-end)**
-- New DB table `refunds` with RLS: owner can read/insert own; admin can update all.
-- Student "Request Refund" button + modal in `DashboardPage.tsx` (only shown for orders ≤ 7 days old, not already refunded).
-- Admin `RefundsManager.tsx` component under sidebar → **"Refund Requests"** tab. Filters by status, one-click Approve (calls Razorpay refund API), Reject with notes.
-- New Edge Function action `create-refund` in `razorpay` function. Calls Razorpay `/payments/:id/refund`, updates DB, sends Brevo confirmation email.
-- Refund events (`refund.processed`, `refund.failed`) now handled in webhook.
+---
 
-**2. Payment/Webhook/Refund Logging**
-- New tables: `payment_logs`, `webhook_logs`, `refunds`. All with admin-only RLS read.
-- `webhook_logs` has idempotency via `x-razorpay-event-id` (prevents duplicate processing).
-- New Admin component `PaymentLogsViewer.tsx` — 3 tabs (Payment / Webhook / Email logs), 200 latest, JSON details modal.
-- New sidebar tab: **"Payment & Webhook Logs"**.
+## PHASE 2 + 3 — Wallet, KYC, Invoices, Tickets, Referrals (Jan 19, 2026) ✅
 
-**3. Enhanced Webhook Handler**
-- All events now logged to `webhook_logs` (received/processed/failed/duplicate).
-- Handles: `order.paid`, `payment.captured`, `payment.failed`, `refund.processed`, `refund.failed`.
-- Auto-recovery: if `verify-payment` missed (e.g. user closed tab), webhook creates the order.
-- Idempotency via event ID prevents double-processing on Razorpay retries.
+### 1. Seller Wallet + Withdrawal System (P0)
+- New tables: `wallets`, `wallet_transactions`, `withdrawal_requests`
+- **Auto-credit on sale**: `runPostOrderHooks()` in `razorpay` function credits seller at **70% commission rate** (config: `SELLER_COMMISSION_RATE` const). Idempotent via `reference_type='order_item'`.
+- **Seller UI**: `SellerWallet.tsx` — balance card, transaction history, withdrawal modal (UPI/bank), request history. Minimum withdrawal ₹500.
+- **Admin UI**: `WithdrawalsManager.tsx` — approve/reject/mark-paid flow. Marking paid debits wallet + logs transaction with UTR ref.
+- New sidebar tabs: Seller Dashboard → **Wallet**; Admin → **Seller Withdrawals**.
 
-**4. Frontend Bug Fix**
-- Cart.tsx no longer silently claims "email delivered successfully" when `email_delivery_failed=true` is returned from server. Now surfaces a proper info toast pointing user to Dashboard → Orders.
+### 2. Seller KYC Documents (P0)
+- New table: `seller_documents` (doc_type: `college_id | govt_id | pan | bank_proof | address_proof`)
+- New private Storage bucket: `seller-documents` with RLS (owner uploads to their own folder; admin can read all)
+- **Seller UI**: `SellerKYC.tsx` — 4 doc cards with drag-drop upload (5MB max, JPG/PNG/PDF), status badges, re-upload on rejection
+- **Admin UI**: `SellerKYCReview.tsx` — table view with signed-URL preview link, Approve/Reject with notes
+- New sidebar tabs: Seller Dashboard → **KYC**; Admin → **Seller KYC Review**
 
-**5. Order Type Extension**
-- `Order.payment_status` now includes `'refunded'`.
-- `Order.refund_status` added: `'none' | 'requested' | 'approved' | 'rejected' | 'processed'`.
-- New `Refund` type exported.
+### 3. Invoice PDF Generation (P0)
+- New table: `invoices` (invoice_number sequence, storage_path, generation_status)
+- New private Storage bucket: `invoices` with RLS (customer + admin can read via signed URL)
+- **New Edge Function**: `generate-invoice` — GST-compliant PDF using pdf-lib with StethoNotes branding, PAID stamp (or REFUNDED), items table, tax breakdown
+- **Auto-enqueued** on order paid via `enqueueInvoiceGeneration()` in post-order hooks (idempotent by order_id)
+- **Student UI**: "Download Invoice" button on each order card in Dashboard → Order History. Generates on-demand if not yet made, else fetches signed URL.
 
-### Files changed / created
+### 4. Support Tickets (P1)
+- New tables: `tickets` (ticket_number, status, priority, category, assigned_to), `ticket_messages` (attachments JSONB, is_internal)
+- Reusable `SupportTickets.tsx` component with `mode="student" | "admin"` prop.
+- **Student UI**: New Dashboard tab → **Support** — create tickets (subject, category, priority, description), view thread, reply
+- **Admin UI**: New sidebar tab → **Support Tickets** — filter by status, reply, mark resolved/closed
+- Auto-updates `status = awaiting_user` (admin reply) or `in_progress` (student reply)
+
+### 5. Referral System (P1)
+- Added `profiles.referral_code` (UNIQUE), auto-backfilled via `generate_referral_code()` PL/pgSQL function
+- New table: `referrals` (referrer_id, referred_id UNIQUE, first_order_id, reward_amount, status)
+- **Signup flow**: `LoginPage` accepts `?ref=CODE` query param, shows "Referral Code" input. Creates referral row on successful signup.
+- **Auto-reward on first purchase**: `processReferralRewardForOrder()` in post-order hooks credits referrer ₹50 (config: `REFERRAL_REWARD_AMOUNT`) if buyer's first order ≥ ₹199 (config: `REFERRAL_MIN_ORDER_VALUE`)
+- **Student UI**: `ReferralCard.tsx` — code display with copy button, native share, stats (signups/rewarded/earnings)
+- New Dashboard tab: **Refer & Earn**
+
+### Files created / changed in this phase
 
 | File | Change |
 |------|--------|
-| `supabase/migrations/20260118000000_phase1_payment_hardening.sql` | **NEW** — creates `webhook_logs`, `payment_logs`, `refunds` tables + RLS + trigger + adds `orders.refund_status` |
-| `supabase/functions/razorpay/index.ts` | Added `create-refund` action; extended webhook to log to `webhook_logs`, handle refund/payment.failed events, idempotency; added `payment_logs` inserts in verify-payment |
-| `src/pages/DashboardPage.tsx` | Added refund request modal + button on order cards + refund state tracking |
-| `src/pages/Cart.tsx` | Fixed silent email-failure bug; now surfaces `email_delivery_failed` |
-| `src/pages/AdminPage.tsx` | Added `RefundsManager` and `PaymentLogsViewer` tabs to sidebar |
-| `src/components/admin/RefundsManager.tsx` | **NEW** — full refund review UI (approve/reject) |
-| `src/components/admin/PaymentLogsViewer.tsx` | **NEW** — 3-tab log viewer with JSON detail modal |
-| `src/types/index.ts` | Extended `Order`, added `Refund` interface |
-| `src/pages/PrivacyPolicyPage.tsx` | Rewritten for Google OAuth verification (Limited Use disclosure, data deletion) |
-| `src/pages/LandingPage.tsx` | Image URL swap (Cloudinary) |
+| `supabase/migrations/20260119000000_phase2_wallet_kyc_invoices_tickets_referrals.sql` | **NEW** — all 7 tables + storage buckets + RLS + `generate_referral_code()` |
+| `supabase/functions/razorpay/index.ts` | Added `runPostOrderHooks()`: wallet credit, referral reward, invoice queue; called from verify-payment + webhook |
+| `supabase/functions/generate-invoice/index.ts` | **NEW** — pdf-lib GST invoice generator with StethoNotes branding |
+| `src/pages/SellerDashboardPage.tsx` | Added `wallet` and `kyc` tabs + imports |
+| `src/pages/DashboardPage.tsx` | Added `referral` and `support` tabs, `handleDownloadInvoice()`, Invoice download button on orders |
+| `src/pages/AdminPage.tsx` | Added `seller_kyc`, `withdrawals`, `support` sidebar tabs |
+| `src/pages/LoginPage.tsx` | Referral code input on signup + `?ref=` query capture + attribution to `referrals` |
+| `src/components/seller/SellerWallet.tsx` | **NEW** — full wallet + withdrawal UI |
+| `src/components/seller/SellerKYC.tsx` | **NEW** — 4-doc KYC upload with re-upload flow |
+| `src/components/support/SupportTickets.tsx` | **NEW** — reusable ticket system (student/admin) |
+| `src/components/ReferralCard.tsx` | **NEW** — referral display + share |
+| `src/components/admin/SellerKYCReview.tsx` | **NEW** — admin KYC review UI |
+| `src/components/admin/WithdrawalsManager.tsx` | **NEW** — admin withdrawal approval + payout flow |
 
-### Migration to apply (Supabase Dashboard → SQL editor)
+### Actions required before this goes live
 
-Run: `/app/supabase/migrations/20260118000000_phase1_payment_hardening.sql`
-
-### Env vars required (already in place from earlier setup — verify)
-
-Edge Function secrets: `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, `RAZORPAY_WEBHOOK_SECRET`, `BREVO_API_KEY`, `FROM_EMAIL`, `FROM_NAME`, `SITE_URL`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`.
-
-### Webhook endpoint (Razorpay Dashboard config)
-
-**URL:** `https://<PROJECT-REF>.supabase.co/functions/v1/razorpay/webhook`  
-**Secret:** value of `RAZORPAY_WEBHOOK_SECRET`  
-**Events to subscribe:** `order.paid`, `payment.captured`, `payment.failed`, `refund.processed`, `refund.failed`
+1. **Apply migrations in order:**
+   - `20260118000000_phase1_payment_hardening.sql`  (from Phase 1)
+   - `20260119000000_phase2_wallet_kyc_invoices_tickets_referrals.sql`
+2. **Deploy new edge function**: `generate-invoice` (Supabase CLI: `supabase functions deploy generate-invoice`)
+3. **Redeploy** `razorpay` edge function (contains new post-order hooks)
+4. **Test flow**: 
+   - Buy note → check `wallets` table auto-created for seller and credited
+   - Sign up with `?ref=CODE` → check `referrals` row created
+   - Second user's first purchase ≥ ₹199 → check referrer wallet credited ₹50
+   - Download invoice from Dashboard → PDF generated + stored in `invoices` bucket
 
 ---
 
-## Backlog (future phases)
+## Backlog (deferred — evaluate demand first)
 
-### Phase 2 — Seller Trust & Payouts
-- P0: Wallet system (`wallets`, `wallet_transactions`, `withdrawal_requests`) + Seller Wallet UI
-- P0: Seller KYC document upload (`seller_documents`) + admin verification
-- P1: Invoice PDF generation (GST-compliant)
-
-### Phase 3 — Growth & Retention
-- P1: Support Tickets (`tickets`, `ticket_messages`)
-- P1: Referral system (unique codes, coin rewards, leaderboard)
-- P2: Failed Email retry queue (pg_cron)
-- P2: UI polish — glassmorphism, dark mode toggle, richer animations
-
-### Deferred (evaluate demand first)
-- CMS Homepage builder
-- Blog + Newsletter
-- Gamification (XP, streaks, achievements)
-- Product versioning
-- Bulk note upload (CSV)
-- Multi-language support
-- PWA
+- **CMS Homepage Builder** (large scope)
+- **Blog + Newsletter**
+- **Gamification** (XP, streaks, coins, achievements)
+- **Product versioning** (`product_versions` table)
+- **Bulk note upload** (CSV/Excel)
+- **Multi-language**
+- **PWA** (installable app)
+- **Failed email retry queue** (pg_cron based)
+- **Referral leaderboard** UI (data already available)
+- **Copyright / DMCA workflow** UI (backend `storage_reports` table already exists)

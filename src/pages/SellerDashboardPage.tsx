@@ -5,14 +5,16 @@ import { useAuthStore } from '../store/useAuthStore';
 import { useToastStore } from '../store/useToastStore';
 import { supabase } from '../lib/supabase';
 import NoteUploadWizard from '../components/admin/NoteUploadWizard';
+import SellerWallet from '../components/seller/SellerWallet';
+import SellerKYC from '../components/seller/SellerKYC';
 import type { Order, Note, Course } from '../types';
 import {
   Store, BookOpen, DollarSign, Package,
   User, Mail, Phone, Save, LogOut, BarChart3,
-  Plus, Search, Trash2, Edit2
+  Plus, Search, Trash2, Edit2, Wallet, ShieldCheck
 } from 'lucide-react';
 
-type SellerTab = 'overview' | 'products' | 'orders' | 'profile';
+type SellerTab = 'overview' | 'products' | 'orders' | 'wallet' | 'kyc' | 'profile';
 
 export default function SellerDashboardPage() {
   const navigate = useNavigate();
@@ -134,6 +136,8 @@ export default function SellerDashboardPage() {
     { id: 'overview', label: 'Overview', icon: <BarChart3 className="w-4 h-4" /> },
     { id: 'products', label: 'My Notes', icon: <BookOpen className="w-4 h-4" /> },
     { id: 'orders', label: 'Orders', icon: <Package className="w-4 h-4" /> },
+    { id: 'wallet', label: 'Wallet', icon: <Wallet className="w-4 h-4" /> },
+    { id: 'kyc', label: 'KYC', icon: <ShieldCheck className="w-4 h-4" /> },
     { id: 'profile', label: 'Profile', icon: <User className="w-4 h-4" /> },
   ];
 
@@ -384,6 +388,20 @@ export default function SellerDashboardPage() {
                     </table>
                   </div>
                 )}
+              </motion.div>
+            )}
+
+            {/* WALLET TAB */}
+            {activeTab === 'wallet' && (
+              <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}>
+                <SellerWallet />
+              </motion.div>
+            )}
+
+            {/* KYC TAB */}
+            {activeTab === 'kyc' && (
+              <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}>
+                <SellerKYC />
               </motion.div>
             )}
 

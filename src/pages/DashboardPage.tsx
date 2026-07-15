@@ -4,14 +4,16 @@ import { useAuthStore } from '../store/useAuthStore';
 import { useToastStore } from '../store/useToastStore';
 import { supabase, isLiveSupabase, triggerBrevoEmailSimulation } from '../lib/supabase';
 import type { Note, Order } from '../types';
-import { BookOpen, User, Phone, Mail, Send, History, Save, RefreshCw, Undo2, X } from 'lucide-react';
+import { BookOpen, User, Phone, Mail, Send, History, Save, RefreshCw, Undo2, X, Gift, LifeBuoy, FileDown } from 'lucide-react';
+import ReferralCard from '../components/ReferralCard';
+import SupportTickets from '../components/support/SupportTickets';
 
 export default function DashboardPage() {
   const navigate = useNavigate();
   const { user, updateProfile } = useAuthStore();
   const { addToast } = useToastStore();
 
-  const [activeTab, setActiveTab] = useState<'purchases' | 'profile' | 'orders'>('purchases');
+  const [activeTab, setActiveTab] = useState<'purchases' | 'profile' | 'orders' | 'referral' | 'support'>('purchases');
   const [purchasedNotes, setPurchasedNotes] = useState<Note[]>([]);
   const [ordersHistory, setOrdersHistory] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
@@ -45,6 +47,41 @@ export default function DashboardPage() {
       }
     })();
   }, [user?.id, ordersHistory.length]);
+
+  const handleDownloadInvoice = async (orderId: string) => {
+    try {
+      // Try to find existing invoice
+      const { data: existing } = await supabase
+        .from('invoices')
+        .select('storage_path, generation_status')
+        .eq('order_id', orderId)
+        .maybeSingle();
+
+      let path = existing?.storage_path;
+      if (!existing || existing.generation_status !== 'generated' || !path) {
+        // Generate on-demand
+        addToast('info', 'Generating Invoice…', 'Please wait a moment.');
+        const { data, error } = await supabase.functions.invoke('generate-invoice', {
+          body: { order_id: orderId },
+        });
+        if (error) throw error;
+        if (!data?.success) throw new Error(data?.message || 'Invoice generation failed.');
+        if (data.signed_url) {
+          window.open(data.signed_url, '_blank');
+          return;
+        }
+        path = data.storage_path;
+      }
+
+      const { data: signed, error: signErr } = await supabase.storage
+        .from('invoices')
+        .createSignedUrl(path!, 3600);
+      if (signErr || !signed?.signedUrl) throw signErr || new Error('Could not create signed URL.');
+      window.open(signed.signedUrl, '_blank');
+    } catch (err: any) {
+      addToast('error', 'Invoice Failed', err.message || 'Could not download invoice.');
+    }
+  };
 
   const handleRefundRequest = async () => {
     if (!refundModalOrder || !user) return;
@@ -83,7 +120,7 @@ export default function DashboardPage() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const tabParam = params.get('tab');
-    if (tabParam && ['purchases', 'profile', 'orders'].includes(tabParam)) {
+    if (tabParam && ['purchases', 'profile', 'orders', 'referral', 'support'].includes(tabParam)) {
       setActiveTab(tabParam as any);
     }
   }, [window.location.search]);
@@ -281,6 +318,32 @@ export default function DashboardPage() {
               <History className="w-4.5 h-4.5" />
               <span>Order History</span>
             </button>
+
+            <button
+              onClick={() => setActiveTab('referral')}
+              data-testid="tab-referral"
+              className={`flex items-center gap-2.5 px-4 py-3 rounded-2xl text-sm font-medium text-left transition-all ${
+                activeTab === 'referral'
+                  ? 'bg-accent/10 text-accent font-semibold'
+                  : 'text-primary hover:bg-gray-50'
+              }`}
+            >
+              <Gift className="w-4.5 h-4.5" />
+              <span>Refer & Earn</span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab('support')}
+              data-testid="tab-support"
+              className={`flex items-center gap-2.5 px-4 py-3 rounded-2xl text-sm font-medium text-left transition-all ${
+                activeTab === 'support'
+                  ? 'bg-accent/10 text-accent font-semibold'
+                  : 'text-primary hover:bg-gray-50'
+              }`}
+            >
+              <LifeBuoy className="w-4.5 h-4.5" />
+              <span>Support</span>
+            </button>
           </div>
         </aside>
 
@@ -442,6 +505,14 @@ export default function DashboardPage() {
                         <span className="bg-emerald-50 text-emerald-600 font-display font-bold text-[9px] px-2.5 py-0.5 rounded-full uppercase tracking-wider">
                           Completed
                         </span>
+                        <button
+                          onClick={() => handleDownloadInvoice(order.id)}
+                          data-testid={`invoice-btn-${order.id}`}
+                          className="text-[10px] font-semibold text-primary hover:text-accent hover:underline flex items-center gap-1"
+                        >
+                          <FileDown className="w-3 h-3" />
+                          Download Invoice
+                        </button>
                         {alreadyRefunded ? (
                           <span
                             data-testid={`refund-status-${order.id}`}
@@ -468,6 +539,28 @@ export default function DashboardPage() {
                 </div>
               )}
             </div>
+          )}
+
+          {/* Tab 4: Refer & Earn */}
+          {activeTab === 'referral' && (
+            <div>
+              <h2 className="text-xl font-display font-bold text-primary mb-6">Refer & Earn</h2>
+              <ReferralCard />
+              <div className="mt-6 bg-gray-50 rounded-2xl p-5 text-xs text-gray-500">
+                <h4 className="font-semibold text-primary text-sm mb-2">How it works</h4>
+                <ol className="list-decimal pl-5 space-y-1">
+                  <li>Share your unique referral code or link with friends studying medicine, nursing or pharmacy.</li>
+                  <li>They sign up on StethoNotes and enter your code during registration.</li>
+                  <li>When your friend makes their first purchase of ₹199 or more, you get <strong>₹50 wallet credit</strong> automatically.</li>
+                  <li>Wallet credit can be used towards your next purchase.</li>
+                </ol>
+              </div>
+            </div>
+          )}
+
+          {/* Tab 5: Support */}
+          {activeTab === 'support' && (
+            <SupportTickets mode="student" />
           )}
         </main>
       </div>
