@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import type { Note, Course } from '../../types';
+import { getPdfFiles, normalizeStoragePath } from '../../lib/pdfFiles';
 import { useToastStore } from '../../store/useToastStore';
 import NoteUploadWizard from './NoteUploadWizard';
 import { motion, AnimatePresence } from 'motion/react';
@@ -156,35 +157,32 @@ export default function NotesManager() {
     try {
       addToast('info', 'Preparing Download', 'Generating secure download link...');
       
-      const urlOrPath = note.pdf_url;
-      let relativePath = urlOrPath;
-      if (urlOrPath.startsWith("http://") || urlOrPath.startsWith("https://")) {
-        const marker = "notes-pdfs/";
-        const index = urlOrPath.indexOf(marker);
-        if (index !== -1) {
-          relativePath = decodeURIComponent(urlOrPath.substring(index + marker.length));
+      const files = getPdfFiles(note);
+      if (files.length === 0) {
+        throw new Error('No PDF files are attached to this product.');
+      }
+
+      for (const file of files) {
+        const relativePath = normalizeStoragePath(file.path);
+        console.log(`Generating signed URL for: ${relativePath}`);
+        const { data, error } = await supabase.storage
+          .from('notes-pdfs')
+          .createSignedUrl(relativePath, 60);
+
+        if (error || !data?.signedUrl) {
+          throw new Error(error?.message || `Signed URL generation failed for ${file.name}`);
         }
+
+        const link = document.createElement('a');
+        link.href = data.signedUrl;
+        link.target = '_blank';
+        link.setAttribute('download', file.name || `${note.title}.pdf`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
       }
-      
-      console.log(`Generating signed URL for: ${relativePath}`);
-      const { data, error } = await supabase.storage
-        .from('notes-pdfs')
-        .createSignedUrl(relativePath, 60);
 
-      if (error || !data?.signedUrl) {
-        throw new Error(error?.message || 'Signed URL generation failed');
-      }
-
-      console.log("Signed URL successfully generated:", data.signedUrl);
-      addToast('success', 'Download Started', 'Your PDF notes are downloading.');
-
-      const link = document.createElement('a');
-      link.href = data.signedUrl;
-      link.target = '_blank';
-      link.setAttribute('download', `${note.title}.pdf`);
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+      addToast('success', 'Download Started', `${files.length} PDF file${files.length === 1 ? '' : 's'} are downloading.`);
     } catch (err: any) {
       console.error('Direct download error:', err);
       addToast('error', 'Download Failed', err.message || 'Could not download note.');
@@ -205,7 +203,7 @@ export default function NotesManager() {
       const lines = text.split('\n').filter(l => l.trim().length > 0);
       
       const reports: string[] = [];
-      const parsedNotes: any[] = [];
+        const parsedNotes: any[] = [];
 
       // Skip CSV header line
       for (let i = 1; i < lines.length; i++) {
@@ -235,6 +233,13 @@ export default function NotesManager() {
           price: isNaN(csvPrice) ? 199 : csvPrice,
           status: 'active',
           pdf_url: 'pdfs/anatomy_upper_limb.pdf',
+          pdf_files: [{
+            name: `${csvTitle}.pdf`,
+            path: 'pdfs/anatomy_upper_limb.pdf',
+            size: 0,
+            pages: 0,
+            order: 1
+          }],
           thumbnail_url: 'https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?auto=format&fit=crop&q=80&w=400',
           preview_images: ['https://images.unsplash.com/photo-1532187643603-ba119ca4109e?auto=format&fit=crop&q=80&w=400']
         });
@@ -407,6 +412,7 @@ export default function NotesManager() {
                 <th className="px-6 py-4">Thumbnail</th>
                 <th className="px-6 py-4">Title</th>
                 <th className="px-6 py-4">Subject</th>
+                <th className="px-6 py-4">Study Files</th>
                 <th className="px-6 py-4">Semester</th>
                 <th className="px-6 py-4">Price</th>
                 <th className="px-6 py-4 text-center">Status</th>
@@ -416,7 +422,7 @@ export default function NotesManager() {
             <tbody className="divide-y divide-slate-50 text-xs text-slate-800">
               {filteredNotes.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="text-center py-12 text-slate-450">No note matching search criteria.</td>
+                  <td colSpan={9} className="text-center py-12 text-slate-450">No note matching search criteria.</td>
                 </tr>
               ) : (
                 filteredNotes.map(n => (
@@ -437,6 +443,9 @@ export default function NotesManager() {
                       <span className="text-[10px] text-slate-400">ID: {n.id}</span>
                     </td>
                     <td className="px-6 py-4 text-slate-500 font-medium">{n.subject}</td>
+                    <td className="px-6 py-4 text-slate-500 font-medium">
+                      {getPdfFiles(n).length} PDF File{getPdfFiles(n).length === 1 ? '' : 's'}
+                    </td>
                     <td className="px-6 py-4 text-slate-450 font-sans">{n.semester || '1st Semester'}</td>
                     <td className="px-6 py-4 font-semibold text-slate-800 font-sans">₹{n.price}</td>
                     <td className="px-6 py-4 text-center">

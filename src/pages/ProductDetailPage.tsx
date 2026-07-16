@@ -6,6 +6,7 @@ import { useCartStore } from '../store/useCartStore';
 import { useToastStore } from '../store/useToastStore';
 import { useAuthStore } from '../store/useAuthStore';
 import { getDirectDownloadMode } from '../config/features';
+import { formatFileSize, getPdfFiles, normalizeStoragePath } from '../lib/pdfFiles';
 import {
   Star, ShoppingCart, ArrowLeft, Send, Heart, MessageSquare,
   CornerDownRight, ShieldCheck, Sparkles, BookOpen,
@@ -242,20 +243,12 @@ export default function ProductDetailPage() {
     }
   };
 
-  const handleDirectDownload = async () => {
+  const handleDirectDownload = async (filePath?: string, fileName?: string) => {
     if (!note) return;
     setDownloading(true);
     try {
       addToast('info', 'Preparing Download', 'Generating secure download link...');
-      const urlOrPath = note.pdf_url;
-      let relativePath = urlOrPath;
-      if (urlOrPath.startsWith("http://") || urlOrPath.startsWith("https://")) {
-        const marker = "notes-pdfs/";
-        const index = urlOrPath.indexOf(marker);
-        if (index !== -1) {
-          relativePath = decodeURIComponent(urlOrPath.substring(index + marker.length));
-        }
-      }
+      const relativePath = normalizeStoragePath(filePath || getPdfFiles(note)[0]?.path || note.pdf_url);
 
       const { data, error } = await supabase.storage
         .from('notes-pdfs')
@@ -269,7 +262,7 @@ export default function ProductDetailPage() {
       const link = document.createElement('a');
       link.href = data.signedUrl;
       link.target = '_blank';
-      link.setAttribute('download', `${note.title}.pdf`);
+      link.setAttribute('download', fileName || `${note.title}.pdf`);
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -574,14 +567,7 @@ export default function ProductDetailPage() {
   const samplePages = note.preview_images || [];
   const gallery = [coverImage, ...samplePages.filter(img => img !== coverImage)].filter(Boolean);
 
-  const formatFileSize = (bytes?: number) => {
-    if (!bytes) return '2.1 MB';
-    if (bytes < 1024) return `${bytes} B`;
-    const kb = bytes / 1024;
-    if (kb < 1024) return `${kb.toFixed(1)} KB`;
-    const mb = kb / 1024;
-    return `${mb.toFixed(1)} MB`;
-  };
+  const pdfFiles = getPdfFiles(note);
 
   const highlights = [
     { icon: CheckCircle2, label: 'High Yield Notes', desc: 'Curated by toppers, focusing strictly on high-probability questions.' },
@@ -1242,15 +1228,15 @@ export default function ProductDetailPage() {
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
               <div className="bg-slate-50/50 border border-slate-100 rounded-2xl p-4 text-center">
                 <span className="text-[10px] text-slate-400 font-semibold block">Total Pages</span>
-                <span className="text-lg font-bold text-slate-800 block mt-1">{note.page_count || 32} Pages</span>
+                <span className="text-lg font-bold text-slate-800 block mt-1">{pdfFiles.reduce((sum, file) => sum + (file.pages || 0), 0) || note.page_count || 32} Pages</span>
               </div>
               <div className="bg-slate-50/50 border border-slate-100 rounded-2xl p-4 text-center">
                 <span className="text-[10px] text-slate-400 font-semibold block">File Size</span>
-                <span className="text-lg font-bold text-slate-800 block mt-1">{formatFileSize(note.file_size)}</span>
+                <span className="text-lg font-bold text-slate-800 block mt-1">{formatFileSize(pdfFiles.reduce((sum, file) => sum + (file.size || 0), 0) || note.file_size)}</span>
               </div>
               <div className="bg-slate-50/50 border border-slate-100 rounded-2xl p-4 text-center">
                 <span className="text-[10px] text-slate-400 font-semibold block">Format</span>
-                <span className="text-lg font-bold text-slate-800 block mt-1">PDF Document</span>
+                <span className="text-lg font-bold text-slate-800 block mt-1">{pdfFiles.length || 1} PDF File{(pdfFiles.length || 1) === 1 ? '' : 's'}</span>
               </div>
               <div className="bg-slate-50/50 border border-slate-100 rounded-2xl p-4 text-center">
                 <span className="text-[10px] text-slate-400 font-semibold block">Last Updated</span>
@@ -1331,14 +1317,19 @@ export default function ProductDetailPage() {
             {/* Checkout CTA Buttons */}
             <div className="flex flex-col gap-2">
               {isDirectDownload ? (
-                <button
-                  onClick={handleDirectDownload}
-                  disabled={downloading}
-                  className="w-full py-3.5 bg-cyan-600 hover:bg-cyan-700 text-white rounded-2xl font-bold text-sm shadow-sm transition-all hover:scale-[1.01] active:scale-[0.99] disabled:opacity-50 flex items-center justify-center gap-1.5"
-                >
-                  <Download className="w-4 h-4" />
-                  <span>{downloading ? 'Downloading...' : 'Download PDF Now'}</span>
-                </button>
+                <div className="space-y-2">
+                  {pdfFiles.map((file) => (
+                    <button
+                      key={file.path}
+                      onClick={() => handleDirectDownload(file.path, file.name)}
+                      disabled={downloading}
+                      className="w-full py-3.5 bg-cyan-600 hover:bg-cyan-700 text-white rounded-2xl font-bold text-sm shadow-sm transition-all hover:scale-[1.01] active:scale-[0.99] disabled:opacity-50 flex items-center justify-center gap-1.5"
+                    >
+                      <Download className="w-4 h-4" />
+                      <span>{downloading ? 'Downloading...' : `Download ${file.name}`}</span>
+                    </button>
+                  ))}
+                </div>
               ) : (
                 <>
                   <button
@@ -1506,13 +1497,18 @@ export default function ProductDetailPage() {
             <Heart className={`w-5 h-5 ${inWishlist ? 'fill-red-500 text-red-500' : 'text-slate-400'}`} />
           </button>
           {isDirectDownload ? (
-            <button
-              onClick={handleDirectDownload}
-              disabled={downloading}
-              className="py-3 px-6 bg-cyan-600 hover:bg-cyan-700 text-white rounded-xl font-bold text-sm shadow-md transition-colors disabled:opacity-55"
-            >
-              {downloading ? 'Downloading...' : 'Download'}
-            </button>
+            <div className="flex gap-2 overflow-x-auto max-w-[70vw]">
+              {pdfFiles.map((file) => (
+                <button
+                  key={file.path}
+                  onClick={() => handleDirectDownload(file.path, file.name)}
+                  disabled={downloading}
+                  className="py-3 px-4 bg-cyan-600 hover:bg-cyan-700 text-white rounded-xl font-bold text-xs shadow-md transition-colors disabled:opacity-55 whitespace-nowrap"
+                >
+                  {downloading ? 'Downloading...' : file.name.replace(/\.pdf$/i, '')}
+                </button>
+              ))}
+            </div>
           ) : (
             <button
               onClick={() => { addItem(note); navigate('/cart'); }}

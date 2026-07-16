@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useToastStore } from '../../store/useToastStore';
+import { getPdfFiles } from '../../lib/pdfFiles';
 import {
   HardDrive, FileText, Image as ImageIcon, Sparkles, Save, Info,
   FileCode, ExternalLink, AlertTriangle, CheckCircle2, Search
@@ -51,7 +52,7 @@ Sitemap: https://www.stethonotes.store/sitemap.xml`);
       // 1. Fetch notes with metadata and file columns
       const { data: notes } = await supabase
         .from('notes')
-        .select('pdf_url, thumbnail_url, preview_images, title, description');
+        .select('pdf_url, pdf_files, file_size, page_count, thumbnail_url, preview_images, title, description');
       
       let pdfs = 0;
       let imgs = 0;
@@ -63,7 +64,7 @@ Sitemap: https://www.stethonotes.store/sitemap.xml`);
       let longTitleCount = 0;
 
       (notes || []).forEach((n: any) => {
-        if (n.pdf_url) pdfs++;
+        pdfs += getPdfFiles(n).length;
         if (n.thumbnail_url) imgs++;
         if (n.preview_images && Array.isArray(n.preview_images)) {
           previews += n.preview_images.length;

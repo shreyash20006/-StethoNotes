@@ -5,10 +5,12 @@ import * as pdfjsLib from 'pdfjs-dist';
 import { supabase } from '../../lib/supabase';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useToastStore } from '../../store/useToastStore';
-import type { Note, Course } from '../../types';
+import type { Note, Course, PdfFileRef } from '../../types';
+import { formatFileSize, getPdfFiles } from '../../lib/pdfFiles';
 import {
   FileText, Image as ImageIcon, Upload, X, ArrowLeft, ArrowRight,
-  Trash2, Eye, ShieldCheck, CheckCircle2, ChevronRight, Loader2, RefreshCw
+  Trash2, Eye, ShieldCheck, CheckCircle2, ChevronRight, Loader2, RefreshCw,
+  Plus, GripVertical
 } from 'lucide-react';
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js`;
@@ -19,6 +21,20 @@ interface NoteUploadWizardProps {
   note?: Note | null;
   isAdmin?: boolean;
 }
+
+type PendingPdfFile = {
+  id: string;
+  name: string;
+  size: number;
+  pages: number;
+  order: number;
+  path?: string;
+  file?: File;
+  uploadProgress?: number;
+};
+
+const MAX_PDF_FILES = 20;
+const MAX_PDF_SIZE_BYTES = 100 * 1024 * 1024;
 
 export default function NoteUploadWizard({ onClose, onSaveSuccess, note = null, isAdmin = false }: NoteUploadWizardProps) {
   const { user } = useAuthStore();
@@ -41,7 +57,10 @@ export default function NoteUploadWizard({ onClose, onSaveSuccess, note = null, 
   const [uploadType, setUploadType] = useState<'pdf' | 'images'>('pdf');
 
   // Mode 1: PDF States
-  const [pdfFile, setPdfFile] = useState<File | null>(null);
+  const [pdfFiles, setPdfFiles] = useState<PendingPdfFile[]>([]);
+  const [previewSourceMode, setPreviewSourceMode] = useState<'first' | 'choose'>('first');
+  const [previewSourcePdfId, setPreviewSourcePdfId] = useState('');
+  const [draggedPdfIndex, setDraggedPdfIndex] = useState<number | null>(null);
   const [coverFile, setCoverFile] = useState<File | null>(null);
 
   // Auto Preview States
@@ -57,6 +76,7 @@ export default function NoteUploadWizard({ onClose, onSaveSuccess, note = null, 
   const [compilationProgress, setCompilationProgress] = useState(0);
   const [compiledPdfBlob, setCompiledPdfBlob] = useState<Blob | null>(null);
   const [uploadedPdfPath, setUploadedPdfPath] = useState('');
+  const [uploadedPdfFiles, setUploadedPdfFiles] = useState<PdfFileRef[]>([]);
   const [uploadedCoverUrl, setUploadedCoverUrl] = useState('');
   const [uploadedPreviewUrls, setUploadedPreviewUrls] = useState<string[]>([]);
   const [pageCount, setPageCount] = useState(0);
@@ -78,6 +98,17 @@ export default function NoteUploadWizard({ onClose, onSaveSuccess, note = null, 
       setDescription(note.description || '');
       setUploadType(note.content_type as any || 'pdf');
       setUploadedPdfPath(note.pdf_url);
+      const normalizedPdfFiles = getPdfFiles(note);
+      setUploadedPdfFiles(normalizedPdfFiles);
+      setPdfFiles(normalizedPdfFiles.map((file, index) => ({
+        id: file.path || `${index}`,
+        name: file.name,
+        size: file.size,
+        pages: file.pages || 0,
+        order: file.order,
+        path: file.path,
+        uploadProgress: 100
+      })));
       setUploadedCoverUrl(note.thumbnail_url);
       setUploadedPreviewUrls(note.preview_images || []);
       setPageCount(note.page_count || 0);
@@ -104,15 +135,80 @@ export default function NoteUploadWizard({ onClose, onSaveSuccess, note = null, 
     }
   };
 
-  // Drag and Drop configs
-  const { getRootProps: getPdfRootProps, getInputProps: getPdfInputProps } = useDropzone({
-    accept: { 'application/pdf': ['.pdf'] },
-    maxFiles: 1,
-    onDrop: (acceptedFiles) => {
-      if (acceptedFiles.length > 0) {
-        setPdfFile(acceptedFiles[0]);
-        addToast('success', 'PDF Selected', `${acceptedFiles[0].name} loaded successfully.`);
+  const readPdfPageCount = async (file: File) => {
+    const pdfBytes = await file.arrayBuffer();
+    try {
+      const pdfDoc = await PDFDocument.load(pdfBytes, { ignoreEncryption: true });
+      return pdfDoc.getPageCount();
+    } catch (pdfLibErr) {
+      console.warn('pdf-lib parsing failed, attempting PDF.js fallback:', pdfLibErr);
+      const loadingTask = pdfjsLib.getDocument({ data: pdfBytes });
+      const pdfDocObj = await loadingTask.promise;
+      return pdfDocObj.numPages;
+    }
+  };
+
+  const appendPdfFiles = async (acceptedFiles: File[]) => {
+    if (acceptedFiles.length === 0) return;
+    const slotsLeft = MAX_PDF_FILES - pdfFiles.length;
+    if (slotsLeft <= 0) {
+      addToast('error', 'PDF Limit Reached', `A product can include up to ${MAX_PDF_FILES} PDF files.`);
+      return;
+    }
+
+    const filesToAdd = acceptedFiles.slice(0, slotsLeft);
+    if (acceptedFiles.length > slotsLeft) {
+      addToast('info', 'Some Files Skipped', `Only ${slotsLeft} more PDFs can be added to this product.`);
+    }
+
+    const nextFiles: PendingPdfFile[] = [];
+    for (const file of filesToAdd) {
+      if (file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) {
+        addToast('error', 'Unsupported File', `${file.name} is not a PDF.`);
+        continue;
       }
+      if (file.size > MAX_PDF_SIZE_BYTES) {
+        addToast('error', 'PDF Too Large', `${file.name} is larger than 100 MB.`);
+        continue;
+      }
+
+      try {
+        const pages = await readPdfPageCount(file);
+        nextFiles.push({
+          id: `${file.name}-${file.lastModified}-${Math.random().toString(36).slice(2)}`,
+          name: file.name,
+          size: file.size,
+          pages,
+          order: pdfFiles.length + nextFiles.length + 1,
+          file,
+          uploadProgress: 0
+        });
+      } catch (err: any) {
+        addToast('error', 'PDF Read Error', `${file.name}: ${err.message || 'Invalid or protected PDF file.'}`);
+      }
+    }
+
+    if (nextFiles.length > 0) {
+      setPdfFiles(prev => {
+        const updated = [...prev, ...nextFiles].map((file, index) => ({ ...file, order: index + 1 }));
+        if (!previewSourcePdfId) setPreviewSourcePdfId(updated[0]?.id || '');
+        return updated;
+      });
+      addToast('success', 'PDF Files Added', `${nextFiles.length} PDF file${nextFiles.length === 1 ? '' : 's'} loaded.`);
+    }
+  };
+
+  // Drag and Drop configs
+  const { getRootProps: getPdfRootProps, getInputProps: getPdfInputProps, open: openPdfPicker } = useDropzone({
+    accept: { 'application/pdf': ['.pdf'] },
+    maxFiles: MAX_PDF_FILES,
+    maxSize: MAX_PDF_SIZE_BYTES,
+    noClick: true,
+    onDrop: appendPdfFiles,
+    onDropRejected: (rejections) => {
+      const first = rejections[0];
+      const reason = first?.errors?.[0]?.message || 'Only PDF files up to 100 MB are supported.';
+      addToast('error', 'PDF Upload Rejected', reason);
     }
   });
 
@@ -153,6 +249,46 @@ export default function NoteUploadWizard({ onClose, onSaveSuccess, note = null, 
     URL.revokeObjectURL(updated[index].previewUrl);
     updated.splice(index, 1);
     setNoteImages(updated);
+  };
+
+  const removePdfFile = (id: string) => {
+    setPdfFiles(prev => {
+      const updated = prev.filter(file => file.id !== id).map((file, index) => ({ ...file, order: index + 1 }));
+      if (previewSourcePdfId === id) {
+        setPreviewSourcePdfId(updated[0]?.id || '');
+        setPreviewSourceMode('first');
+      }
+      return updated;
+    });
+  };
+
+  const renamePdfFile = (id: string, name: string) => {
+    setPdfFiles(prev => prev.map(file => file.id === id ? { ...file, name } : file));
+  };
+
+  const movePdfFile = (index: number, direction: 'up' | 'down') => {
+    const nextIndex = direction === 'up' ? index - 1 : index + 1;
+    if (nextIndex < 0 || nextIndex >= pdfFiles.length) return;
+    const updated = [...pdfFiles];
+    const temp = updated[index];
+    updated[index] = updated[nextIndex];
+    updated[nextIndex] = temp;
+    setPdfFiles(updated.map((file, orderIndex) => ({ ...file, order: orderIndex + 1 })));
+  };
+
+  const handlePdfDropReorder = (targetIndex: number) => {
+    if (draggedPdfIndex === null || draggedPdfIndex === targetIndex) {
+      setDraggedPdfIndex(null);
+      return;
+    }
+
+    setPdfFiles(prev => {
+      const updated = [...prev];
+      const [moved] = updated.splice(draggedPdfIndex, 1);
+      updated.splice(targetIndex, 0, moved);
+      return updated.map((file, index) => ({ ...file, order: index + 1 }));
+    });
+    setDraggedPdfIndex(null);
   };
 
   // HTML5 Canvas Resizing of images to A4 Portrait 300 DPI equivalent
@@ -293,19 +429,23 @@ export default function NoteUploadWizard({ onClose, onSaveSuccess, note = null, 
 
   const handleRegeneratePreviews = async () => {
     let blobToUse: Blob | null = null;
-    if (uploadType === 'pdf' && pdfFile) {
-      blobToUse = pdfFile;
+    const selectedSource = previewSourceMode === 'choose'
+      ? pdfFiles.find(file => file.id === previewSourcePdfId)
+      : pdfFiles[0];
+
+    if (uploadType === 'pdf' && selectedSource?.file) {
+      blobToUse = selectedSource.file;
     } else if (uploadType === 'images' && compiledPdfBlob) {
       blobToUse = compiledPdfBlob;
-    } else if (note) {
+    } else if (selectedSource?.path) {
       setIsGeneratingPreviews(true);
       setPreviewProgress(5);
       try {
         const { data, error } = await supabase.storage
           .from('notes-pdfs')
-          .download(note.pdf_url);
+          .download(selectedSource.path);
         if (error || !data) {
-          throw new Error(error?.message || 'Could not download original PDF for preview extraction.');
+          throw new Error(error?.message || 'Could not download selected PDF for preview extraction.');
         }
         blobToUse = data;
       } catch (err: any) {
@@ -318,16 +458,20 @@ export default function NoteUploadWizard({ onClose, onSaveSuccess, note = null, 
     if (blobToUse) {
       generatePreviews(blobToUse);
     } else {
-      addToast('error', 'No Source Document', 'Please upload a PDF note document first.');
+      addToast('error', 'No Source Document', 'Please upload or select a PDF file first.');
     }
   };
 
-  // Trigger preview generation when a PDF is dropped in Mode 1
+  // Trigger preview generation from the first PDF by default, or a chosen source.
   useEffect(() => {
-    if (pdfFile && uploadType === 'pdf') {
-      generatePreviews(pdfFile);
+    if (uploadType !== 'pdf' || pdfFiles.length === 0) return;
+    const selectedSource = previewSourceMode === 'choose'
+      ? pdfFiles.find(file => file.id === previewSourcePdfId)
+      : pdfFiles[0];
+    if (selectedSource?.file) {
+      generatePreviews(selectedSource.file);
     }
-  }, [pdfFile, uploadType]);
+  }, [pdfFiles.length, previewSourceMode, previewSourcePdfId, uploadType]);
 
   // Compilation Routine: Multi-Image to PDF Compiler
   const compileImages = async () => {
@@ -389,29 +533,16 @@ export default function NoteUploadWizard({ onClose, onSaveSuccess, note = null, 
 
   // Compile PDF Metadata
   const compilePdfMetadata = async () => {
-    if (!pdfFile) {
-      addToast('error', 'Missing PDF', 'Please upload a PDF notes file.');
+    if (pdfFiles.length === 0) {
+      addToast('error', 'Missing PDFs', 'Please upload at least one study PDF file.');
       return;
     }
     setIsCompiling(true);
     try {
-      setFileSize(pdfFile.size);
-      // Try to load with pdf-lib first (to ensure basic parsing succeeds)
-      const pdfBytes = await pdfFile.arrayBuffer();
-      try {
-        const pdfDoc = await PDFDocument.load(pdfBytes, { ignoreEncryption: true });
-        const pages = pdfDoc.getPageCount();
-        setPageCount(pages);
-      } catch (pdfLibErr) {
-        console.warn('pdf-lib parsing failed, attempting fallback to PDF.js page count:', pdfLibErr);
-        // Fallback to PDF.js count (which was run during generatePreviews)
-        // If PDF.js hasn't set it yet, we can load it here
-        if (pageCount <= 0) {
-          const loadingTask = pdfjsLib.getDocument({ data: pdfBytes });
-          const pdfDocObj = await loadingTask.promise;
-          setPageCount(pdfDocObj.numPages);
-        }
-      }
+      const totalSize = pdfFiles.reduce((sum, file) => sum + file.size, 0);
+      const totalPages = pdfFiles.reduce((sum, file) => sum + (file.pages || 0), 0);
+      setFileSize(totalSize);
+      setPageCount(totalPages);
       setStep(3);
     } catch (err: any) {
       console.error('PDF parsing failed on all engines:', err);
@@ -439,22 +570,60 @@ export default function NoteUploadWizard({ onClose, onSaveSuccess, note = null, 
 
       // 1. Upload Private PDF Notes
       let pdfPath = uploadedPdfPath;
-      if (uploadType === 'pdf' && pdfFile) {
-        setCompilationProgress(30);
-        const filePath = `${storageBaseDir}_notes.pdf`;
-        const { data, error } = await supabase.storage
-          .from('notes-pdfs')
-          .upload(filePath, pdfFile, { overwrite: true });
-        if (error) throw error;
-        pdfPath = data.path;
+      let pdfFilesPayload: PdfFileRef[] = uploadedPdfFiles;
+      if (uploadType === 'pdf') {
+        if (pdfFiles.length === 0) {
+          throw new Error('Please add at least one PDF file.');
+        }
+
+        const uploadedFiles: PdfFileRef[] = [];
+        for (let i = 0; i < pdfFiles.length; i++) {
+          const item = pdfFiles[i];
+          setCompilationProgress(20 + Math.round((i / Math.max(pdfFiles.length, 1)) * 35));
+          if (item.file) {
+            const safeName = item.name.replace(/[^a-zA-Z0-9._-]/g, '_').toLowerCase();
+            const filePath = `${storageBaseDir}_${String(i + 1).padStart(2, '0')}_${safeName}`;
+            setPdfFiles(prev => prev.map(file => file.id === item.id ? { ...file, uploadProgress: 35 } : file));
+            const { data, error } = await supabase.storage
+              .from('notes-pdfs')
+              .upload(filePath, item.file, { contentType: 'application/pdf', upsert: true });
+            if (error) throw error;
+            setPdfFiles(prev => prev.map(file => file.id === item.id ? { ...file, uploadProgress: 100, path: data.path } : file));
+            uploadedFiles.push({
+              name: item.name,
+              path: data.path,
+              size: item.size,
+              pages: item.pages,
+              order: i + 1
+            });
+          } else if (item.path) {
+            uploadedFiles.push({
+              name: item.name,
+              path: item.path,
+              size: item.size,
+              pages: item.pages,
+              order: i + 1
+            });
+          }
+        }
+
+        pdfFilesPayload = uploadedFiles;
+        pdfPath = uploadedFiles[0]?.path || '';
       } else if (uploadType === 'images' && compiledPdfBlob) {
         setCompilationProgress(30);
         const filePath = `${storageBaseDir}_notes.pdf`;
         const { data, error } = await supabase.storage
           .from('notes-pdfs')
-          .upload(filePath, compiledPdfBlob, { overwrite: true });
+          .upload(filePath, compiledPdfBlob, { contentType: 'application/pdf', upsert: true });
         if (error) throw error;
         pdfPath = data.path;
+        pdfFilesPayload = [{
+          name: `${title.trim() || 'Compiled note'}.pdf`,
+          path: data.path,
+          size: compiledPdfBlob.size,
+          pages: pageCount,
+          order: 1
+        }];
       }
 
       // 2. Upload Public Thumbnail Cover
@@ -479,6 +648,18 @@ export default function NoteUploadWizard({ onClose, onSaveSuccess, note = null, 
 
       setCompilationProgress(95);
       setUploadedPdfPath(pdfPath);
+      setUploadedPdfFiles(pdfFilesPayload);
+      if (uploadType === 'pdf') {
+        setPdfFiles(pdfFilesPayload.map((file, index) => ({
+          id: file.path,
+          name: file.name,
+          size: file.size,
+          pages: file.pages || 0,
+          order: index + 1,
+          path: file.path,
+          uploadProgress: 100
+        })));
+      }
       setUploadedCoverUrl(coverUrl);
       setUploadedPreviewUrls(previewUrlsList);
       
@@ -506,6 +687,17 @@ export default function NoteUploadWizard({ onClose, onSaveSuccess, note = null, 
     };
     const rawSellerId = note ? note.seller_id : (isAdmin ? null : (user?.id || null));
     const sellerId = isUuid(rawSellerId) ? rawSellerId : null;
+    const finalPdfFiles = uploadType === 'pdf'
+      ? pdfFiles.map((file, index) => ({
+          name: file.name,
+          path: file.path || uploadedPdfFiles[index]?.path || '',
+          size: file.size,
+          pages: file.pages,
+          order: index + 1
+        })).filter(file => file.path)
+      : uploadedPdfFiles;
+    const totalPages = finalPdfFiles.reduce((sum, file) => sum + (file.pages || 0), 0) || pageCount;
+    const totalFileSize = finalPdfFiles.reduce((sum, file) => sum + (file.size || 0), 0) || fileSize;
 
     const payload = {
       title: title.trim(),
@@ -515,14 +707,15 @@ export default function NoteUploadWizard({ onClose, onSaveSuccess, note = null, 
       price: Number(price),
       status,
       description: description.trim(),
-      pdf_url: uploadedPdfPath || 'pdfs/anatomy_upper_limb.pdf',
+      pdf_url: finalPdfFiles[0]?.path || uploadedPdfPath || 'pdfs/anatomy_upper_limb.pdf',
+      pdf_files: finalPdfFiles,
       thumbnail_url: uploadedCoverUrl || 'https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?auto=format&fit=crop&q=80&w=400',
       preview_images: uploadedPreviewUrls.length > 0 ? uploadedPreviewUrls : [
         'https://images.unsplash.com/photo-1532187643603-ba119ca4109e?auto=format&fit=crop&q=80&w=400'
       ],
       content_type: uploadType,
-      page_count: pageCount,
-      file_size: fileSize,
+      page_count: totalPages,
+      file_size: totalFileSize,
       seller_id: sellerId
     };
 
@@ -641,14 +834,106 @@ export default function NoteUploadWizard({ onClose, onSaveSuccess, note = null, 
             <div className="space-y-4 text-left">
               {/* PDF file dropzone */}
               <div className="space-y-1">
-                <label className="text-[10px] font-bold text-slate-400 uppercase">PDF Note File *</label>
-                <div {...getPdfRootProps()} className="border-2 border-dashed border-slate-200 hover:border-emerald-500 bg-white rounded-2xl p-8 text-center cursor-pointer transition-colors">
+                <label className="text-[10px] font-bold text-slate-400 uppercase">Study Files *</label>
+                <div {...getPdfRootProps()} className="border-2 border-dashed border-slate-200 hover:border-emerald-500 bg-white rounded-2xl p-6 text-center transition-colors">
                   <input {...getPdfInputProps()} />
                   <Upload className="w-8 h-8 text-slate-350 mx-auto mb-2" />
-                  <p className="text-xs font-bold text-slate-700">{pdfFile ? pdfFile.name : 'Select or drop PDF document here'}</p>
-                  <p className="text-[10px] text-slate-400 mt-1">PDF format only. Maximum 100 MB.</p>
+                  <p className="text-xs font-bold text-slate-700">Drag & drop PDF files here</p>
+                  <p className="text-[10px] text-slate-400 mt-1">PDF only. Maximum {MAX_PDF_FILES} PDFs, 100 MB per file.</p>
+                  <button
+                    type="button"
+                    onClick={openPdfPicker}
+                    className="mt-4 mx-auto py-2 px-4 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-xs font-bold transition-colors flex items-center gap-1.5"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>{pdfFiles.length > 0 ? 'Add More PDFs' : 'Add PDF Files'}</span>
+                  </button>
                 </div>
               </div>
+
+              {pdfFiles.length > 0 && (
+                <div className="space-y-3 bg-white border border-slate-200 rounded-2xl p-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <div>
+                      <label className="text-[10px] font-bold text-slate-400 uppercase block">PDF Files ({pdfFiles.length}/{MAX_PDF_FILES})</label>
+                      <span className="text-[10px] text-slate-400">Drag rows, or use arrows, to reorder delivery files.</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={openPdfPicker}
+                      className="py-2 px-3 bg-slate-100 hover:bg-slate-200 rounded-xl text-[10px] font-bold text-slate-700 transition-colors flex items-center justify-center gap-1.5"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>Add More PDFs</span>
+                    </button>
+                  </div>
+
+                  <div className="space-y-2">
+                    {pdfFiles.map((file, index) => (
+                      <div
+                        key={file.id}
+                        draggable
+                        onDragStart={() => setDraggedPdfIndex(index)}
+                        onDragOver={(e) => e.preventDefault()}
+                        onDrop={() => handlePdfDropReorder(index)}
+                        className="bg-slate-50 border border-slate-150 rounded-xl p-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between"
+                      >
+                        <div className="flex items-center gap-3 min-w-0 flex-1">
+                          <GripVertical className="w-4 h-4 text-slate-300 shrink-0 cursor-grab" />
+                          <div className="w-10 h-10 rounded-xl bg-red-50 text-red-500 flex items-center justify-center shrink-0">
+                            <FileText className="w-5 h-5" />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <input
+                              value={file.name}
+                              onChange={(e) => renamePdfFile(file.id, e.target.value)}
+                              className="w-full bg-transparent text-xs font-bold text-slate-800 focus:outline-none focus:bg-white focus:border focus:border-emerald-200 rounded-lg px-1 py-0.5"
+                            />
+                            <div className="flex flex-wrap items-center gap-2 text-[10px] text-slate-400 font-sans mt-0.5">
+                              <span>{formatFileSize(file.size)}</span>
+                              <span>{file.pages || 0} pages</span>
+                              <span>Order {index + 1}</span>
+                            </div>
+                            {typeof file.uploadProgress === 'number' && file.uploadProgress > 0 && file.uploadProgress < 100 && (
+                              <div className="w-full bg-slate-200 h-1 rounded-full overflow-hidden mt-2">
+                                <div className="bg-emerald-500 h-full transition-all duration-300" style={{ width: `${file.uploadProgress}%` }} />
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex items-center justify-end gap-1.5">
+                          <button
+                            type="button"
+                            disabled={index === 0}
+                            onClick={() => movePdfFile(index, 'up')}
+                            className="p-1.5 hover:bg-white text-slate-600 rounded-lg disabled:opacity-30"
+                            title="Move up"
+                          >
+                            <ArrowLeft className="w-3.5 h-3.5 rotate-90" />
+                          </button>
+                          <button
+                            type="button"
+                            disabled={index === pdfFiles.length - 1}
+                            onClick={() => movePdfFile(index, 'down')}
+                            className="p-1.5 hover:bg-white text-slate-600 rounded-lg disabled:opacity-30"
+                            title="Move down"
+                          >
+                            <ArrowRight className="w-3.5 h-3.5 rotate-90" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => removePdfFile(file.id)}
+                            className="px-2 py-1.5 hover:bg-red-50 text-red-500 rounded-lg text-[10px] font-bold flex items-center gap-1"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                            <span>Remove</span>
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* Cover thumbnail dropzone */}
               <div className="space-y-1">
@@ -668,7 +953,7 @@ export default function NoteUploadWizard({ onClose, onSaveSuccess, note = null, 
                     <label className="text-[10px] font-bold text-slate-400 uppercase block">Preview Pages (Auto-Generated)</label>
                     <span className="text-[10px] text-emerald-600 font-medium font-sans">✓ System Extracted & Watermarked</span>
                   </div>
-                  {(pdfFile || note) && (
+                  {(pdfFiles.length > 0 || note) && (
                     <button
                       type="button"
                       onClick={handleRegeneratePreviews}
@@ -680,6 +965,44 @@ export default function NoteUploadWizard({ onClose, onSaveSuccess, note = null, 
                     </button>
                   )}
                 </div>
+
+                {pdfFiles.length > 0 && (
+                  <div className="bg-slate-50 border border-slate-100 rounded-xl p-3 space-y-3">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase block">Preview Source</label>
+                    <div className="flex flex-col sm:flex-row gap-2 text-xs text-slate-700">
+                      <label className="flex items-center gap-2">
+                        <input
+                          type="radio"
+                          checked={previewSourceMode === 'first'}
+                          onChange={() => setPreviewSourceMode('first')}
+                        />
+                        <span>First PDF (default)</span>
+                      </label>
+                      <label className="flex items-center gap-2">
+                        <input
+                          type="radio"
+                          checked={previewSourceMode === 'choose'}
+                          onChange={() => {
+                            setPreviewSourceMode('choose');
+                            setPreviewSourcePdfId(previewSourcePdfId || pdfFiles[0]?.id || '');
+                          }}
+                        />
+                        <span>Choose PDF</span>
+                      </label>
+                    </div>
+                    {previewSourceMode === 'choose' && (
+                      <select
+                        value={previewSourcePdfId}
+                        onChange={(e) => setPreviewSourcePdfId(e.target.value)}
+                        className="w-full px-3 py-2 border border-slate-200 focus:border-emerald-500 focus:outline-none rounded-xl text-xs bg-white"
+                      >
+                        {pdfFiles.map((file) => (
+                          <option key={file.id} value={file.id}>{file.name}</option>
+                        ))}
+                      </select>
+                    )}
+                  </div>
+                )}
 
                 {/* Progress and status indicators */}
                 {isGeneratingPreviews && (
@@ -724,7 +1047,7 @@ export default function NoteUploadWizard({ onClose, onSaveSuccess, note = null, 
                 ) : (
                   !isGeneratingPreviews && (
                     <p className="text-[10px] text-slate-400 italic py-2 font-sans">
-                      {pdfFile ? 'Preparing preview extraction...' : 'Upload PDF note file to extract previews automatically.'}
+                      {pdfFiles.length > 0 ? 'Preparing preview extraction...' : 'Upload PDF files to extract previews automatically.'}
                     </p>
                   )
                 )}
@@ -810,7 +1133,7 @@ export default function NoteUploadWizard({ onClose, onSaveSuccess, note = null, 
             </button>
             <button
               onClick={uploadType === 'pdf' ? compilePdfMetadata : compileImages}
-              disabled={isCompiling || (uploadType === 'pdf' && !pdfFile) || (uploadType === 'images' && noteImages.length === 0)}
+              disabled={isCompiling || (uploadType === 'pdf' && pdfFiles.length === 0) || (uploadType === 'images' && noteImages.length === 0)}
               className="py-2.5 px-6 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold rounded-xl transition-colors disabled:opacity-50 flex items-center gap-1.5"
             >
               {isCompiling ? (
@@ -1026,6 +1349,37 @@ export default function NoteUploadWizard({ onClose, onSaveSuccess, note = null, 
               <option value="draft">Draft (Private)</option>
             </select>
           </div>
+
+          {uploadType === 'pdf' && (
+            <div className="space-y-3 bg-white border border-slate-200 rounded-2xl p-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div>
+                  <label className="text-[10px] font-bold text-slate-400 uppercase block">Study Files</label>
+                  <span className="text-xs font-bold text-slate-800">{pdfFiles.length} PDF File{pdfFiles.length === 1 ? '' : 's'}</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setStep(2)}
+                  className="py-2 px-3 bg-slate-100 hover:bg-slate-200 rounded-xl text-[10px] font-bold text-slate-700 transition-colors"
+                >
+                  Add / Delete / Replace / Reorder
+                </button>
+              </div>
+              {pdfFiles.length > 0 && (
+                <div className="space-y-2">
+                  {pdfFiles.map((file, index) => (
+                    <div key={file.id} className="flex items-center justify-between gap-3 bg-slate-50 border border-slate-100 rounded-xl p-3">
+                      <div className="min-w-0">
+                        <p className="text-xs font-bold text-slate-800 truncate">{index + 1}. {file.name}</p>
+                        <p className="text-[10px] text-slate-400 font-sans">{formatFileSize(file.size)} - {file.pages || 0} pages</p>
+                      </div>
+                      <FileText className="w-4 h-4 text-red-500 shrink-0" />
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Description */}
           <div className="space-y-1">

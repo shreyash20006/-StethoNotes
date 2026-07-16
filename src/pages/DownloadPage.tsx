@@ -3,6 +3,8 @@ import { useParams, Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { ShieldAlert, Download, FileText, Calendar, ShieldCheck, Loader2 } from 'lucide-react';
 import { useToastStore } from '../store/useToastStore';
+import { formatFileSize, getPdfFiles } from '../lib/pdfFiles';
+import type { PdfFileRef } from '../types';
 
 export default function DownloadPage() {
   const { orderId, noteId } = useParams<{ orderId: string; noteId: string }>();
@@ -10,7 +12,7 @@ export default function DownloadPage() {
   const [loading, setLoading] = useState(true);
   const [downloading, setDownloading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const [noteInfo, setNoteInfo] = useState<{ title: string; subject: string; courseName: string } | null>(null);
+  const [noteInfo, setNoteInfo] = useState<{ title: string; subject: string; courseName: string; files: PdfFileRef[] } | null>(null);
   const [downloadCount, setDownloadCount] = useState(0);
   const [purchaseDate, setPurchaseDate] = useState<string>('');
   const [expiryDate, setExpiryDate] = useState<string>('');
@@ -82,7 +84,7 @@ export default function DownloadPage() {
       // 4. Fetch Note details
       const { data: note, error: noteErr } = await supabase
         .from('notes')
-        .select('title, subject, courses(name)')
+        .select('title, subject, pdf_url, pdf_files, file_size, page_count, courses(name)')
         .eq('id', noteId)
         .single();
 
@@ -94,7 +96,8 @@ export default function DownloadPage() {
       setNoteInfo({
         title: note.title,
         subject: note.subject,
-        courseName: (note as any).courses?.name || 'Medical'
+        courseName: (note as any).courses?.name || 'Medical',
+        files: getPdfFiles(note as any)
       });
 
     } catch (err: any) {
@@ -105,7 +108,7 @@ export default function DownloadPage() {
     }
   };
 
-  const handleDownload = async () => {
+  const handleDownload = async (fileIndex: number) => {
     if (!orderId || !noteId) return;
     setDownloading(true);
     try {
@@ -125,7 +128,7 @@ export default function DownloadPage() {
       let error = null;
       try {
         const res = await supabase.functions.invoke(functionName, {
-          body: { orderId, noteId }
+          body: { orderId, noteId, fileIndex }
         });
         data = res.data;
         error = res.error;
@@ -153,12 +156,12 @@ export default function DownloadPage() {
       const link = document.createElement('a');
       link.href = data.signedUrl;
       link.target = '_blank';
-      link.download = `${noteInfo?.title.toLowerCase().replace(/[^a-z0-9]+/g, '_')}_watermarked.pdf`;
+      link.download = data.fileName || `${noteInfo?.title.toLowerCase().replace(/[^a-z0-9]+/g, '_')}_watermarked.pdf`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
 
-      addToast('success', 'Download Started', 'Personalized PDF note downloaded successfully.');
+      addToast('success', 'Download Started', 'Personalized PDF file downloaded successfully.');
     } catch (err: any) {
       console.error(err);
       addToast('error', 'Fulfillment Error', err.message || 'Could not compile and download notes.');
@@ -260,23 +263,23 @@ export default function DownloadPage() {
 
         {/* Download Trigger */}
         <div className="pt-4 border-t border-slate-100 flex flex-col gap-3">
-          <button
-            onClick={handleDownload}
-            disabled={downloading}
-            className="w-full py-3.5 bg-cyan-600 hover:bg-cyan-700 text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-cyan-100 flex items-center justify-center gap-1.5 disabled:opacity-60"
-          >
-            {downloading ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                <span>Compiling Secure Copy...</span>
-              </>
-            ) : (
-              <>
-                <Download className="w-4 h-4" />
-                <span>Download Secure PDF</span>
-              </>
-            )}
-          </button>
+          <h4 className="text-xs font-bold text-slate-900">Downloaded Files</h4>
+          {(noteInfo?.files || []).map((file, index) => (
+            <div key={file.path || index} className="border border-slate-100 bg-slate-50 rounded-2xl p-3 flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-xs font-bold text-slate-800 truncate">{file.name}</p>
+                <p className="text-[10px] text-slate-400 font-sans">{formatFileSize(file.size)}{file.pages ? ` - ${file.pages} pages` : ''}</p>
+              </div>
+              <button
+                onClick={() => handleDownload(index)}
+                disabled={downloading}
+                className="py-2 px-3 bg-cyan-600 hover:bg-cyan-700 text-white rounded-xl text-[10px] font-bold transition-all shadow-md shadow-cyan-100 flex items-center justify-center gap-1.5 disabled:opacity-60 shrink-0"
+              >
+                {downloading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
+                <span>Download</span>
+              </button>
+            </div>
+          ))}
           
           <Link 
             to="/courses"

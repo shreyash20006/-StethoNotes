@@ -7,6 +7,42 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
+function normalizeStoragePath(urlOrPath: string): string {
+  if (!urlOrPath) return ''
+  if (urlOrPath.startsWith('http://') || urlOrPath.startsWith('https://')) {
+    const marker = 'notes-pdfs/'
+    const index = urlOrPath.indexOf(marker)
+    if (index !== -1) {
+      return decodeURIComponent(urlOrPath.substring(index + marker.length))
+    }
+  }
+  return urlOrPath
+}
+
+function getPdfFiles(note: any) {
+  const files = Array.isArray(note?.pdf_files) ? note.pdf_files : []
+  if (files.length > 0) {
+    return files
+      .filter((file: any) => file?.path)
+      .map((file: any, index: number) => ({
+        name: file.name || `PDF ${index + 1}.pdf`,
+        path: normalizeStoragePath(file.path),
+        order: Number(file.order) || index + 1
+      }))
+      .sort((a: any, b: any) => a.order - b.order)
+  }
+
+  if (note?.pdf_url) {
+    return [{
+      name: `${note.title || 'Study file'}.pdf`,
+      path: normalizeStoragePath(note.pdf_url),
+      order: 1
+    }]
+  }
+
+  return []
+}
+
 serve(async (req) => {
   // Handle CORS
   if (req.method === 'OPTIONS') {
@@ -63,15 +99,18 @@ serve(async (req) => {
 
     // 3. Generate secure download page URLs for each purchased note
     const siteUrl = Deno.env.get('SITE_URL') || 'https://stethonotes.store'
-    const emailNotesList: Array<{ title: string; subject: string; downloadUrl: string }> = []
+    const emailNotesList: Array<{ title: string; fileName: string; subject: string; downloadUrl: string }> = []
     
     for (const item of items) {
       if (item.note) {
         const downloadUrl = `${siteUrl}/download/${orderId}/${item.note.id}`
-        emailNotesList.push({
-          title: item.note.title,
-          subject: item.note.subject,
-          downloadUrl: downloadUrl
+        getPdfFiles(item.note).forEach((file: any) => {
+          emailNotesList.push({
+            title: item.note.title,
+            fileName: file.name,
+            subject: item.note.subject,
+            downloadUrl: downloadUrl
+          })
         })
       }
     }
@@ -90,9 +129,10 @@ serve(async (req) => {
     const notesHtml = emailNotesList.map(item => `
       <div style="margin-bottom: 20px; padding: 15px; border: 1px solid #E6F7FA; border-left: 4px solid #1FB6D4; background-color: #FAFCFD; border-radius: 8px;">
         <span style="font-size: 10px; text-transform: uppercase; color: #1FB6D4; font-weight: bold; font-family: sans-serif;">${item.subject}</span>
-        <h4 style="margin: 5px 0; color: #0F2D6B; font-family: Arial, sans-serif; font-size: 16px;">${item.title}</h4>
+        <h4 style="margin: 5px 0; color: #0F2D6B; font-family: Arial, sans-serif; font-size: 16px;">${item.fileName}</h4>
+        <p style="margin: 0; color: #666666; font-family: Arial, sans-serif; font-size: 12px;">${item.title}</p>
         <p style="margin: 10px 0 0 0;">
-          <a href="${item.downloadUrl}" target="_blank" style="display: inline-block; background-color: #1FB6D4; color: #ffffff; padding: 8px 18px; font-family: sans-serif; font-size: 12px; font-weight: bold; text-decoration: none; border-radius: 6px;">Download PDF Study Notes</a>
+          <a href="${item.downloadUrl}" target="_blank" style="display: inline-block; background-color: #1FB6D4; color: #ffffff; padding: 8px 18px; font-family: sans-serif; font-size: 12px; font-weight: bold; text-decoration: none; border-radius: 6px;">Download</a>
         </p>
         <span style="font-size: 10px; color: #888888; font-family: sans-serif; display: block; margin-top: 6px;">* Download link will remain active for 48 hours.</span>
       </div>
@@ -132,7 +172,7 @@ serve(async (req) => {
         <ul style="padding-left: 20px; margin: 0; font-family: sans-serif; font-size: 14px; line-height: 1.6;">
           ${emailNotesList.map(item => `
             <li style="margin-bottom: 12px;">
-              <strong>${item.title}</strong> (${item.subject})<br/>
+              <strong>${item.fileName}</strong> (${item.title})<br/>
               <a href="${item.downloadUrl}" target="_blank" style="color: #1FB6D4; text-decoration: underline; font-weight: bold;">Download Notes</a>
             </li>
           `).join('')}
@@ -152,6 +192,7 @@ serve(async (req) => {
           TOTAL_AMOUNT: order.total_amount,
           ITEMS: emailNotesList.map(item => ({
             title: item.title,
+            fileName: item.fileName,
             subject: item.subject,
             downloadUrl: item.downloadUrl
           })),

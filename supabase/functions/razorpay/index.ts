@@ -56,6 +56,30 @@ function getRelativeStoragePath(urlOrPath: string): string {
   return urlOrPath;
 }
 
+function getPdfFiles(note: any) {
+  const files = Array.isArray(note?.pdf_files) ? note.pdf_files : []
+  if (files.length > 0) {
+    return files
+      .filter((file: any) => file?.path)
+      .map((file: any, index: number) => ({
+        name: file.name || `PDF ${index + 1}.pdf`,
+        path: getRelativeStoragePath(file.path),
+        order: Number(file.order) || index + 1
+      }))
+      .sort((a: any, b: any) => a.order - b.order)
+  }
+
+  if (note?.pdf_url) {
+    return [{
+      name: `${note.title || 'Study file'}.pdf`,
+      path: getRelativeStoragePath(note.pdf_url),
+      order: 1
+    }]
+  }
+
+  return []
+}
+
 function createErrorResponse(stage: string, message: string, details?: any, stack?: string) {
   return {
     success: false,
@@ -311,7 +335,7 @@ async function generateAndSendEmail(
   fromEmail: string,
   fromName: string
 ) {
-  const emailNotesList: Array<{ title: string; subject: string; downloadUrl: string }> = []
+  const emailNotesList: Array<{ title: string; fileName: string; subject: string; downloadUrl: string }> = []
   
   logDebug({
     stage: "generate_and_send_email",
@@ -321,7 +345,9 @@ async function generateAndSendEmail(
   
   for (const item of items) {
     if (item.note) {
-      const relativePath = getRelativeStoragePath(item.note.pdf_url)
+      const pdfFiles = getPdfFiles(item.note)
+      for (const pdfFile of pdfFiles) {
+      const relativePath = pdfFile.path
       
       // Task 3: Verify the PDF exists in the private Storage bucket.
       const folderPath = relativePath.substring(0, relativePath.lastIndexOf('/'))
@@ -359,18 +385,21 @@ async function generateAndSendEmail(
 
       emailNotesList.push({
         title: item.note.title,
+        fileName: pdfFile.name,
         subject: item.note.subject,
         downloadUrl: data.signedUrl
       })
+      }
     }
   }
 
   const notesHtml = emailNotesList.map(item => `
     <div style="margin-bottom: 20px; padding: 15px; border: 1px solid #E6F7FA; border-left: 4px solid #1FB6D4; background-color: #FAFCFD; border-radius: 8px;">
       <span style="font-size: 10px; text-transform: uppercase; color: #1FB6D4; font-weight: bold; font-family: sans-serif;">${item.subject}</span>
-      <h4 style="margin: 5px 0; color: #0F2D6B; font-family: Arial, sans-serif; font-size: 16px;">${item.title}</h4>
+      <h4 style="margin: 5px 0; color: #0F2D6B; font-family: Arial, sans-serif; font-size: 16px;">${item.fileName}</h4>
+      <p style="margin: 0; color: #666666; font-family: Arial, sans-serif; font-size: 12px;">${item.title}</p>
       <p style="margin: 10px 0 0 0;">
-        <a href="${item.downloadUrl}" target="_blank" style="display: inline-block; background-color: #1FB6D4; color: #ffffff; padding: 8px 18px; font-family: sans-serif; font-size: 12px; font-weight: bold; text-decoration: none; border-radius: 6px;">Download PDF Study Notes</a>
+        <a href="${item.downloadUrl}" target="_blank" style="display: inline-block; background-color: #1FB6D4; color: #ffffff; padding: 8px 18px; font-family: sans-serif; font-size: 12px; font-weight: bold; text-decoration: none; border-radius: 6px;">Download</a>
       </p>
       <span style="font-size: 10px; color: #888888; font-family: sans-serif; display: block; margin-top: 6px;">* Download link will remain active for 48 hours.</span>
     </div>
@@ -410,7 +439,7 @@ async function generateAndSendEmail(
       <ul style="padding-left: 20px; margin: 0; font-family: sans-serif; font-size: 14px; line-height: 1.6;">
         ${emailNotesList.map(item => `
           <li style="margin-bottom: 12px;">
-            <strong>${item.title}</strong> (${item.subject})<br/>
+            <strong>${item.fileName}</strong> (${item.title})<br/>
             <a href="${item.downloadUrl}" target="_blank" style="color: #1FB6D4; text-decoration: underline; font-weight: bold;">Download Notes</a>
           </li>
         `).join('')}
@@ -429,6 +458,7 @@ async function generateAndSendEmail(
         TOTAL_AMOUNT: order.total_amount,
         ITEMS: emailNotesList.map(item => ({
           title: item.title,
+          fileName: item.fileName,
           subject: item.subject,
           downloadUrl: item.downloadUrl
         })),

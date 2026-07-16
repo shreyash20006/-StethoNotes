@@ -4,6 +4,7 @@ import { supabase, isLiveSupabase, triggerBrevoEmailSimulation } from '../lib/su
 import type { Note } from '../types';
 import { useToastStore } from '../store/useToastStore';
 import { Check, Mail, ShoppingBag, BookOpen, AlertCircle, RefreshCw } from 'lucide-react';
+import { getPdfFiles } from '../lib/pdfFiles';
 
 export default function OrderConfirmationPage() {
   const [searchParams] = useSearchParams();
@@ -178,7 +179,7 @@ export default function OrderConfirmationPage() {
           {purchasedNotes.map((note) => (
             <div
               key={note.id}
-              className="border border-gray-100 rounded-2xl p-4 sm:p-5 flex items-center gap-4 bg-gray-50/50"
+              className="border border-gray-100 rounded-2xl p-4 sm:p-5 bg-gray-50/50"
             >
               <div className="w-12 h-12 bg-accent/10 rounded-xl flex items-center justify-center text-accent shrink-0 font-display text-xl">
                 📚
@@ -193,6 +194,14 @@ export default function OrderConfirmationPage() {
                 <p className="text-gray-400 text-xs mt-0.5">
                   Secure PDF Study Guide • Emailed after purchase verification
                 </p>
+              </div>
+              <div className="pl-0 sm:pl-16 space-y-2 mt-3">
+                {getPdfFiles(note).map((file) => (
+                  <div key={file.path} className="flex items-center justify-between gap-3 bg-white border border-gray-100 rounded-xl px-3 py-2">
+                    <span className="text-xs font-semibold text-primary truncate">{file.name}</span>
+                    <span className="text-[10px] text-gray-400 shrink-0">Download</span>
+                  </div>
+                ))}
               </div>
             </div>
           ))}

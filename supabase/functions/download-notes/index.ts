@@ -7,6 +7,54 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
+function normalizeStoragePath(urlOrPath: string): string {
+  if (!urlOrPath) return ""
+  if (urlOrPath.startsWith("http://") || urlOrPath.startsWith("https://")) {
+    const marker = "notes-pdfs/"
+    const index = urlOrPath.indexOf(marker)
+    if (index !== -1) {
+      return decodeURIComponent(urlOrPath.substring(index + marker.length))
+    }
+    try {
+      const parsed = new URL(urlOrPath)
+      const segments = parsed.pathname.split("/")
+      const bucketIndex = segments.indexOf("notes-pdfs")
+      if (bucketIndex !== -1 && bucketIndex < segments.length - 1) {
+        return decodeURIComponent(segments.slice(bucketIndex + 1).join("/"))
+      }
+    } catch (_) {}
+  }
+  return urlOrPath
+}
+
+function getPdfFiles(note: any) {
+  const files = Array.isArray(note?.pdf_files) ? note.pdf_files : []
+  if (files.length > 0) {
+    return files
+      .filter((file: any) => file?.path)
+      .map((file: any, index: number) => ({
+        name: file.name || `PDF ${index + 1}.pdf`,
+        path: normalizeStoragePath(file.path),
+        size: Number(file.size) || 0,
+        pages: Number(file.pages) || 0,
+        order: Number(file.order) || index + 1
+      }))
+      .sort((a: any, b: any) => a.order - b.order)
+  }
+
+  if (note?.pdf_url) {
+    return [{
+      name: `${note.title || "Study file"}.pdf`,
+      path: normalizeStoragePath(note.pdf_url),
+      size: Number(note.file_size) || 0,
+      pages: Number(note.page_count) || 0,
+      order: 1
+    }]
+  }
+
+  return []
+}
+
 serve(async (req) => {
   // Handle CORS
   if (req.method === 'OPTIONS') {
@@ -14,7 +62,7 @@ serve(async (req) => {
   }
 
   try {
-    const { orderId, noteId } = await req.json()
+    const { orderId, noteId, fileIndex = 0 } = await req.json()
 
     if (!orderId || !noteId) {
       return new Response(JSON.stringify({ error: 'Missing orderId or noteId parameters.' }), {
@@ -65,6 +113,7 @@ serve(async (req) => {
       .select('*', { count: 'exact', head: true })
       .eq('order_id', orderId)
       .eq('note_id', noteId)
+      .eq('file_index', fileIndex)
 
     if (countErr) {
       console.error('Error fetching download logs:', countErr)
@@ -92,23 +141,31 @@ serve(async (req) => {
       })
     }
 
+    const pdfFiles = getPdfFiles(note)
+    const selectedFile = pdfFiles[fileIndex]
+    if (!selectedFile) {
+      return new Response(JSON.stringify({ error: 'Requested PDF file not found.' }), {
+        status: 404,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      })
+    }
+
     // Watermark file storage path prefix
-    const watermarkedPath = `watermarked/${orderId}/${noteId}.pdf`
+    const watermarkedPath = `watermarked/${orderId}/${noteId}/${fileIndex}_${selectedFile.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`
 
     // 5. Check if watermarked file already compiled and cached in Storage
-    let cachedUrl = null
     const { data: existingFiles, error: listErr } = await supabase.storage
       .from('notes-pdfs')
-      .list(`watermarked/${orderId}`, { search: `${noteId}.pdf` })
+      .list(`watermarked/${orderId}/${noteId}`, { search: `${fileIndex}_${selectedFile.name.replace(/[^a-zA-Z0-9._-]/g, '_')}` })
 
-    const isCached = !listErr && existingFiles && existingFiles.some(f => f.name === `${noteId}.pdf`)
+    const isCached = !listErr && existingFiles && existingFiles.some(f => f.name === `${fileIndex}_${selectedFile.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`)
 
     if (!isCached) {
       console.log(`[WATERMARK] Compiling personalized PDF for order ${orderId}, note ${noteId}...`)
       // Download raw PDF from storage
       const { data: rawPdfData, error: getErr } = await supabase.storage
         .from('notes-pdfs')
-        .download(note.pdf_url)
+        .download(selectedFile.path)
 
       if (getErr || !rawPdfData) {
         console.error(`[STORAGE_ERROR] Could not fetch note file:`, getErr)
@@ -200,6 +257,7 @@ serve(async (req) => {
       .insert({
         order_id: orderId,
         note_id: noteId,
+        file_index: fileIndex,
         ip_address: ip,
         user_agent: userAgent,
         downloaded_at: new Date().toISOString()
@@ -210,7 +268,7 @@ serve(async (req) => {
     }
 
     // Return signed URL
-    return new Response(JSON.stringify({ signedUrl: signedData.signedUrl }), {
+    return new Response(JSON.stringify({ signedUrl: signedData.signedUrl, fileName: selectedFile.name }), {
       status: 200,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     })

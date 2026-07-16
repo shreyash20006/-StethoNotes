@@ -55,6 +55,7 @@ export interface Note {
   subject: string;
   price: number;
   pdf_url: string;
+  pdf_files?: PdfFileRef[];
   thumbnail_url: string;
   preview_images: string[];
   status: 'active' | 'draft';
@@ -66,6 +67,14 @@ export interface Note {
   file_size?: number;
   original_pdf?: string;
   generated_pdf_path?: string;
+}
+
+export interface PdfFileRef {
+  name: string;
+  path: string;
+  size: number;
+  pages?: number;
+  order: number;
 }
 
 export interface Order {
