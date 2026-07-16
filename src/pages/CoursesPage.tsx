@@ -1,13 +1,70 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useCallback, memo } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import type { Note, Course } from '../types';
 import { Search, Filter, SlidersHorizontal, ArrowUpDown, GraduationCap, ShoppingCart, Check } from 'lucide-react';
 import { useCartStore } from '../store/useCartStore';
 import { useToastStore } from '../store/useToastStore';
-import { NoteCardSkeleton } from '../components/Skeleton';
+import { ProductCardSkeleton } from '../components/Skeleton';
 import SEOHead from '../components/SEOHead';
 import { pageMeta, generateBreadcrumbLD } from '../lib/seo';
+
+const NoteCard = memo(({ note, added, onAddToCart }: { note: Note; added: boolean; onAddToCart: (note: Note) => void }) => (
+  <div
+    className="bg-white border border-gray-100 rounded-2xl overflow-hidden hover:shadow-cyan-hover transition-all duration-300 flex flex-col justify-between group"
+  >
+    <Link to={`/notes/${note.id}`} className="relative aspect-[4/3] overflow-hidden bg-gray-100 block">
+      <img
+        src={note.thumbnail_url}
+        alt={note.title}
+        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+      />
+      <div className="absolute top-3 left-3 bg-primary/95 text-white text-[10px] font-display font-bold px-2.5 py-1 rounded-full uppercase tracking-wider shadow-md">
+        {(note as any).course?.name || 'Medical'}
+      </div>
+      <div className="absolute bottom-3 right-3 bg-accent text-white text-xs font-display font-bold px-3 py-1 rounded-xl shadow-md">
+        ₹{note.price}
+      </div>
+    </Link>
+    <div className="p-5 flex flex-col flex-1 justify-between gap-4">
+      <div>
+        <span className="text-[10px] font-sans font-semibold text-accent tracking-wider uppercase">
+          {note.subject}
+        </span>
+        <Link
+          to={`/notes/${note.id}`}
+          className="font-display font-bold text-base text-primary hover:text-accent transition-colors mt-1 block line-clamp-2"
+        >
+          {note.title}
+        </Link>
+        <p className="text-gray-500 text-xs mt-2 line-clamp-2 leading-relaxed">
+          {note.description}
+        </p>
+      </div>
+      <div className="flex gap-2">
+        {added ? (
+          <Link
+            to="/cart"
+            className="w-full py-2.5 bg-accent/10 text-accent font-display text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 hover:bg-accent/15 transition-all"
+          >
+            <Check className="w-4 h-4" />
+            <span>In Cart — Checkout</span>
+          </Link>
+        ) : (
+          <button
+            onClick={() => onAddToCart(note)}
+            className="w-full py-2.5 bg-accent text-white font-display text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 hover:bg-accent-hover transition-all"
+          >
+            <ShoppingCart className="w-4 h-4" />
+            <span>Add to Cart</span>
+          </button>
+        )}
+      </div>
+    </div>
+  </div>
+));
+
+NoteCard.displayName = 'NoteCard';
 
 export default function CoursesPage() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -64,14 +121,13 @@ export default function CoursesPage() {
   }, []);
 
   // Get unique subjects for current course filter
-  const subjectsList = ['All', ...Array.from(new Set(
+  const subjectsList = useMemo(() => ['All', ...Array.from(new Set(
     notes
       .filter(n => selectedCourse === 'All' || (n as any).course?.name === selectedCourse)
       .map(n => n.subject)
-  ))];
+  ))], [notes, selectedCourse]);
 
-  // Filtering logic
-  const filteredNotes = notes
+  const filteredNotes = useMemo(() => notes
     .filter((note) => {
       const matchesSearch = note.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
                             note.subject.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -88,26 +144,25 @@ export default function CoursesPage() {
       if (sortBy === 'price-low') return a.price - b.price;
       if (sortBy === 'price-high') return b.price - a.price;
       if (sortBy === 'title') return a.title.localeCompare(b.title);
-      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime(); // newest
-    });
+      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+    }), [notes, searchQuery, selectedCourse, selectedSubject, selectedSeller, sortBy]);
 
-  const handleCourseFilter = (courseName: string) => {
+  const handleCourseFilter = useCallback((courseName: string) => {
     setSelectedCourse(courseName);
-    setSelectedSubject('All'); // Reset subject filter when changing course
+    setSelectedSubject('All');
     
-    // Update search query params
     if (courseName === 'All') {
       searchParams.delete('course');
     } else {
       searchParams.set('course', courseName);
     }
     setSearchParams(searchParams);
-  };
+  }, [searchParams, setSearchParams]);
 
-  const handleAddToCart = (note: Note) => {
+  const handleAddToCart = useCallback((note: Note) => {
     addItem(note);
     addToast('success', 'Added to Cart', `${note.title} has been added to your shopping cart.`);
-  };
+  }, [addItem, addToast]);
 
   const activeCourseName = selectedCourse !== 'All' ? selectedCourse : undefined;
   const seoMeta = pageMeta.courses(activeCourseName);
@@ -258,7 +313,7 @@ export default function CoursesPage() {
           {loading ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
               {Array.from({ length: 6 }).map((_, i) => (
-                <NoteCardSkeleton key={i} />
+                <ProductCardSkeleton key={i} />
               ))}
             </div>
           ) : filteredNotes.length === 0 ? (
@@ -274,64 +329,12 @@ export default function CoursesPage() {
               {filteredNotes.map((note) => {
                 const added = isInCart(note.id);
                 return (
-                  <div
+                  <NoteCard
                     key={note.id}
-                    className="bg-white border border-gray-100 rounded-2xl overflow-hidden hover:shadow-cyan-hover transition-all duration-300 flex flex-col justify-between group"
-                  >
-                    {/* Thumbnail Wrapper */}
-                    <Link to={`/notes/${note.id}`} className="relative aspect-[4/3] overflow-hidden bg-gray-100 block">
-                      <img
-                        src={note.thumbnail_url}
-                        alt={note.title}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                      />
-                      <div className="absolute top-3 left-3 bg-primary/95 text-white text-[10px] font-display font-bold px-2.5 py-1 rounded-full uppercase tracking-wider shadow-md">
-                        {(note as any).course?.name || 'Medical'}
-                      </div>
-                      <div className="absolute bottom-3 right-3 bg-accent text-white text-xs font-display font-bold px-3 py-1 rounded-xl shadow-md">
-                        ₹{note.price}
-                      </div>
-                    </Link>
-
-                    {/* Card Content */}
-                    <div className="p-5 flex flex-col flex-1 justify-between gap-4">
-                      <div>
-                        <span className="text-[10px] font-sans font-semibold text-accent tracking-wider uppercase">
-                          {note.subject}
-                        </span>
-                        <Link
-                          to={`/notes/${note.id}`}
-                          className="font-display font-bold text-base text-primary hover:text-accent transition-colors mt-1 block line-clamp-2"
-                        >
-                          {note.title}
-                        </Link>
-                        <p className="text-gray-500 text-xs mt-2 line-clamp-2 leading-relaxed">
-                          {note.description}
-                        </p>
-                      </div>
-
-                      {/* Add to Cart Footer */}
-                      <div className="flex gap-2">
-                        {added ? (
-                          <Link
-                            to="/cart"
-                            className="w-full py-2.5 bg-accent/10 text-accent font-display text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 hover:bg-accent/15 transition-all"
-                          >
-                            <Check className="w-4 h-4" />
-                            <span>In Cart — Checkout</span>
-                          </Link>
-                        ) : (
-                          <button
-                            onClick={() => handleAddToCart(note)}
-                            className="w-full py-2.5 bg-accent text-white font-display text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 hover:bg-accent-hover transition-all"
-                          >
-                            <ShoppingCart className="w-4 h-4" />
-                            <span>Add to Cart</span>
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  </div>
+                    note={note}
+                    added={added}
+                    onAddToCart={handleAddToCart}
+                  />
                 );
               })}
             </div>

@@ -1,20 +1,122 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import { memo } from 'react';
 import { Award, ShieldCheck, Star, ArrowRight, Activity, Users, Smile, ChevronLeft, ChevronRight, Mail, Trophy } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import SEOHead from '../components/SEOHead';
 import { pageMeta, generateOrganizationLD, generateFAQLD } from '../lib/seo';
+import HeroAnimation from '../components/landing/HeroAnimation';
+import AnimatedCounter from '../components/ui/AnimatedCounter';
+import { COURSE_CATEGORIES, CourseIcon } from '../components/icons/CourseIcons';
 
-const CATEGORIES = [
-  { id: 'c1', name: 'MBBS', desc: 'Bachelor of Medicine, Bachelor of Surgery', icon: '🩺', color: 'from-blue-500/10 to-cyan-500/10' },
-  { id: 'c2', name: 'BHMS', desc: 'Bachelor of Homoeopathic Medicine and Surgery', icon: '🌿', color: 'from-emerald-500/10 to-teal-500/10' },
-  { id: 'c3', name: 'BAMS', desc: 'Bachelor of Ayurvedic Medicine and Surgery', icon: '🍃', color: 'from-green-500/10 to-emerald-500/10' },
-  { id: 'c4', name: 'BSc Nursing', desc: 'Bachelor of Science in Nursing care study guides', icon: '🩹', color: 'from-indigo-500/10 to-blue-500/10' },
-  { id: 'c5', name: 'B.Pharma', desc: 'Pharmacy and Pharmacology summary papers', icon: '💊', color: 'from-red-500/10 to-orange-500/10' },
-  { id: 'c6', name: 'BPT', desc: 'Bachelor of Physiotherapy exercise guides', icon: '🏃', color: 'from-purple-500/10 to-pink-500/10' },
-  { id: 'c7', name: 'Paramedical', desc: 'Lab Technician, Radiology & Emergency notes', icon: '🚨', color: 'from-yellow-500/10 to-amber-500/10' }
-];
+const CategoryCard = memo(({ cat, idx, navigate }: { cat: any; idx: number; navigate: (url: string) => void }) => (
+  <motion.div
+    initial={{ opacity: 0, y: 30 }}
+    whileInView={{ opacity: 1, y: 0 }}
+    viewport={{ once: true }}
+    transition={{ duration: 0.5, delay: idx * 0.05 }}
+    onClick={() => navigate(`/courses?course=${encodeURIComponent(cat.name)}`)}
+    className={`glass-panel p-6 rounded-2xl cursor-pointer hover:shadow-cyan-hover transition-all duration-300 group flex flex-col justify-between border-2 border-transparent hover:border-accent/10 bg-gradient-to-br ${cat.color}`}
+  >
+    <div>
+      <div className="w-16 h-16 mb-4">
+        <CourseIcon name={cat.name} size={56} />
+      </div>
+      <h3 className="font-display font-bold text-xl text-primary mb-2 group-hover:text-accent transition-colors">
+        {cat.name}
+      </h3>
+      <p className="text-gray-500 text-xs leading-relaxed">
+        {cat.desc}
+      </p>
+    </div>
+    <div className="flex items-center gap-2 text-accent font-display text-sm font-semibold mt-6 group-hover:translate-x-1.5 transition-transform duration-300">
+      <span>Explore Catalog</span>
+      <ArrowRight className="w-4 h-4" />
+    </div>
+  </motion.div>
+));
+
+CategoryCard.displayName = 'CategoryCard';
+
+const SellerCard = memo(({ seller, idx }: { seller: any; idx: number }) => (
+  <motion.div
+    initial={{ opacity: 0, y: 30 }}
+    whileInView={{ opacity: 1, y: 0 }}
+    viewport={{ once: true }}
+    transition={{ duration: 0.5, delay: idx * 0.1 }}
+    className="bg-white rounded-3xl border border-gray-100 p-6 shadow-cyan-soft hover:shadow-cyan-hover hover:border-accent/15 transition-all duration-300 flex flex-col justify-between group"
+  >
+    <div>
+      <div className="flex items-center gap-3 mb-4">
+        {seller.avatar_url ? (
+          <img 
+            src={seller.avatar_url} 
+            alt={seller.store_name || seller.name} 
+            className="w-12 h-12 rounded-2xl object-cover border-2 border-accent/20"
+          />
+        ) : (
+          <div className="w-12 h-12 rounded-2xl bg-cyan-50 border border-cyan-100 flex items-center justify-center text-accent text-xl font-bold shrink-0">
+            {(seller.store_name || seller.name || 'S').substring(0, 1).toUpperCase()}
+          </div>
+        )}
+        <div>
+          <h3 className="font-display font-bold text-slate-800 text-sm group-hover:text-accent transition-colors">
+            {seller.store_name || seller.name}
+          </h3>
+          <div className="flex items-center gap-1 mt-0.5 text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full text-[10px] font-semibold w-fit">
+            <ShieldCheck className="w-3 h-3" />
+            <span>Verified Creator</span>
+          </div>
+        </div>
+      </div>
+      <p className="text-gray-500 text-xs leading-relaxed mb-6 line-clamp-3">
+        {seller.bio || 'No bio provided.'}
+      </p>
+    </div>
+    <div>
+      <div className="flex items-center justify-between border-t border-gray-50 pt-4 mb-4">
+        <div className="flex items-center gap-1.5 text-gray-500 text-xs">
+          <Trophy className="w-4 h-4 text-amber-500" />
+          <span>{seller.total_sales}+ Sales</span>
+        </div>
+        <div className="text-[10px] text-gray-400">
+          {seller.refund_rate < 0.1 ? 'Excellent Trust' : `${seller.refund_rate}% refund rate`}
+        </div>
+      </div>
+      <Link
+        to={`/courses?seller_id=${seller.id}`}
+        className="w-full btn-outline py-2.5 rounded-xl text-xs font-semibold text-center block group-hover:bg-accent group-hover:border-accent group-hover:text-white transition-all duration-300"
+      >
+        View Notes
+      </Link>
+    </div>
+  </motion.div>
+));
+
+SellerCard.displayName = 'SellerCard';
+
+const WhyUsCard = memo(({ item, idx }: { item: any; idx: number }) => (
+  <motion.div
+    initial={{ opacity: 0, y: 30 }}
+    whileInView={{ opacity: 1, y: 0 }}
+    viewport={{ once: true }}
+    transition={{ duration: 0.5, delay: idx * 0.1 }}
+    className="bg-white p-6 rounded-2xl border border-gray-100 hover:border-accent/20 hover:shadow-cyan-soft transition-all duration-300 flex flex-col items-center text-center gap-4 group"
+  >
+    <div className="p-4 bg-primary/5 rounded-2xl group-hover:bg-accent/15 group-hover:scale-110 transition-all duration-300">
+      {item.icon}
+    </div>
+    <h3 className="font-display font-bold text-lg text-primary">
+      {item.title}
+    </h3>
+    <p className="text-gray-500 text-xs leading-relaxed">
+      {item.desc}
+    </p>
+  </motion.div>
+));
+
+WhyUsCard.displayName = 'WhyUsCard';
 
 const WHY_US = [
   {
@@ -67,6 +169,7 @@ export default function LandingPage() {
   const navigate = useNavigate();
   const [currentTestimonial, setCurrentTestimonial] = useState(0);
   const [featuredSellers, setFeaturedSellers] = useState<any[]>([]);
+  const [landingStats, setLandingStats] = useState({ notes: 500, students: 12000, sellers: 150, courses: 7 });
 
   const nextTestimonial = () => {
     setCurrentTestimonial((prev) => (prev + 1) % TESTIMONIALS.length);
@@ -76,7 +179,7 @@ export default function LandingPage() {
     setCurrentTestimonial((prev) => (prev - 1 + TESTIMONIALS.length) % TESTIMONIALS.length);
   };
 
-  // Fetch featured sellers
+  // Fetch featured sellers and landing stats
   useEffect(() => {
     const fetchSellers = async () => {
       try {
@@ -89,7 +192,14 @@ export default function LandingPage() {
         console.error('Error fetching featured sellers:', err);
       }
     };
+    const fetchStats = async () => {
+      try {
+        const { data } = await supabase.from('settings').select('value').eq('key', 'landing_stats').single();
+        if (data?.value) setLandingStats(data.value);
+      } catch { /* use defaults */ }
+    };
     fetchSellers();
+    fetchStats();
   }, []);
 
   // Auto scroll testimonials
@@ -107,9 +217,16 @@ export default function LandingPage() {
       <SEOHead {...meta} jsonLd={[orgSchema, faqSchema]} />
       {/* 1. Hero Section */}
       <section className="relative bg-dark-navy text-white pt-24 pb-32 px-4 sm:px-6 lg:px-8 overflow-hidden">
-        {/* Animated Background Gradients */}
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(31,182,212,0.15),transparent_45%)]" />
-        
+        {/* Premium background layers */}
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(31,182,212,0.18),transparent_45%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom_left,rgba(15,45,107,0.5),transparent_50%)]" />
+        <div className="absolute inset-0 noise-texture opacity-[0.04]" />
+        <div className="absolute inset-0 animated-grid opacity-[0.05]" />
+        {/* Floating blobs */}
+        <div className="absolute top-20 right-10 w-72 h-72 bg-cyan-500/15 rounded-full blur-3xl animate-blob" />
+        <div className="absolute bottom-10 left-10 w-96 h-96 bg-blue-600/10 rounded-full blur-3xl animate-blob" style={{ animationDelay: '2s' }} />
+        <div className="absolute top-1/2 left-1/3 w-64 h-64 bg-emerald-500/8 rounded-full blur-3xl animate-blob" style={{ animationDelay: '4s' }} />
+
         <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-12 items-center relative z-10">
           {/* Hero text */}
           <div className="lg:col-span-7 flex flex-col items-start gap-6">
@@ -131,7 +248,7 @@ export default function LandingPage() {
               transition={{ duration: 0.7, delay: 0.1 }}
               className="text-4xl sm:text-6xl font-display font-extrabold leading-tight tracking-tight text-white"
             >
-              Your <span className="text-transparent bg-clip-text bg-gradient-to-r from-accent to-white">Stethoscope</span> <br />
+              Your <span className="text-transparent bg-clip-text bg-gradient-to-r from-accent via-cyan-300 to-white">Stethoscope</span> <br />
               to Academic Success
             </motion.h1>
 
@@ -150,11 +267,11 @@ export default function LandingPage() {
               transition={{ duration: 0.7, delay: 0.3 }}
               className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto mt-4"
             >
-              <Link to="/courses" className="btn-primary py-4 px-8 text-base">
+              <Link to="/courses" className="btn-primary py-4 px-8 text-base shadow-lg shadow-cyan-500/20 hover:shadow-cyan-500/40 transition-shadow">
                 Browse Study Notes
                 <ArrowRight className="w-5 h-5" />
               </Link>
-              <a href="#about" className="btn-outline-white py-4 px-8 text-base">
+              <a href="#about" className="btn-outline-white py-4 px-8 text-base backdrop-blur-sm">
                 Learn More
               </a>
             </motion.div>
@@ -167,49 +284,50 @@ export default function LandingPage() {
               className="grid grid-cols-3 gap-6 pt-8 mt-4 border-t border-white/10 w-full max-w-md"
             >
               <div>
-                <h4 className="font-display font-bold text-2xl text-accent">500+</h4>
+                <h4 className="font-display font-bold text-2xl text-accent">
+                  <AnimatedCounter end={landingStats.notes} suffix="+" />
+                </h4>
                 <p className="text-gray-400 text-xs mt-1">Syllabus PDFs</p>
               </div>
               <div>
-                <h4 className="font-display font-bold text-2xl text-accent">10k+</h4>
+                <h4 className="font-display font-bold text-2xl text-accent">
+                  <AnimatedCounter end={Math.floor(landingStats.students / 1000)} suffix="k+" />
+                </h4>
                 <p className="text-gray-400 text-xs mt-1">Active Students</p>
               </div>
               <div>
-                <h4 className="font-display font-bold text-2xl text-accent">4.9★</h4>
+                <h4 className="font-display font-bold text-2xl text-accent">4.9&#9733;</h4>
                 <p className="text-gray-400 text-xs mt-1">Average Rating</p>
               </div>
             </motion.div>
           </div>
 
-          {/* Hero Image / Animated graphic */}
+          {/* 3D Hero Animation */}
           <div className="lg:col-span-5 flex justify-center relative">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.8 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.8, delay: 0.2 }}
-              className="relative w-72 h-72 sm:w-96 sm:h-96"
-            >
-              {/* Decorative Pulsing circles */}
-              <div className="absolute inset-0 bg-accent/10 rounded-full filter blur-2xl animate-pulse" />
-              
-              {/* Core SVG illustration representing medical study */}
-              <svg className="w-full h-full text-accent relative z-10" viewBox="0 0 200 200" fill="none">
-                <circle cx="100" cy="100" r="80" stroke="currentColor" strokeWidth="1" strokeDasharray="5 5" className="animate-spin" style={{ animationDuration: '30s' }} />
-                
-                {/* Book */}
-                <rect x="55" y="65" width="90" height="70" rx="4" fill="#0F2D6B" stroke="currentColor" strokeWidth="3" />
-                <path d="M100 65v70" stroke="currentColor" strokeWidth="2" />
-                <path d="M65 80h25M65 95h25M65 110h25M110 80h25M110 95h25M110 110h25" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-                
-                {/* Stethoscope wrapping book */}
-                <path d="M40 70c-15 15-20 40-10 60s35 25 55 15c10-5 15-15 15-25" stroke="#1FB6D4" strokeWidth="4" strokeLinecap="round" />
-                <path d="M100 130c0 15 10 30 30 35s40-5 45-25c3-12-2-25-10-30" stroke="#1FB6D4" strokeWidth="4" strokeLinecap="round" />
-                <circle cx="165" cy="110" r="10" fill="#1FB6D4" />
-                <circle cx="165" cy="110" r="4" fill="#0F2D6B" />
-              </svg>
-            </motion.div>
+            <HeroAnimation />
           </div>
         </div>
+
+        {/* Scroll indicator */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 1.2, duration: 0.8 }}
+          className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2"
+        >
+          <span className="text-[10px] text-gray-500 uppercase tracking-widest font-medium">Scroll</span>
+          <motion.div
+            animate={{ y: [0, 8, 0] }}
+            transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+            className="w-5 h-8 rounded-full border-2 border-gray-500 flex justify-center pt-1"
+          >
+            <motion.div
+              animate={{ y: [0, 8, 0], opacity: [1, 0.3, 1] }}
+              transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+              className="w-1 h-2 bg-gray-400 rounded-full"
+            />
+          </motion.div>
+        </motion.div>
       </section>
 
       {/* 2. Course Category Section */}
@@ -226,32 +344,8 @@ export default function LandingPage() {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {CATEGORIES.map((cat, idx) => (
-              <motion.div
-                key={cat.id}
-                initial={{ opacity: 0, y: 30 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.5, delay: idx * 0.05 }}
-                onClick={() => navigate(`/courses?course=${encodeURIComponent(cat.name)}`)}
-                className="glass-panel p-6 rounded-2xl cursor-pointer hover:shadow-cyan-hover transition-all duration-300 group flex flex-col justify-between border-2 border-transparent hover:border-accent/10"
-              >
-                <div>
-                  <span className="text-4xl mb-4 block" role="img" aria-label={cat.name}>
-                    {cat.icon}
-                  </span>
-                  <h3 className="font-display font-bold text-xl text-primary mb-2 group-hover:text-accent transition-colors">
-                    {cat.name}
-                  </h3>
-                  <p className="text-gray-500 text-xs leading-relaxed">
-                    {cat.desc}
-                  </p>
-                </div>
-                <div className="flex items-center gap-2 text-accent font-display text-sm font-semibold mt-6 group-hover:translate-x-1.5 transition-transform duration-300">
-                  <span>Explore Catalog</span>
-                  <ArrowRight className="w-4 h-4" />
-                </div>
-              </motion.div>
+            {COURSE_CATEGORIES.map((cat, idx) => (
+              <CategoryCard key={cat.id} cat={cat} idx={idx} navigate={navigate} />
             ))}
           </div>
         </div>
@@ -273,66 +367,7 @@ export default function LandingPage() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
               {featuredSellers.map((seller, idx) => (
-                <motion.div
-                  key={seller.id}
-                  initial={{ opacity: 0, y: 30 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ duration: 0.5, delay: idx * 0.1 }}
-                  className="bg-white rounded-3xl border border-gray-100 p-6 shadow-cyan-soft hover:shadow-cyan-hover hover:border-accent/15 transition-all duration-300 flex flex-col justify-between group"
-                >
-                  <div>
-                    {/* Seller header info */}
-                    <div className="flex items-center gap-3 mb-4">
-                      {seller.avatar_url ? (
-                        <img 
-                          src={seller.avatar_url} 
-                          alt={seller.store_name || seller.name} 
-                          className="w-12 h-12 rounded-2xl object-cover border-2 border-accent/20"
-                        />
-                      ) : (
-                        <div className="w-12 h-12 rounded-2xl bg-cyan-50 border border-cyan-100 flex items-center justify-center text-accent text-xl font-bold shrink-0">
-                          {(seller.store_name || seller.name || 'S').substring(0, 1).toUpperCase()}
-                        </div>
-                      )}
-                      <div>
-                        <h3 className="font-display font-bold text-slate-800 text-sm group-hover:text-accent transition-colors">
-                          {seller.store_name || seller.name}
-                        </h3>
-                        <div className="flex items-center gap-1 mt-0.5 text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full text-[10px] font-semibold w-fit">
-                          <ShieldCheck className="w-3 h-3" />
-                          <span>Verified Creator</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Bio */}
-                    <p className="text-gray-500 text-xs leading-relaxed mb-6 line-clamp-3">
-                      {seller.bio || 'No bio provided.'}
-                    </p>
-                  </div>
-
-                  <div>
-                    {/* Sales count and stats */}
-                    <div className="flex items-center justify-between border-t border-gray-50 pt-4 mb-4">
-                      <div className="flex items-center gap-1.5 text-gray-500 text-xs">
-                        <Trophy className="w-4 h-4 text-amber-500" />
-                        <span>{seller.total_sales}+ Sales</span>
-                      </div>
-                      <div className="text-[10px] text-gray-400">
-                        {seller.refund_rate < 0.1 ? 'Excellent Trust' : `${seller.refund_rate}% refund rate`}
-                      </div>
-                    </div>
-
-                    {/* View notes button */}
-                    <Link
-                      to={`/courses?seller_id=${seller.id}`}
-                      className="w-full btn-outline py-2.5 rounded-xl text-xs font-semibold text-center block group-hover:bg-accent group-hover:border-accent group-hover:text-white transition-all duration-300"
-                    >
-                      View Notes
-                    </Link>
-                  </div>
-                </motion.div>
+                <SellerCard key={seller.id} seller={seller} idx={idx} />
               ))}
             </div>
           </div>
@@ -354,24 +389,7 @@ export default function LandingPage() {
 
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
             {WHY_US.map((item, idx) => (
-              <motion.div
-                key={idx}
-                initial={{ opacity: 0, y: 30 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.5, delay: idx * 0.1 }}
-                className="bg-white p-6 rounded-2xl border border-gray-100 hover:border-accent/20 hover:shadow-cyan-soft transition-all duration-300 flex flex-col items-center text-center gap-4 group"
-              >
-                <div className="p-4 bg-primary/5 rounded-2xl group-hover:bg-accent/15 group-hover:scale-110 transition-all duration-300">
-                  {item.icon}
-                </div>
-                <h3 className="font-display font-bold text-lg text-primary">
-                  {item.title}
-                </h3>
-                <p className="text-gray-500 text-xs leading-relaxed">
-                  {item.desc}
-                </p>
-              </motion.div>
+              <WhyUsCard key={idx} item={item} idx={idx} />
             ))}
           </div>
         </div>

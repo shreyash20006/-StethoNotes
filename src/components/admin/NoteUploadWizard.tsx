@@ -7,6 +7,8 @@ import { useAuthStore } from '../../store/useAuthStore';
 import { useToastStore } from '../../store/useToastStore';
 import type { Note, Course, PdfFileRef } from '../../types';
 import { formatFileSize, getPdfFiles } from '../../lib/pdfFiles';
+import { buildImageStoragePath, getFileExtension } from '../../lib/imageUtils';
+import SampleImageUploader, { type SampleImageItem } from './SampleImageUploader';
 import {
   FileText, Image as ImageIcon, Upload, X, ArrowLeft, ArrowRight,
   Trash2, Eye, ShieldCheck, CheckCircle2, ChevronRight, Loader2, RefreshCw,
@@ -62,6 +64,19 @@ export default function NoteUploadWizard({ onClose, onSaveSuccess, note = null, 
   const [previewSourcePdfId, setPreviewSourcePdfId] = useState('');
   const [draggedPdfIndex, setDraggedPdfIndex] = useState<number | null>(null);
   const [coverFile, setCoverFile] = useState<File | null>(null);
+  const [coverImageItem, setCoverImageItem] = useState<SampleImageItem | null>(null);
+  const [sampleImageItems, setSampleImageItems] = useState<SampleImageItem[]>([]);
+  const [productUuid] = useState(() => {
+    if (note?.thumbnail_url) {
+      const match = note.thumbnail_url.match(/\/products\/([^/]+)\//);
+      if (match) return match[1];
+    }
+    if (note?.preview_images?.length) {
+      const match = note.preview_images[0].match(/\/products\/([^/]+)\//);
+      if (match) return match[1];
+    }
+    return Math.random().toString(36).substring(2, 10);
+  });
 
   // Auto Preview States
   const [isGeneratingPreviews, setIsGeneratingPreviews] = useState(false);
@@ -110,7 +125,29 @@ export default function NoteUploadWizard({ onClose, onSaveSuccess, note = null, 
         uploadProgress: 100
       })));
       setUploadedCoverUrl(note.thumbnail_url);
-      setUploadedPreviewUrls(note.preview_images || []);
+      const existingPreviews = note.preview_images || [];
+      setUploadedPreviewUrls(existingPreviews);
+      const existingCover = note.thumbnail_url;
+      if (existingCover) {
+        setCoverImageItem({
+          id: `cover-${note.id}`,
+          file: undefined as any,
+          previewUrl: existingCover,
+          width: 0,
+          height: 0,
+          isCover: true
+        });
+        setCoverFile(null);
+      }
+      if (existingPreviews.length > 0) {
+        setSampleImageItems(existingPreviews.map((url, i) => ({
+          id: `sample-${note.id}-${i}`,
+          file: undefined as any,
+          previewUrl: url,
+          width: 0,
+          height: 0
+        })));
+      }
       setPageCount(note.page_count || 0);
       setFileSize(note.file_size || 0);
       // Skip upload wizard pages if editing
@@ -212,7 +249,7 @@ export default function NoteUploadWizard({ onClose, onSaveSuccess, note = null, 
     }
   });
 
-  const { getRootProps: getCoverRootProps, getInputProps: getCoverInputProps } = useDropzone({
+  const { getRootProps: _getCoverRootProps, getInputProps: _getCoverInputProps } = useDropzone({
     accept: { 'image/*': ['.jpg', '.jpeg', '.png', '.webp'] },
     maxFiles: 1,
     onDrop: (acceptedFiles) => {
@@ -401,21 +438,30 @@ export default function NoteUploadWizard({ onClose, onSaveSuccess, note = null, 
         }
 
         // Upload to public previews bucket
-        const sellerId = note?.seller_id || user?.id || 'admin';
-        const uuid = Math.random().toString(36).substring(2, 10);
-        const filePath = `previews/${sellerId}/${uuid}_p${pageNum}.jpg`;
-        
+        const sellerId = user?.id;
+        if (!sellerId) throw new Error('You must be signed in to generate previews.');
+        const filePath = buildImageStoragePath(sellerId, productUuid, 'sample', pageNum - 1, 'jpg');
+
         const { error: uploadErr } = await supabase.storage
-          .from('previews')
+          .from('sample-images')
           .upload(filePath, jpegBlob, { contentType: 'image/jpeg', upsert: true });
-          
+
         if (uploadErr) throw uploadErr;
-        
-        const { data } = supabase.storage.from('previews').getPublicUrl(filePath);
+
+        const { data } = supabase.storage.from('sample-images').getPublicUrl(filePath);
         generatedUrls.push(data.publicUrl);
       }
       
       setUploadedPreviewUrls(generatedUrls);
+      if (note) {
+        setSampleImageItems(generatedUrls.map((url, i) => ({
+          id: `sample-${note.id}-${i}`,
+          file: undefined as any,
+          previewUrl: url,
+          width: 0,
+          height: 0
+        })));
+      }
       setPreviewProgress(100);
       addToast('success', 'Previews Extracted', `Extracted ${pagesToExtract} pages automatically.`);
     } catch (err: any) {
@@ -557,16 +603,14 @@ export default function NoteUploadWizard({ onClose, onSaveSuccess, note = null, 
     setIsCompiling(true);
     setCompilationProgress(10);
     try {
-      const sellerId = user?.id || 'admin';
-      const uuid = Math.random().toString(36).substring(2, 10);
-      
-      // Get course name for directory slug
+      if (!user?.id) throw new Error('You must be signed in to upload files.');
+      const sellerId = user.id;
+      const uuid = productUuid;
+
       const courseName = courses.find(c => c.id === courseId)?.name || 'Course';
       const slugCourse = courseName.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase();
       const slugSubject = subject.trim().replace(/[^a-zA-Z0-9]/g, '_').toLowerCase();
-      
-      // Paths following structure: /course/subject/seller-id/file
-      const storageBaseDir = `${slugCourse}/${slugSubject}/${sellerId}/${uuid}`;
+      const storageBaseDir = `${sellerId}/${slugCourse}/${slugSubject}/${uuid}`;
 
       // 1. Upload Private PDF Notes
       let pdfPath = uploadedPdfPath;
@@ -626,25 +670,48 @@ export default function NoteUploadWizard({ onClose, onSaveSuccess, note = null, 
         }];
       }
 
-      // 2. Upload Public Thumbnail Cover
+      // 2. Upload Cover Image (required)
       let coverUrl = uploadedCoverUrl;
-      if (coverFile) {
+      const coverToUpload = coverImageItem?.file || coverFile;
+      if (coverToUpload) {
         setCompilationProgress(50);
-        const filePath = `covers/${storageBaseDir}_cover.jpg`;
+        const ext = getFileExtension(coverToUpload);
+        const filePath = buildImageStoragePath(sellerId, uuid, 'cover', undefined, ext);
         const { error } = await supabase.storage
           .from('thumbnails')
-          .upload(filePath, coverFile, { overwrite: true });
+          .upload(filePath, coverToUpload, { contentType: coverToUpload.type, upsert: true });
         if (error) throw error;
-        
         const { data } = supabase.storage.from('thumbnails').getPublicUrl(filePath);
         coverUrl = data.publicUrl;
-      } else if (uploadedPreviewUrls.length > 0 && !uploadedCoverUrl) {
-        // Use first page of auto-generated previews as cover if not set explicitly
-        coverUrl = uploadedPreviewUrls[0];
+      } else if (!coverUrl) {
+        throw new Error('Cover image is required. Please upload a product cover.');
       }
 
-      // 3. Previews are automatically extracted and uploaded asynchronously in the background.
-      const previewUrlsList = uploadedPreviewUrls;
+      // 3. Upload manual sample images (skip pre-loaded existing URLs without a file)
+      const manualSampleUrls: string[] = [];
+      for (let i = 0; i < sampleImageItems.length; i++) {
+        setCompilationProgress(55 + Math.round((i / Math.max(sampleImageItems.length, 1)) * 25));
+        const item = sampleImageItems[i];
+        if (!item.file) {
+          if (item.previewUrl && !item.previewUrl.startsWith('blob:')) {
+            manualSampleUrls.push(item.previewUrl);
+          }
+          continue;
+        }
+        const ext = getFileExtension(item.file);
+        const filePath = buildImageStoragePath(sellerId, uuid, 'sample', i, ext);
+        const { error } = await supabase.storage
+          .from('sample-images')
+          .upload(filePath, item.file, { contentType: item.file.type, upsert: true });
+        if (error) throw error;
+        const { data } = supabase.storage.from('sample-images').getPublicUrl(filePath);
+        manualSampleUrls.push(data.publicUrl);
+      }
+
+      // 4. Final preview list: curated sample images take precedence, otherwise auto-generated previews
+      const previewUrlsList = sampleImageItems.length > 0
+        ? manualSampleUrls
+        : uploadedPreviewUrls;
 
       setCompilationProgress(95);
       setUploadedPdfPath(pdfPath);
@@ -741,6 +808,10 @@ export default function NoteUploadWizard({ onClose, onSaveSuccess, note = null, 
       addToast('error', 'Publish Failed', err.message);
     }
   };
+
+  const displayPreviewUrls = sampleImageItems.length > 0
+    ? sampleImageItems.map(item => item.previewUrl)
+    : uploadedPreviewUrls;
 
   return (
     <div className="bg-slate-50 rounded-3xl p-6 border border-slate-100 shadow-xl max-w-4xl mx-auto">
@@ -935,16 +1006,16 @@ export default function NoteUploadWizard({ onClose, onSaveSuccess, note = null, 
                 </div>
               )}
 
-              {/* Cover thumbnail dropzone */}
-              <div className="space-y-1">
-                <label className="text-[10px] font-bold text-slate-400 uppercase">Store Cover Cover Image (Thumbnail) *</label>
-                <div {...getCoverRootProps()} className="border-2 border-dashed border-slate-200 hover:border-emerald-500 bg-white rounded-2xl p-6 text-center cursor-pointer transition-colors">
-                  <input {...getCoverInputProps()} />
-                  <Upload className="w-6 h-6 text-slate-350 mx-auto mb-2" />
-                  <p className="text-xs font-bold text-slate-700">{coverFile ? coverFile.name : 'Select Cover thumbnail image'}</p>
-                  <p className="text-[10px] text-slate-400 mt-1">PNG, JPG, JPEG, WEBP accepted.</p>
-                </div>
-              </div>
+              {/* Cover + Sample Images */}
+              <SampleImageUploader
+                coverImage={coverImageItem}
+                sampleImages={sampleImageItems}
+                onCoverChange={(item) => {
+                  setCoverImageItem(item);
+                  setCoverFile(item?.file || null);
+                }}
+                onSamplesChange={setSampleImageItems}
+              />
 
               {/* Auto Generated Previews Status & List */}
               <div className="space-y-3 bg-white p-5 border border-slate-200 rounded-2xl">
@@ -1033,9 +1104,9 @@ export default function NoteUploadWizard({ onClose, onSaveSuccess, note = null, 
                   </div>
                 )}
 
-                {uploadedPreviewUrls.length > 0 ? (
+                {displayPreviewUrls.length > 0 ? (
                   <div className="grid grid-cols-3 gap-4 pt-2">
-                    {uploadedPreviewUrls.map((url, i) => (
+                    {displayPreviewUrls.map((url, i) => (
                       <div key={i} className="group relative aspect-[3/4] bg-slate-50 border border-slate-200 rounded-xl overflow-hidden shadow-sm">
                         <img src={url} alt={`Preview ${i+1}`} className="w-full h-full object-cover select-none pointer-events-none" />
                         <span className="absolute top-2 left-2 bg-slate-900/60 backdrop-blur-xs text-white text-[9px] px-1.5 py-0.5 rounded-md font-bold font-mono">
@@ -1202,9 +1273,9 @@ export default function NoteUploadWizard({ onClose, onSaveSuccess, note = null, 
               </div>
             )}
 
-            {uploadedPreviewUrls.length > 0 ? (
+            {displayPreviewUrls.length > 0 ? (
               <div className="grid grid-cols-3 gap-4">
-                {uploadedPreviewUrls.map((url, i) => (
+                {displayPreviewUrls.map((url, i) => (
                   <div key={i} className="group relative aspect-[3/4] bg-slate-50 border border-slate-200 rounded-xl overflow-hidden shadow-sm">
                     <img src={url} alt={`Preview ${i+1}`} className="w-full h-full object-cover select-none pointer-events-none" />
                     <span className="absolute top-2 left-2 bg-slate-900/60 backdrop-blur-xs text-white text-[9px] px-1.5 py-0.5 rounded-md font-bold font-mono">
@@ -1398,8 +1469,7 @@ export default function NoteUploadWizard({ onClose, onSaveSuccess, note = null, 
             <button
               type="button"
               onClick={() => setStep(3)}
-              disabled={!!note} // Editing skips uploads, so cannot go back to upload
-              className="py-2.5 px-5 hover:bg-slate-250 border border-slate-200 text-slate-650 text-xs font-bold rounded-xl transition-colors disabled:opacity-40"
+              className="py-2.5 px-5 hover:bg-slate-250 border border-slate-200 text-slate-650 text-xs font-bold rounded-xl transition-colors"
             >
               Back
             </button>

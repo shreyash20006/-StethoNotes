@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import type { Note, Review, Comment } from '../types';
@@ -7,6 +7,7 @@ import { useToastStore } from '../store/useToastStore';
 import { useAuthStore } from '../store/useAuthStore';
 import { getDirectDownloadMode } from '../config/features';
 import { formatFileSize, getPdfFiles, normalizeStoragePath } from '../lib/pdfFiles';
+import { pageMeta, generateProductLD, generateBreadcrumbLD } from '../lib/seo';
 import {
   Star, ShoppingCart, ArrowLeft, Send, Heart, MessageSquare,
   CornerDownRight, ShieldCheck, Sparkles, BookOpen,
@@ -14,10 +15,10 @@ import {
   RefreshCw, Share2, ThumbsUp, Check, Edit2,
   Trash2, EyeOff, Paperclip, Lock, Download, Mail, X
 } from 'lucide-react';
-import { NoteDetailSkeleton } from '../components/Skeleton';
-import { motion, AnimatePresence } from 'motion/react';
+import { ProductDetailSkeleton } from '../components/Skeleton';
 import SEOHead from '../components/SEOHead';
-import { pageMeta, generateProductLD, generateBreadcrumbLD } from '../lib/seo';
+import ImageGallery from '../components/ui/ImageGallery';
+import type { GalleryImage } from '../components/ui/ImageGallery';
 
 export default function ProductDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -59,7 +60,7 @@ export default function ProductDetailPage() {
   const [submittingComment, setSubmittingComment] = useState(false);
 
   // Active Preview image index in layout
-  const [activePreviewIndex, setActivePreviewIndex] = useState(0);
+  const [_, setActivePreviewIndex] = useState(0);
 
   const isAdmin = user?.role === 'admin' || user?.role === 'super_admin';
 
@@ -548,28 +549,29 @@ export default function ProductDetailPage() {
     addToast('success', 'Link Copied', 'Product details link copied to clipboard.');
   };
 
-  if (loading) {
-    return <NoteDetailSkeleton />;
-  }
+  const added = isInCart(note?.id || '');
 
-  if (!note) return null;
-
-  const added = isInCart(note.id);
-
-  // Review calculations based on visible reviews (non-hidden)
-  const visibleReviews = reviews.filter(r => !r.is_hidden);
-  const averageRating = visibleReviews.length > 0
+  const visibleReviews = useMemo(() => reviews.filter(r => !r.is_hidden), [reviews]);
+  const averageRating = useMemo(() => visibleReviews.length > 0
     ? (visibleReviews.reduce((acc, r) => acc + r.rating, 0) / visibleReviews.length).toFixed(1)
-    : '4.8';
+    : '4.8', [visibleReviews]);
 
-  // Construct gallery: Cover image (thumbnail_url) is index 0, followed by sample pages (preview_images)
-  const coverImage = note.thumbnail_url;
-  const samplePages = note.preview_images || [];
-  const gallery = [coverImage, ...samplePages.filter(img => img !== coverImage)].filter(Boolean);
+  const coverImage = note?.thumbnail_url;
+  const samplePages = useMemo(() => note?.preview_images || [], [note?.preview_images]);
+  const galleryImages = useMemo<GalleryImage[]>(() => {
+    if (!coverImage) return [];
+    return [coverImage, ...samplePages.filter(img => img !== coverImage)]
+      .filter(Boolean)
+      .map((url, idx) => ({
+        url,
+        label: idx === 0 ? 'Cover' : `Page ${idx}`,
+        alt: `${note?.title || 'Product'} ${idx === 0 ? 'cover' : `sample page ${idx}`}`,
+      }));
+  }, [coverImage, samplePages, note?.title]);
 
-  const pdfFiles = getPdfFiles(note);
+  const pdfFiles = useMemo(() => getPdfFiles(note || undefined), [note]);
 
-  const highlights = [
+  const highlights = useMemo(() => [
     { icon: CheckCircle2, label: 'High Yield Notes', desc: 'Curated by toppers, focusing strictly on high-probability questions.' },
     { icon: Target, label: 'University Focused', desc: 'Directly structured to address college syllabus parameters and exam keys.' },
     { icon: FileText, label: 'Easy Language', desc: 'Complex topics broken down into simple, easy-to-understand explanations.' },
@@ -578,7 +580,13 @@ export default function ProductDetailPage() {
     { icon: RefreshCw, label: 'Quick Revision', desc: 'Saves time during hectic last-minute revision cycles.' },
     { icon: Download, label: 'Instant Download', desc: 'Instant access. Retrieve files from your dashboard immediately.' },
     { icon: Lock, label: 'Secure Purchase', desc: 'Fully encrypted transaction processing with verified delivery logs.' }
-  ];
+  ], []);
+
+  if (loading) {
+    return <ProductDetailSkeleton />;
+  }
+
+  if (!note) return null;
 
   const seoMeta = pageMeta.product({
     id: note.id,
@@ -631,83 +639,44 @@ export default function ProductDetailPage() {
             ========================================== */}
         <div className="lg:col-span-8 space-y-10">
           
-          {/* Cover & Gallery Layout */}
-          <div className="space-y-4">
-            <div 
-              className="aspect-[4/3] w-full rounded-3xl border border-slate-100 bg-[#f8fafc] shadow-sm overflow-hidden relative flex items-center justify-center select-none"
-              onContextMenu={(e) => e.preventDefault()}
-            >
-              <AnimatePresence mode="wait">
-                <motion.img
-                  key={activePreviewIndex}
-                  src={gallery[activePreviewIndex]}
-                  alt={`${note.title} page ${activePreviewIndex}`}
-                  className="w-full h-full object-contain pointer-events-none p-4"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  transition={{ duration: 0.2 }}
-                  onDragStart={(e) => e.preventDefault()}
-                />
-              </AnimatePresence>
-              
-              {/* Preview Watermark Overlay */}
-              <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none overflow-hidden">
-                <div className="rotate-[-25deg] text-[#0c1230]/5 font-black text-2xl sm:text-3xl tracking-widest whitespace-nowrap uppercase">
-                  STETHONOTES PREVIEW - Not For Distribution
-                </div>
-              </div>
-
-              {/* Wishlist Icon */}
-              <button
-                onClick={handleWishlistToggle}
-                className="absolute top-4 right-4 p-3 bg-white/90 hover:bg-white border border-slate-100 rounded-full shadow-md hover:scale-105 active:scale-95 transition-all z-10 text-slate-400 hover:text-red-500"
-              >
-                <Heart className={`w-5 h-5 transition-colors ${inWishlist ? 'fill-red-500 text-red-500' : 'text-slate-455'}`} />
-              </button>
-
-              {/* Page Indicator Tag */}
-              <div className="absolute bottom-4 right-4 bg-slate-900/80 backdrop-blur text-white text-[10px] font-bold px-2.5 py-1 rounded-lg">
-                {activePreviewIndex === 0 ? 'Cover Image' : `Preview Page ${activePreviewIndex}`}
-              </div>
-            </div>
-
-            {/* Thumbnail Row */}
-            <div className="flex gap-3 overflow-x-auto py-1 scrollbar-thin">
-              {gallery.map((imgUrl, idx) => (
-                <button
-                  key={idx}
-                  onClick={() => setActivePreviewIndex(idx)}
-                  className={`w-24 h-18 rounded-2xl overflow-hidden border-2 shrink-0 transition-all relative ${
-                    activePreviewIndex === idx
-                      ? 'border-cyan-600 shadow-md scale-95 ring-2 ring-cyan-100'
-                      : 'border-slate-100 hover:border-slate-300'
-                  }`}
-                  onContextMenu={(e) => e.preventDefault()}
-                >
-                  <img 
-                    src={imgUrl} 
-                    alt="Thumbnail preview" 
-                    className="w-full h-full object-cover pointer-events-none" 
-                    onDragStart={(e) => e.preventDefault()}
-                  />
-                  <div className="absolute inset-0 bg-black/0 hover:bg-black/5" />
-                  <div className="absolute bottom-1 left-1 bg-white/90 px-1 py-0.5 rounded text-[8px] font-extrabold text-slate-700">
-                    {idx === 0 ? 'Cover' : `Page ${idx}`}
-                  </div>
-                </button>
-              ))}
-            </div>
-            
-            <p className="text-gray-400 text-[10px] font-sans text-center mt-1 italic select-none">
+          {/* Cover & Gallery with Lightbox */}
+          <div className="space-y-4" onContextMenu={(e) => e.preventDefault()}>
+            <ImageGallery
+              images={galleryImages}
+              coverLabel="Cover Image"
+              showPinterestGrid={samplePages.length > 0}
+            />
+            <p className="text-gray-400 text-[10px] font-sans text-center italic select-none">
               * The fully unlocked PDF study guide will be delivered securely to your account panel.
             </p>
           </div>
 
+          {/* Features Section */}
+          <div className="bg-white border border-slate-100 rounded-3xl p-6 sm:p-8 shadow-sm hover:shadow-md transition-shadow duration-300">
+            <h2 className="text-xl font-bold text-slate-900 flex items-center gap-3 mb-6">
+              <span className="w-8 h-8 rounded-lg bg-cyan-50 flex items-center justify-center text-cyan-600">✨</span>
+              What makes these notes stand out
+            </h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {highlights.map((item, idx) => (
+                <div key={idx} className="p-4 bg-slate-50/60 border border-slate-100 rounded-2xl flex gap-3.5 hover:shadow-md hover:border-slate-200 hover:-translate-y-0.5 transition-all duration-200 group">
+                  <div className="w-10 h-10 rounded-xl bg-cyan-50 text-cyan-600 flex items-center justify-center shrink-0 group-hover:bg-cyan-600 group-hover:text-white transition-colors duration-300">
+                    <item.icon className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-bold text-slate-800">{item.label}</h4>
+                    <p className="text-[11px] text-slate-450 mt-1 leading-relaxed">{item.desc}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
           {/* Description Section */}
-          <div className="bg-white border border-slate-100 rounded-3xl p-6 sm:p-8 space-y-6 shadow-sm">
-            <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
-              <span>📖</span> About this Study Guide
+          <div className="bg-white border border-slate-100 rounded-3xl p-6 sm:p-8 space-y-6 shadow-sm hover:shadow-md transition-shadow duration-300">
+            <h2 className="text-xl font-bold text-slate-900 flex items-center gap-3">
+              <span className="w-8 h-8 rounded-lg bg-cyan-50 flex items-center justify-center text-cyan-600 text-sm">📖</span>
+              About this Study Guide
             </h2>
             
             {/* Quick Metadata Info Grid */}
@@ -747,51 +716,6 @@ export default function ProductDetailPage() {
             </p>
           </div>
 
-          {/* Highlights Grid */}
-          <div className="space-y-6">
-            <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-              <span>⭐</span> Guide Highlights
-            </h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {highlights.map((item, idx) => (
-                <div key={idx} className="p-4 bg-white border border-slate-100 rounded-2xl flex gap-3 hover:shadow-md transition-shadow group">
-                  <div className="w-9 h-9 rounded-xl bg-cyan-50 text-cyan-600 flex items-center justify-center shrink-0 group-hover:bg-cyan-600 group-hover:text-white transition-colors duration-300">
-                    <item.icon className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <h4 className="text-xs font-bold text-slate-800">{item.label}</h4>
-                    <p className="text-[11px] text-slate-450 mt-0.5 leading-relaxed">{item.desc}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Sample Pages Responsive Horizontal Gallery */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-              <span>🖼</span> Sample Pages & Previews
-            </h3>
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-              {gallery.slice(1).map((imgUrl, idx) => (
-                <div 
-                  key={idx}
-                  onClick={() => {
-                    setActivePreviewIndex(idx + 1);
-                    window.scrollTo({ top: 0, behavior: 'smooth' });
-                  }}
-                  className="group aspect-[3/4] rounded-2xl overflow-hidden border border-slate-200 bg-slate-50 cursor-pointer hover:shadow-md transition-all relative"
-                >
-                  <img src={imgUrl} alt={`Sample page ${idx + 1}`} className="w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-300" />
-                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/5 transition-colors" />
-                  <div className="absolute bottom-3 left-3 bg-white/90 backdrop-blur px-2.5 py-1 rounded-lg text-[10px] font-bold text-slate-800 shadow-sm border border-slate-100">
-                    Page {idx + 1}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
           {/* Reviews moderating block */}
           <div className="border-t border-slate-100 pt-10 space-y-8">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -816,199 +740,199 @@ export default function ProductDetailPage() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-12 gap-8 items-start">
-              {/* Review input card */}
-              <div className="md:col-span-5 bg-slate-50/50 rounded-3xl p-5 border border-slate-100 space-y-4">
-                <h3 className="font-bold text-sm text-slate-800">Write a Product Review</h3>
-                {user ? (
-                  <form onSubmit={handleReviewSubmit} className="space-y-4">
-                    {/* Stars Select */}
-                    <div className="flex flex-col gap-1.5">
-                      <span className="text-[11px] font-semibold text-slate-450 uppercase tracking-wider">Rating</span>
-                      <div className="flex gap-1">
-                        {[1, 2, 3, 4, 5].map((star) => (
-                          <button
-                            type="button"
-                            key={star}
-                            onClick={() => setNewRating(star)}
-                            className="text-amber-450 hover:scale-110 active:scale-95 transition-transform"
-                          >
-                            <Star className={`w-6 h-6 ${star <= newRating ? 'fill-current' : 'text-slate-300'}`} />
-                          </button>
-                        ))}
-                      </div>
-                    </div>
+               {/* Review input card */}
+               <div className="md:col-span-5 bg-slate-50/50 rounded-3xl p-5 border border-slate-100 space-y-4 shadow-sm">
+                 <h3 className="font-bold text-sm text-slate-800">Write a Product Review</h3>
+                 {user ? (
+                   <form onSubmit={handleReviewSubmit} className="space-y-4">
+                     {/* Stars Select */}
+                     <div className="flex flex-col gap-2">
+                       <span className="text-[11px] font-semibold text-slate-450 uppercase tracking-wider">Rating</span>
+                       <div className="flex gap-1.5">
+                         {[1, 2, 3, 4, 5].map((star) => (
+                           <button
+                             type="button"
+                             key={star}
+                             onClick={() => setNewRating(star)}
+                             className="text-amber-450 hover:scale-110 active:scale-95 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-amber-400/50 rounded-md p-0.5"
+                           >
+                             <Star className={`w-6 h-6 ${star <= newRating ? 'fill-current' : 'text-slate-300'}`} />
+                           </button>
+                         ))}
+                       </div>
+                     </div>
 
-                    {/* Comment text */}
-                    <div className="flex flex-col gap-1.5">
-                      <span className="text-[11px] font-semibold text-slate-450 uppercase tracking-wider">Feedback Comment</span>
-                      <textarea
-                        placeholder="Share your study experience with these notes. Help other medical students decide..."
-                        rows={4}
-                        value={newReviewComment}
-                        onChange={(e) => setNewReviewComment(e.target.value)}
-                        required
-                        className="border border-slate-200 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 outline-none p-3 rounded-xl text-xs bg-white resize-none"
-                      />
-                    </div>
+                     {/* Comment text */}
+                     <div className="flex flex-col gap-2">
+                       <span className="text-[11px] font-semibold text-slate-450 uppercase tracking-wider">Feedback Comment</span>
+                       <textarea
+                         placeholder="Share your study experience with these notes. Help other medical students decide..."
+                         rows={4}
+                         value={newReviewComment}
+                         onChange={(e) => setNewReviewComment(e.target.value)}
+                         required
+                         className="border border-slate-200 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/30 outline-none p-3 rounded-xl text-xs bg-white resize-none transition-all duration-200"
+                       />
+                     </div>
 
-                    {/* Review image upload */}
-                    <div className="flex flex-col gap-1.5">
-                      <span className="text-[11px] font-semibold text-slate-450 uppercase tracking-wider flex items-center gap-1">
-                        <Paperclip className="w-3.5 h-3.5" /> Attach Photo (Optional)
-                      </span>
-                      <input 
-                        type="file" 
-                        accept="image/*"
-                        onChange={(e) => {
-                          const file = e.target.files?.[0] || null;
-                          setReviewImageFile(file);
-                          if (file) {
-                            setReviewImagePreview(URL.createObjectURL(file));
-                          } else {
-                            setReviewImagePreview(null);
-                          }
-                        }}
-                        className="text-xs text-slate-500 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-[10px] file:font-semibold file:bg-cyan-50 file:text-cyan-600 hover:file:bg-cyan-100 cursor-pointer"
-                      />
-                      {reviewImagePreview && (
-                        <div className="mt-2 relative w-16 h-16 rounded-lg overflow-hidden border border-slate-200">
-                          <img src={reviewImagePreview} alt="" className="w-full h-full object-cover" />
-                          <button 
-                            type="button" 
-                            onClick={() => {
-                              setReviewImageFile(null);
-                              setReviewImagePreview(null);
-                            }}
-                            className="absolute top-0.5 right-0.5 bg-black/60 text-white rounded-full p-0.5 hover:bg-black"
-                          >
-                            <X className="w-2.5 h-2.5" />
-                          </button>
-                        </div>
-                      )}
-                    </div>
+                     {/* Review image upload */}
+                     <div className="flex flex-col gap-2">
+                       <span className="text-[11px] font-semibold text-slate-450 uppercase tracking-wider flex items-center gap-1.5">
+                         <Paperclip className="w-3.5 h-3.5" /> Attach Photo (Optional)
+                       </span>
+                       <input 
+                         type="file" 
+                         accept="image/*"
+                         onChange={(e) => {
+                           const file = e.target.files?.[0] || null;
+                           setReviewImageFile(file);
+                           if (file) {
+                             setReviewImagePreview(URL.createObjectURL(file));
+                           } else {
+                             setReviewImagePreview(null);
+                           }
+                         }}
+                         className="text-xs text-slate-500 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-[10px] file:font-semibold file:bg-cyan-50 file:text-cyan-600 hover:file:bg-cyan-100 cursor-pointer transition-colors"
+                       />
+                       {reviewImagePreview && (
+                         <div className="mt-2 relative w-16 h-16 rounded-lg overflow-hidden border border-slate-200 hover:shadow-md transition-shadow">
+                           <img src={reviewImagePreview} alt="" className="w-full h-full object-cover" />
+                           <button 
+                             type="button" 
+                             onClick={() => {
+                               setReviewImageFile(null);
+                               setReviewImagePreview(null);
+                             }}
+                             className="absolute top-0.5 right-0.5 bg-black/60 text-white rounded-full p-0.5 hover:bg-black transition-colors"
+                           >
+                             <X className="w-2.5 h-2.5" />
+                           </button>
+                         </div>
+                       )}
+                     </div>
 
-                    <button
-                      type="submit"
-                      disabled={submittingReview}
-                      className="w-full py-3 bg-cyan-600 hover:bg-cyan-750 text-white rounded-xl text-xs font-semibold disabled:opacity-50 flex items-center justify-center gap-1.5 transition-colors shadow-sm"
-                    >
-                      <Send className="w-3.5 h-3.5" />
-                      <span>{submittingReview ? 'Submitting...' : 'Post Review'}</span>
-                    </button>
-                  </form>
-                ) : (
-                  <div className="text-center py-6">
-                    <p className="text-slate-450 text-xs mb-3">You must be logged in to leave a review.</p>
-                    <Link to="/login" className="px-4 py-2 bg-slate-900 text-white font-bold text-xs rounded-xl block text-center">
-                      Sign In / Sign Up
-                    </Link>
-                  </div>
-                )}
-              </div>
+                     <button
+                       type="submit"
+                       disabled={submittingReview}
+                       className="w-full py-3.5 bg-cyan-600 hover:bg-cyan-700 text-white rounded-xl text-xs font-semibold disabled:opacity-50 flex items-center justify-center gap-1.5 transition-all duration-200 shadow-sm hover:shadow-md active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
+                     >
+                       <Send className="w-3.5 h-3.5" />
+                       <span>{submittingReview ? 'Submitting...' : 'Post Review'}</span>
+                     </button>
+                   </form>
+                 ) : (
+                   <div className="text-center py-6">
+                     <p className="text-slate-450 text-xs mb-3">You must be logged in to leave a review.</p>
+                     <Link to="/login" className="px-4 py-2.5 bg-slate-900 text-white font-bold text-xs rounded-xl block text-center hover:bg-slate-800 transition-colors shadow-sm">
+                       Sign In / Sign Up
+                     </Link>
+                   </div>
+                 )}
+               </div>
 
-              {/* Review listing */}
-              <div className="md:col-span-7">
-                {/* List visible approved reviews */}
-                <div className="space-y-4">
-                  {visibleReviews.length === 0 ? (
-                    <div className="bg-slate-50 border border-slate-100 p-8 rounded-3xl text-center text-slate-400 text-xs font-sans">
-                      No approved reviews yet. Be the first to purchase and review this note!
-                    </div>
-                  ) : (
-                    visibleReviews.map((rev) => (
-                      <div key={rev.id} className="border border-slate-100 rounded-2xl p-5 bg-white space-y-3 shadow-sm relative hover:shadow transition-shadow">
-                        <div className="flex justify-between items-start gap-4">
-                          <div className="flex items-center gap-3">
-                            <img 
-                              src={rev.user_avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=100'} 
-                              alt="" 
-                              className="w-9 h-9 rounded-full border border-slate-200 object-cover" 
-                            />
-                            <div>
-                              <h4 className="font-bold text-xs text-slate-800">{rev.user_name}</h4>
-                              <div className="flex items-center gap-1.5 mt-0.5">
-                                <div className="flex text-amber-450">
-                                  {Array.from({ length: 5 }).map((_, i) => (
-                                    <Star key={i} className={`w-3 h-3 ${i < rev.rating ? 'fill-current' : 'text-slate-200'}`} />
-                                  ))}
-                                </div>
-                                {rev.is_verified_purchase && (
-                                  <span className="px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-800 text-[8px] font-extrabold border border-emerald-100">Verified Buyer</span>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                          <span className="text-[10px] text-slate-400">{new Date(rev.created_at).toLocaleDateString()}</span>
-                        </div>
+               {/* Review listing */}
+               <div className="md:col-span-7">
+                 {/* List visible approved reviews */}
+                 <div className="space-y-4">
+                   {visibleReviews.length === 0 ? (
+                     <div className="bg-slate-50 border border-slate-100 p-8 rounded-3xl text-center text-slate-400 text-xs font-sans">
+                       No approved reviews yet. Be the first to purchase and review this note!
+                     </div>
+                   ) : (
+                     visibleReviews.map((rev) => (
+                       <div key={rev.id} className="border border-slate-100 rounded-2xl p-5 bg-white space-y-3 shadow-sm hover:shadow-lg hover:border-slate-200 transition-all duration-200 relative group">
+                         <div className="flex justify-between items-start gap-4">
+                           <div className="flex items-center gap-3">
+                             <img 
+                               src={rev.user_avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=100'} 
+                               alt="" 
+                               className="w-9 h-9 rounded-full border border-slate-200 object-cover" 
+                             />
+                             <div>
+                               <h4 className="font-bold text-xs text-slate-800">{rev.user_name}</h4>
+                               <div className="flex items-center gap-1.5 mt-0.5">
+                                 <div className="flex text-amber-450">
+                                   {Array.from({ length: 5 }).map((_, i) => (
+                                     <Star key={i} className={`w-3 h-3 ${i < rev.rating ? 'fill-current' : 'text-slate-200'}`} />
+                                   ))}
+                                 </div>
+                                 {rev.is_verified_purchase && (
+                                   <span className="px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-800 text-[8px] font-extrabold border border-emerald-100">Verified Buyer</span>
+                                 )}
+                               </div>
+                             </div>
+                           </div>
+                           <span className="text-[10px] text-slate-400">{new Date(rev.created_at).toLocaleDateString()}</span>
+                         </div>
 
-                        {editingReviewId === rev.id ? (
-                          <div className="space-y-2">
-                            <textarea
-                              value={editingReviewComment}
-                              onChange={(e) => setEditingReviewComment(e.target.value)}
-                              className="w-full border border-slate-200 rounded-xl p-2.5 text-xs outline-none focus:border-cyan-500 bg-slate-50/20"
-                              rows={3}
-                            />
-                            <div className="flex gap-2">
-                              <button onClick={() => handleSaveEditReview(rev.id)} className="px-3 py-1.5 bg-cyan-600 text-white rounded-lg text-[9px] font-bold">Save</button>
-                              <button onClick={() => setEditingReviewId(null)} className="px-3 py-1.5 bg-slate-100 text-slate-650 rounded-lg text-[9px] font-bold">Cancel</button>
-                            </div>
-                          </div>
-                        ) : (
-                          <p className="text-xs text-slate-650 leading-relaxed font-sans">{rev.comment}</p>
-                        )}
+                         {editingReviewId === rev.id ? (
+                           <div className="space-y-2">
+                             <textarea
+                               value={editingReviewComment}
+                               onChange={(e) => setEditingReviewComment(e.target.value)}
+                               className="w-full border border-slate-200 rounded-xl p-2.5 text-xs outline-none focus:border-cyan-500 bg-slate-50/20"
+                               rows={3}
+                             />
+                             <div className="flex gap-2">
+                               <button onClick={() => handleSaveEditReview(rev.id)} className="px-3 py-1.5 bg-cyan-600 text-white rounded-lg text-[9px] font-bold hover:bg-cyan-700 transition-colors">Save</button>
+                               <button onClick={() => setEditingReviewId(null)} className="px-3 py-1.5 bg-slate-100 text-slate-650 rounded-lg text-[9px] font-bold hover:bg-slate-200 transition-colors">Cancel</button>
+                             </div>
+                           </div>
+                         ) : (
+                           <p className="text-xs text-slate-650 leading-relaxed font-sans">{rev.comment}</p>
+                         )}
 
-                        {rev.image_url && (
-                          <div className="mt-2 max-w-[150px] rounded-lg overflow-hidden border border-slate-200">
-                            <img src={rev.image_url} alt="" className="w-full h-auto object-contain max-h-32 cursor-pointer" onClick={() => window.open(rev.image_url, '_blank')} />
-                          </div>
-                        )}
+                         {rev.image_url && (
+                           <div className="mt-2 max-w-[150px] rounded-lg overflow-hidden border border-slate-200 hover:shadow-md transition-shadow cursor-pointer" onClick={() => window.open(rev.image_url, '_blank')}>
+                             <img src={rev.image_url} alt="" className="w-full h-auto object-contain max-h-32" />
+                           </div>
+                         )}
 
-                        {/* Helpfulness and moderation */}
-                        <div className="flex justify-between items-center pt-2 border-t border-slate-50">
-                          <button
-                            onClick={() => handleLikeReview(rev.id)}
-                            className={`flex items-center gap-1 text-[10px] font-bold px-2.5 py-1.5 rounded-full transition-colors ${
-                              rev.user_vote === 'helpful' ? 'bg-cyan-50 text-cyan-700' : 'bg-slate-50 text-slate-450 hover:bg-slate-100'
-                            }`}
-                          >
-                            <ThumbsUp className="w-3.5 h-3.5" />
-                            <span>Helpful ({rev.helpful_count || 0})</span>
-                          </button>
+                         {/* Helpfulness and moderation */}
+                         <div className="flex justify-between items-center pt-2 border-t border-slate-50">
+                           <button
+                             onClick={() => handleLikeReview(rev.id)}
+                             className={`flex items-center gap-1.5 text-[10px] font-bold px-3 py-1.5 rounded-full transition-all duration-200 ${
+                               rev.user_vote === 'helpful' ? 'bg-cyan-50 text-cyan-700 shadow-sm' : 'bg-slate-50 text-slate-450 hover:bg-slate-100'
+                             }`}
+                           >
+                             <ThumbsUp className="w-3.5 h-3.5" />
+                             <span>Helpful ({rev.helpful_count || 0})</span>
+                           </button>
 
-                          {/* Admin moderation tools */}
-                          {isAdmin && (
-                            <div className="flex items-center gap-1.5 bg-slate-50 p-1 rounded-lg border border-slate-200/50">
-                              <button
-                                onClick={() => {
-                                  setEditingReviewId(rev.id);
-                                  setEditingReviewComment(rev.comment);
-                                }}
-                                className="p-1 text-slate-500 hover:text-cyan-600"
-                                title="Edit Review"
-                              >
-                                <Edit2 className="w-3.5 h-3.5" />
-                              </button>
-                              <button
-                                onClick={() => handleModerateReviewVisibility(rev.id, true)}
-                                className="p-1 text-slate-500 hover:text-amber-600"
-                                title="Hide / Reject"
-                              >
-                                <EyeOff className="w-3.5 h-3.5" />
-                              </button>
-                              <button
-                                onClick={() => handleDeleteReview(rev.id)}
-                                className="p-1 text-slate-500 hover:text-red-600"
-                                title="Delete"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    ))
-                  )}
+                           {/* Admin moderation tools */}
+                           {isAdmin && (
+                             <div className="flex items-center gap-1.5 bg-slate-50 p-1 rounded-lg border border-slate-200/50 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                               <button
+                                 onClick={() => {
+                                   setEditingReviewId(rev.id);
+                                   setEditingReviewComment(rev.comment);
+                                 }}
+                                 className="p-1.5 text-slate-500 hover:text-cyan-600 hover:bg-white rounded-md transition-colors"
+                                 title="Edit Review"
+                               >
+                                 <Edit2 className="w-3.5 h-3.5" />
+                               </button>
+                               <button
+                                 onClick={() => handleModerateReviewVisibility(rev.id, true)}
+                                 className="p-1.5 text-slate-500 hover:text-amber-600 hover:bg-white rounded-md transition-colors"
+                                 title="Hide / Reject"
+                               >
+                                 <EyeOff className="w-3.5 h-3.5" />
+                               </button>
+                               <button
+                                 onClick={() => handleDeleteReview(rev.id)}
+                                 className="p-1.5 text-slate-500 hover:text-red-600 hover:bg-white rounded-md transition-colors"
+                                 title="Delete"
+                               >
+                                 <Trash2 className="w-3.5 h-3.5" />
+                               </button>
+                             </div>
+                           )}
+                         </div>
+                       </div>
+                     ))
+                   )}
 
                   {/* Rejected list for Admin only */}
                   {isAdmin && reviews.some(r => r.is_hidden) && (
@@ -1062,7 +986,7 @@ export default function ProductDetailPage() {
                   </p>
                 ) : (
                   comments.map(c => (
-                    <div key={c.id} className="p-5 border border-slate-100 rounded-2xl bg-white shadow-sm space-y-4 hover:shadow transition-shadow">
+                     <div key={c.id} className="p-5 border border-slate-100 rounded-2xl bg-white shadow-sm hover:shadow-lg hover:border-slate-200 transition-all duration-200 space-y-4">
                       <div className="flex justify-between items-start gap-4">
                         <div className="flex items-center gap-3">
                           <img src={c.user_avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=100'} alt="" className="w-8 h-8 rounded-full border border-slate-200 object-cover" />
@@ -1083,25 +1007,25 @@ export default function ProductDetailPage() {
                       <p className="text-xs text-slate-750 leading-relaxed font-sans">{c.comment}</p>
 
                       {/* Question Likes & Replies toolbar */}
-                      <div className="flex items-center gap-4 pt-2 border-t border-slate-50">
-                        <button
-                          onClick={() => handleLikeComment(c.id, false)}
-                          className={`flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-md transition-colors ${
-                            c.liked_by_me ? 'bg-cyan-50 text-cyan-700' : 'text-slate-450 hover:bg-slate-50'
-                          }`}
-                        >
-                          <ThumbsUp className="w-3.5 h-3.5" />
-                          <span>Like ({c.likes_count || 0})</span>
-                        </button>
+                       <div className="flex items-center gap-4 pt-2 border-t border-slate-50">
+                         <button
+                           onClick={() => handleLikeComment(c.id, false)}
+                           className={`flex items-center gap-1.5 text-[10px] font-bold px-2.5 py-1.5 rounded-full transition-all duration-200 ${
+                             c.liked_by_me ? 'bg-cyan-50 text-cyan-700 shadow-sm' : 'text-slate-450 hover:bg-slate-50'
+                           }`}
+                         >
+                           <ThumbsUp className="w-3.5 h-3.5" />
+                           <span>Like ({c.likes_count || 0})</span>
+                         </button>
 
-                        <button
-                          onClick={() => setReplyToCommentId(replyToCommentId === c.id ? null : c.id)}
-                          className="text-[10px] text-cyan-600 font-bold flex items-center gap-1 hover:underline"
-                        >
-                          <CornerDownRight className="w-3.5 h-3.5" />
-                          <span>Reply</span>
-                        </button>
-                      </div>
+                         <button
+                           onClick={() => setReplyToCommentId(replyToCommentId === c.id ? null : c.id)}
+                           className="text-[10px] text-cyan-600 font-bold flex items-center gap-1.5 hover:underline transition-colors"
+                         >
+                           <CornerDownRight className="w-3.5 h-3.5" />
+                           <span>Reply</span>
+                         </button>
+                       </div>
 
                       {/* Replies List */}
                       {c.replies && c.replies.length > 0 && (
@@ -1179,28 +1103,31 @@ export default function ProductDetailPage() {
                 )}
               </div>
 
-              {/* Ask Question Card */}
-              <div className="md:col-span-5 bg-slate-50/50 rounded-3xl p-5 border border-slate-100 space-y-4">
-                <h3 className="font-bold text-sm text-slate-800">Ask a Question</h3>
-                <form onSubmit={handleCommentSubmit} className="space-y-4">
-                  <textarea
-                    placeholder="Ask about syllabus, preview pages, updates, or exam focus..."
-                    rows={4}
-                    value={newComment}
-                    onChange={(e) => setNewComment(e.target.value)}
-                    required
-                    className="w-full border border-slate-200 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 outline-none p-3 rounded-xl text-xs bg-white resize-none"
-                  />
-                  <button
-                    type="submit"
-                    disabled={submittingComment}
-                    className="w-full py-3 bg-cyan-600 hover:bg-cyan-750 text-white rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors shadow-sm"
-                  >
-                    <MessageSquare className="w-4 h-4" />
-                    <span>Post Question</span>
-                  </button>
-                </form>
-              </div>
+               {/* Ask Question Card */}
+               <div className="md:col-span-5 bg-slate-50/50 rounded-3xl p-6 border border-slate-100 space-y-4 shadow-sm hover:shadow-md transition-shadow duration-300">
+                 <h3 className="font-bold text-sm text-slate-800 flex items-center gap-2">
+                   <MessageSquare className="w-4 h-4 text-cyan-600" />
+                   Ask a Question
+                 </h3>
+                 <form onSubmit={handleCommentSubmit} className="space-y-4">
+                   <textarea
+                     placeholder="Ask about syllabus, preview pages, updates, or exam focus..."
+                     rows={4}
+                     value={newComment}
+                     onChange={(e) => setNewComment(e.target.value)}
+                     required
+                     className="w-full border border-slate-200 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/30 outline-none p-3 rounded-xl text-xs bg-white resize-none transition-all duration-200"
+                   />
+                   <button
+                     type="submit"
+                     disabled={submittingComment}
+                     className="w-full py-3.5 bg-cyan-600 hover:bg-cyan-700 text-white rounded-xl text-xs font-semibold disabled:opacity-50 flex items-center justify-center gap-1.5 transition-all duration-200 shadow-sm hover:shadow-md active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
+                   >
+                     <MessageSquare className="w-4 h-4" />
+                     <span>Post Question</span>
+                   </button>
+                 </form>
+               </div>
             </div>
           </div>
 
@@ -1455,26 +1382,28 @@ export default function ProductDetailPage() {
           {relatedNotes.length > 0 && (
             <div className="space-y-4">
               <h4 className="text-xs font-bold text-slate-800 uppercase tracking-widest">Related study guides</h4>
-              <div className="space-y-3">
-                {relatedNotes.map((relNote) => (
-                  <div 
-                    key={relNote.id} 
-                    className="p-3 bg-white border border-slate-100 rounded-2xl flex gap-3 hover:shadow-sm transition-all group"
-                  >
-                    <Link to={`/notes/${relNote.id}`} className="w-14 h-14 rounded-lg overflow-hidden bg-slate-50 shrink-0 border border-slate-100 block">
-                      <img src={relNote.thumbnail_url} alt="" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
-                    </Link>
-                    <div className="min-w-0 flex flex-col justify-between py-0.5">
-                      <div>
-                        <span className="text-[8px] font-bold text-cyan-600 uppercase tracking-wider block">{relNote.subject}</span>
-                        <Link to={`/notes/${relNote.id}`} className="font-bold text-xs text-slate-800 hover:text-cyan-600 transition-colors truncate block mt-0.5">
-                          {relNote.title}
-                        </Link>
+              <div className="-mx-4 px-4 overflow-x-auto scrollbar-thin">
+                <div className="flex gap-4 min-w-max sm:grid sm:grid-cols-3">
+                  {relatedNotes.map((relNote) => (
+                    <div 
+                      key={relNote.id} 
+                      className="w-72 sm:w-auto p-4 bg-white border border-slate-100 rounded-2xl flex gap-3.5 hover:shadow-lg hover:border-slate-200 transition-all duration-200 group shrink-0"
+                    >
+                      <Link to={`/notes/${relNote.id}`} className="w-16 h-16 sm:w-14 sm:h-14 rounded-xl overflow-hidden bg-slate-50 shrink-0 border border-slate-100 block">
+                        <img src={relNote.thumbnail_url} alt="" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" loading="lazy" />
+                      </Link>
+                      <div className="min-w-0 flex flex-col justify-between py-0.5">
+                        <div>
+                          <span className="text-[8px] font-bold text-cyan-600 uppercase tracking-wider block">{relNote.subject}</span>
+                          <Link to={`/notes/${relNote.id}`} className="font-bold text-xs text-slate-800 hover:text-cyan-600 transition-colors line-clamp-2 block mt-0.5">
+                            {relNote.title}
+                          </Link>
+                        </div>
+                        <span className="text-xs font-bold text-slate-900 font-sans mt-1">₹{relNote.price}</span>
                       </div>
-                      <span className="text-xs font-bold text-slate-900 font-sans">₹{relNote.price}</span>
                     </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
             </div>
           )}
@@ -1484,7 +1413,7 @@ export default function ProductDetailPage() {
       </div>
 
       {/* Mobile Sticky Bottom CTA */}
-      <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur border-t border-slate-150 p-4 flex items-center justify-between z-40 shadow-[0_-8px_30px_rgb(0,0,0,0.065)]">
+      <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-xl border-t border-slate-150 p-4 flex items-center justify-between z-40 shadow-[0_-8px_30px_rgb(0,0,0,0.08)]">
         <div>
           <span className="text-[10px] text-slate-450 block font-semibold">Instant Access</span>
           <span className="text-xl font-bold text-slate-900 font-sans">₹{note.price}</span>
@@ -1492,18 +1421,18 @@ export default function ProductDetailPage() {
         <div className="flex gap-2">
           <button 
             onClick={handleWishlistToggle}
-            className="p-3 bg-slate-50 border border-slate-200 rounded-xl hover:bg-slate-100 active:scale-95 transition-all"
+            className="p-3 bg-slate-50 border border-slate-200 rounded-xl hover:bg-slate-100 active:scale-95 transition-all shadow-sm"
           >
             <Heart className={`w-5 h-5 ${inWishlist ? 'fill-red-500 text-red-500' : 'text-slate-400'}`} />
           </button>
           {isDirectDownload ? (
-            <div className="flex gap-2 overflow-x-auto max-w-[70vw]">
+            <div className="flex gap-2 overflow-x-auto max-w-[70vw] scrollbar-thin">
               {pdfFiles.map((file) => (
                 <button
                   key={file.path}
                   onClick={() => handleDirectDownload(file.path, file.name)}
                   disabled={downloading}
-                  className="py-3 px-4 bg-cyan-600 hover:bg-cyan-700 text-white rounded-xl font-bold text-xs shadow-md transition-colors disabled:opacity-55 whitespace-nowrap"
+                  className="py-3 px-4 bg-cyan-600 hover:bg-cyan-700 text-white rounded-xl font-bold text-xs shadow-md transition-colors disabled:opacity-55 whitespace-nowrap active:scale-95"
                 >
                   {downloading ? 'Downloading...' : file.name.replace(/\.pdf$/i, '')}
                 </button>
@@ -1512,7 +1441,7 @@ export default function ProductDetailPage() {
           ) : (
             <button
               onClick={() => { addItem(note); navigate('/cart'); }}
-              className="py-3 px-6 bg-cyan-600 hover:bg-cyan-750 text-white rounded-xl font-bold text-sm shadow-md transition-colors"
+              className="py-3 px-6 bg-cyan-600 hover:bg-cyan-700 text-white rounded-xl font-bold text-sm shadow-md transition-colors active:scale-95"
             >
               Buy Now
             </button>

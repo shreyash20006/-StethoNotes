@@ -1,8 +1,11 @@
 import { useState } from 'react';
 import { motion } from 'motion/react';
 import { User, Mail, FileText, MessageSquare, Send, CheckCircle2 } from 'lucide-react';
+import { supabase } from '../../lib/supabase';
+import { useToastStore } from '../../store/useToastStore';
 
 export default function ContactForm() {
+  const { addToast } = useToastStore();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [subject, setSubject] = useState('');
@@ -35,39 +38,47 @@ export default function ContactForm() {
 
     setLoading(true);
 
-    // Simulate sending time or prepare API call
     try {
-      /*
-      // FUTURE BREVO API CONFIGURATION:
-      // You can replace this block with an Edge Function fetch or Brevo API call directly:
-      const apiPath = '/api/contact';
-      if (!apiPath) throw new Error("API path is undefined");
-      console.log("Request URL:", apiPath);
-      const response = await fetch(apiPath, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, email, subject, message })
-      });
-      if (!response.ok) throw new Error('API dispatch failed');
-      */
+      // Try edge function first (handles DB + admin email notification),
+      // then fall back to a direct table insert for mock / local development.
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      let delivered = false;
 
-      // Fallback action for now: trigger mailto link to support email
-      const emailBody = `Name: ${name}%0D%0AEmail: ${email}%0D%0A%0D%0AMessage:%0D%0A${message}`;
-      const mailtoUrl = `mailto:support@stethonotes.store?subject=${encodeURIComponent(subject)}&body=${emailBody}`;
-      
-      // Open default mail client
-      window.location.href = mailtoUrl;
+      if (supabaseUrl) {
+        try {
+          const res = await fetch(`${supabaseUrl}/functions/v1/contact-message`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name, email, subject, message }),
+          });
+          const result = await res.json();
+          if (!result.success) throw new Error(result.message);
+          delivered = true;
+        } catch (edgeErr: any) {
+          console.warn('Edge function unavailable, falling back to direct insert:', edgeErr);
+        }
+      }
 
-      // Set success state
+      if (!delivered) {
+        const { error } = await supabase.from('contact_messages').insert({
+          name: name.trim(),
+          email: email.trim(),
+          subject: subject.trim(),
+          message: message.trim(),
+          status: 'unread',
+        });
+        if (error) throw error;
+      }
+
       setSuccess(true);
-      
-      // Clear form
+      addToast('success', 'Message Sent', 'We received your message and will respond shortly.');
       setName('');
       setEmail('');
       setSubject('');
       setMessage('');
     } catch (err: any) {
       console.error(err);
+      addToast('error', 'Send Failed', err.message || 'Could not send your message. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -88,7 +99,7 @@ export default function ContactForm() {
           </div>
           <h3 className="font-display font-extrabold text-xl text-primary">Message Sent Successfully!</h3>
           <p className="text-gray-500 text-sm max-w-sm mx-auto leading-relaxed">
-            Thank you for reaching out. We have opened your mail app to finalize delivery. Our support team will get back to you shortly.
+            Thank you for reaching out. Our support team has received your message and will get back to you within 24–48 hours.
           </p>
           <button
             onClick={() => setSuccess(false)}
@@ -183,7 +194,7 @@ export default function ContactForm() {
             className="btn-primary py-3.5 mt-2 font-display font-bold text-xs w-full shadow-md flex items-center justify-center gap-2 disabled:opacity-50"
           >
             <Send className="w-4 h-4" />
-            <span>{loading ? 'Opening mail app...' : 'Send Message'}</span>
+            <span>{loading ? 'Sending...' : 'Send Message'}</span>
           </button>
         </form>
       )}

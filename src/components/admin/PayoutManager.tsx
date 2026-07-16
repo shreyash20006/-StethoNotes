@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../../lib/supabase';
 import type { SellerPayout } from '../../types';
 import { useToastStore } from '../../store/useToastStore';
@@ -172,10 +172,10 @@ export default function PayoutManager() {
     document.body.removeChild(link);
   };
 
-  const filteredEarnings = sellerEarnings.filter(s =>
+  const filteredEarnings = useMemo(() => sellerEarnings.filter(s =>
     s.seller_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     s.store_name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  ), [sellerEarnings, searchQuery]);
 
   if (loading) {
     return (

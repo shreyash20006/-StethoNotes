@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../../lib/supabase';
 import type { SellerApplication, UserProfile } from '../../types';
 import { useToastStore } from '../../store/useToastStore';
@@ -299,6 +299,31 @@ export default function SellerManager() {
     }
   };
 
+  // Statistics summaries
+  const pendingCount = requests.length;
+  const activeCount = activeSellers.length;
+  const rejectedCount = suspendedSellers.filter(s => s.status === 'rejected').length;
+  const suspendedCount = suspendedSellers.filter(s => s.status === 'suspended').length;
+
+  const filteredRequests = useMemo(() => requests.filter(r =>
+    r.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    r.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    r.college.toLowerCase().includes(searchQuery.toLowerCase())
+  ), [requests, searchQuery]);
+
+  const filteredActive = useMemo(() => activeSellers.filter(s =>
+    s.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    s.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (s.store_name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (s.college || '').toLowerCase().includes(searchQuery.toLowerCase())
+  ), [activeSellers, searchQuery]);
+
+  const filteredSuspended = useMemo(() => suspendedSellers.filter(s =>
+    s.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    s.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (s.college || '').toLowerCase().includes(searchQuery.toLowerCase())
+  ), [suspendedSellers, searchQuery]);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[50vh]">
@@ -306,32 +331,6 @@ export default function SellerManager() {
       </div>
     );
   }
-
-  // Filter queries
-  const filteredRequests = requests.filter(r =>
-    r.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    r.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    r.college.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
-  const filteredActive = activeSellers.filter(s =>
-    s.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    s.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (s.store_name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (s.college || '').toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
-  const filteredSuspended = suspendedSellers.filter(s =>
-    s.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    s.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (s.college || '').toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
-  // Statistics summaries
-  const pendingCount = requests.length;
-  const activeCount = activeSellers.length;
-  const rejectedCount = suspendedSellers.filter(s => s.status === 'rejected').length;
-  const suspendedCount = suspendedSellers.filter(s => s.status === 'suspended').length;
 
   return (
     <div className="space-y-6 font-display">

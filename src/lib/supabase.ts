@@ -396,6 +396,43 @@ class MockAuth {
 }
 
 // ==========================================
+// QUERY CACHE (TTL-BASED IN-MEMORY)
+// ==========================================
+
+interface CacheEntry {
+  data: any;
+  timestamp: number;
+}
+
+const queryCache = new Map<string, CacheEntry>();
+const CACHE_TTL = 5 * 60 * 1000;
+
+function getCached(key: string) {
+  const entry = queryCache.get(key);
+  if (entry && Date.now() - entry.timestamp < CACHE_TTL) {
+    return entry.data;
+  }
+  queryCache.delete(key);
+  return null;
+}
+
+function setCache(key: string, data: any) {
+  queryCache.set(key, { data, timestamp: Date.now() });
+}
+
+function invalidateCache(keyPrefix?: string) {
+  if (keyPrefix) {
+    for (const key of queryCache.keys()) {
+      if (key.startsWith(keyPrefix)) queryCache.delete(key);
+    }
+  } else {
+    queryCache.clear();
+  }
+}
+
+export { getCached, setCache, invalidateCache };
+
+// ==========================================
 // MOCK QUERY BUILDER
 // ==========================================
 
@@ -441,6 +478,17 @@ class MockQueryBuilder {
   }
 
   async then(resolve: Function) {
+    const cacheable = (this.tableName === 'courses' || this.tableName === 'settings') &&
+                      !this.filterField && !this.singleResult && this.limitCount === 0 && !this._orderField;
+
+    if (cacheable) {
+      const cached = getCached(`fetch:${this.tableName}`);
+      if (cached) {
+        resolve({ data: cached, error: null });
+        return;
+      }
+    }
+
     let filtered = [...this.data];
 
     if (this.tableName === 'notes') {
@@ -477,6 +525,10 @@ class MockQueryBuilder {
     }
 
     resolve({ data: filtered, error: null });
+
+    if (cacheable) {
+      setCache(`fetch:${this.tableName}`, filtered);
+    }
   }
 
   async insert(payload: any) {
@@ -495,6 +547,7 @@ class MockQueryBuilder {
     });
 
     localStorage.setItem(`stetho_${this.tableName}`, JSON.stringify(saved));
+    invalidateCache(`fetch:${this.tableName}`);
     return { data: Array.isArray(payload) ? added : added[0], error: null };
   }
 
@@ -516,6 +569,7 @@ class MockQueryBuilder {
     });
 
     localStorage.setItem(`stetho_${this.tableName}`, JSON.stringify(saved));
+    invalidateCache(`fetch:${this.tableName}`);
     return { data: Array.isArray(payload) ? records : records[0], error: null };
   }
 
@@ -532,6 +586,7 @@ class MockQueryBuilder {
     });
 
     localStorage.setItem(`stetho_${this.tableName}`, JSON.stringify(saved));
+    invalidateCache(`fetch:${this.tableName}`);
     return { data: updatedItem, error: updatedItem ? null : { message: 'No item matched' } };
   }
 
@@ -544,6 +599,7 @@ class MockQueryBuilder {
     }
 
     localStorage.setItem(`stetho_${this.tableName}`, JSON.stringify(saved));
+    invalidateCache(`fetch:${this.tableName}`);
     return { data: null, error: saved.length < countBefore ? null : { message: 'No item deleted' } };
   }
 }
@@ -570,6 +626,14 @@ class MockStorage {
         }
         const simulatedUrl = `https://stethonotes-storage.mock/${bucketName}/${path}`;
         return { data: { path, fullPath: simulatedUrl }, error: null };
+      },
+      getPublicUrl(path: string) {
+        const publicUrl = `https://stethonotes-storage.mock/${bucketName}/${path}`;
+        return { data: { publicUrl } };
+      },
+      async download(path: string) {
+        const blob = new Blob([`mock content for ${path}`], { type: 'application/pdf' });
+        return { data: blob, error: null };
       },
       async createSignedUrl(path: string, expirySeconds: number) {
         const expires = Math.floor(Date.now() / 1000) + expirySeconds;

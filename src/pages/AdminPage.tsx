@@ -1,33 +1,44 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense, lazy, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuthStore } from '../store/useAuthStore';
 import { useToastStore } from '../store/useToastStore';
 import { supabase } from '../lib/supabase';
 import type { Note, Course, Order } from '../types';
 
-// Import Admin Subcomponents
-import RevenueAnalytics from '../components/admin/RevenueAnalytics';
-import SellerManager from '../components/admin/SellerManager';
-import PayoutManager from '../components/admin/PayoutManager';
-import NotesManager from '../components/admin/NotesManager';
-import ReviewsCoupons from '../components/admin/ReviewsCoupons';
-import EmailCenter from '../components/admin/EmailCenter';
-import StorageSEO from '../components/admin/StorageSEO';
-import SettingsLogs from '../components/admin/SettingsLogs';
-import LeakInvestigator from '../components/admin/LeakInvestigator';
-import RefundsManager from '../components/admin/RefundsManager';
-import PaymentLogsViewer from '../components/admin/PaymentLogsViewer';
-import SellerKYCReview from '../components/admin/SellerKYCReview';
-import WithdrawalsManager from '../components/admin/WithdrawalsManager';
-import SupportTickets from '../components/support/SupportTickets';
+const RevenueAnalytics = lazy(() => import('../components/admin/RevenueAnalytics'));
+const SellerManager = lazy(() => import('../components/admin/SellerManager'));
+const PayoutManager = lazy(() => import('../components/admin/PayoutManager'));
+const NotesManager = lazy(() => import('../components/admin/NotesManager'));
+const ReviewsCoupons = lazy(() => import('../components/admin/ReviewsCoupons'));
+const EmailCenter = lazy(() => import('../components/admin/EmailCenter'));
+const StorageSEO = lazy(() => import('../components/admin/StorageSEO'));
+const SettingsLogs = lazy(() => import('../components/admin/SettingsLogs'));
+const LeakInvestigator = lazy(() => import('../components/admin/LeakInvestigator'));
+const RefundsManager = lazy(() => import('../components/admin/RefundsManager'));
+const PaymentLogsViewer = lazy(() => import('../components/admin/PaymentLogsViewer'));
+const SellerKYCReview = lazy(() => import('../components/admin/SellerKYCReview'));
+const WithdrawalsManager = lazy(() => import('../components/admin/WithdrawalsManager'));
+const ContactMessages = lazy(() => import('../components/admin/ContactMessages'));
+const SiteContentManager = lazy(() => import('../components/admin/SiteContentManager'));
+const SupportTickets = lazy(() => import('../components/support/SupportTickets'));
 
 // Lucide Icons
 import {
   ShieldCheck, TrendingUp, Package, Users,
   Landmark, Tag, Mail, HardDrive, Settings, FolderOpen,
   ShoppingBag, Search, Plus, Trash2, ArrowRight,
-  LogOut, Menu, X, ShieldAlert, Undo2, FileText, Wallet, LifeBuoy
+  LogOut, Menu, X, ShieldAlert, Undo2, FileText, Wallet, LifeBuoy, MessageSquare, Palette
 } from 'lucide-react';
+
+const TabSuspense = ({ children }: { children: React.ReactNode }) => (
+  <Suspense fallback={
+    <div className="flex items-center justify-center min-h-[40vh]">
+      <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-cyan-400" />
+    </div>
+  }>
+    {children}
+  </Suspense>
+);
 
 export default function AdminPage() {
   const navigate = useNavigate();
@@ -122,7 +133,7 @@ export default function AdminPage() {
   };
 
   // Customer List calculation
-  const customersList = (() => {
+  const customersList = useMemo(() => {
     const customerMap: Record<string, { email: string; name: string; spend: number; ordersCount: number }> = {};
     orders.forEach(o => {
       if (o.payment_status === 'completed') {
@@ -140,7 +151,18 @@ export default function AdminPage() {
       }
     });
     return Object.values(customerMap);
-  })();
+  }, [orders]);
+
+  const filteredCourses = useMemo(() => courses.filter(c => c.name.toLowerCase().includes(courseSearch.toLowerCase())), [courses, courseSearch]);
+  const filteredOrders = useMemo(() => orders.filter(o =>
+    o.id.toLowerCase().includes(orderSearch.toLowerCase()) ||
+    o.customer_name.toLowerCase().includes(orderSearch.toLowerCase()) ||
+    o.customer_email.toLowerCase().includes(orderSearch.toLowerCase())
+  ), [orders, orderSearch]);
+  const filteredCustomers = useMemo(() => customersList.filter(c =>
+    c.name.toLowerCase().includes(customerSearch.toLowerCase()) ||
+    c.email.toLowerCase().includes(customerSearch.toLowerCase())
+  ), [customersList, customerSearch]);
 
   if (loading) {
     return (
@@ -190,6 +212,8 @@ export default function AdminPage() {
               { id: 'refunds', label: 'Refund Requests', icon: <Undo2 className="w-4 h-4" /> },
               { id: 'payment_logs', label: 'Payment & Webhook Logs', icon: <FileText className="w-4 h-4" /> },
               { id: 'support', label: 'Support Tickets', icon: <LifeBuoy className="w-4 h-4" /> },
+              { id: 'contact_messages', label: 'Contact Messages', icon: <MessageSquare className="w-4 h-4" /> },
+              { id: 'site_content', label: 'Site Content', icon: <Palette className="w-4 h-4" /> },
               { id: 'reviews_coupons', label: 'Reviews & Coupons', icon: <Tag className="w-4 h-4" /> },
               { id: 'email_center', label: 'Email Center', icon: <Mail className="w-4 h-4" /> },
               { id: 'storage_seo', label: 'Storage & SEO', icon: <HardDrive className="w-4 h-4" /> },
@@ -236,20 +260,22 @@ export default function AdminPage() {
 
       {/* MAIN CONTENT AREA */}
       <main className="flex-grow p-6 lg:p-10 max-w-7xl mx-auto w-full min-h-screen">
-        {activeTab === 'analytics' && <RevenueAnalytics />}
-        {activeTab === 'notes' && <NotesManager />}
-        {activeTab === 'sellers' && <SellerManager />}
-        {activeTab === 'payouts' && <PayoutManager />}
-        {activeTab === 'withdrawals' && <WithdrawalsManager />}
-        {activeTab === 'seller_kyc' && <SellerKYCReview />}
-        {activeTab === 'refunds' && <RefundsManager />}
-        {activeTab === 'payment_logs' && <PaymentLogsViewer />}
-        {activeTab === 'support' && <SupportTickets mode="admin" />}
-        {activeTab === 'reviews_coupons' && <ReviewsCoupons />}
-        {activeTab === 'email_center' && <EmailCenter />}
-        {activeTab === 'storage_seo' && <StorageSEO />}
-        {activeTab === 'settings_logs' && <SettingsLogs />}
-        {activeTab === 'leak_investigator' && <LeakInvestigator />}
+        {activeTab === 'analytics' && <TabSuspense><RevenueAnalytics /></TabSuspense>}
+        {activeTab === 'notes' && <TabSuspense><NotesManager /></TabSuspense>}
+        {activeTab === 'sellers' && <TabSuspense><SellerManager /></TabSuspense>}
+        {activeTab === 'payouts' && <TabSuspense><PayoutManager /></TabSuspense>}
+        {activeTab === 'withdrawals' && <TabSuspense><WithdrawalsManager /></TabSuspense>}
+        {activeTab === 'seller_kyc' && <TabSuspense><SellerKYCReview /></TabSuspense>}
+        {activeTab === 'refunds' && <TabSuspense><RefundsManager /></TabSuspense>}
+        {activeTab === 'payment_logs' && <TabSuspense><PaymentLogsViewer /></TabSuspense>}
+        {activeTab === 'support' && <TabSuspense><SupportTickets mode="admin" /></TabSuspense>}
+        {activeTab === 'contact_messages' && <TabSuspense><ContactMessages /></TabSuspense>}
+        {activeTab === 'site_content' && <TabSuspense><SiteContentManager /></TabSuspense>}
+        {activeTab === 'reviews_coupons' && <TabSuspense><ReviewsCoupons /></TabSuspense>}
+        {activeTab === 'email_center' && <TabSuspense><EmailCenter /></TabSuspense>}
+        {activeTab === 'storage_seo' && <TabSuspense><StorageSEO /></TabSuspense>}
+        {activeTab === 'settings_logs' && <TabSuspense><SettingsLogs /></TabSuspense>}
+        {activeTab === 'leak_investigator' && <TabSuspense><LeakInvestigator /></TabSuspense>}
 
         {/* ==========================================
             COURSES MANAGER VIEW
@@ -288,14 +314,12 @@ export default function AdminPage() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-50 text-xs text-slate-800">
-                      {courses.filter(c => c.name.toLowerCase().includes(courseSearch.toLowerCase())).length === 0 ? (
+                      {filteredCourses.length === 0 ? (
                         <tr>
                           <td colSpan={3} className="text-center py-12 text-slate-450">No courses matching search query.</td>
                         </tr>
                       ) : (
-                        courses
-                          .filter(c => c.name.toLowerCase().includes(courseSearch.toLowerCase()))
-                          .map(course => {
+                        filteredCourses.map(course => {
                             const noteCount = notes.filter(n => n.course_id === course.id).length;
                             return (
                               <tr key={course.id} className="hover:bg-slate-50/60">
@@ -386,22 +410,12 @@ export default function AdminPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-50 text-xs">
-                    {orders.filter(o =>
-                      o.id.toLowerCase().includes(orderSearch.toLowerCase()) ||
-                      o.customer_name.toLowerCase().includes(orderSearch.toLowerCase()) ||
-                      o.customer_email.toLowerCase().includes(orderSearch.toLowerCase())
-                    ).length === 0 ? (
+                    {filteredOrders.length === 0 ? (
                       <tr>
                         <td colSpan={6} className="text-center py-12 text-slate-450">No orders logged matching search query.</td>
                       </tr>
                     ) : (
-                      orders
-                        .filter(o =>
-                          o.id.toLowerCase().includes(orderSearch.toLowerCase()) ||
-                          o.customer_name.toLowerCase().includes(orderSearch.toLowerCase()) ||
-                          o.customer_email.toLowerCase().includes(orderSearch.toLowerCase())
-                        )
-                        .map(order => (
+                      filteredOrders.map(order => (
                           <tr key={order.id} className="hover:bg-slate-50/60">
                             <td className="px-6 py-4 font-mono font-bold text-slate-750">{order.id}</td>
                             <td className="px-6 py-4">
@@ -468,20 +482,12 @@ export default function AdminPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-50 text-xs">
-                    {customersList.filter(c =>
-                      c.name.toLowerCase().includes(customerSearch.toLowerCase()) ||
-                      c.email.toLowerCase().includes(customerSearch.toLowerCase())
-                    ).length === 0 ? (
+                    {filteredCustomers.length === 0 ? (
                       <tr>
                         <td colSpan={4} className="text-center py-12 text-slate-450">No customers mapped.</td>
                       </tr>
                     ) : (
-                      customersList
-                        .filter(c =>
-                          c.name.toLowerCase().includes(customerSearch.toLowerCase()) ||
-                          c.email.toLowerCase().includes(customerSearch.toLowerCase())
-                        )
-                        .map((cust, idx) => (
+                      filteredCustomers.map((cust, idx) => (
                           <tr key={idx} className="hover:bg-slate-50/60">
                             <td className="px-6 py-4 font-semibold text-slate-850">{cust.name}</td>
                             <td className="px-6 py-4 text-slate-500 font-sans">{cust.email}</td>

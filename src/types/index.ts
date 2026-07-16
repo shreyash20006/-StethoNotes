@@ -364,7 +364,29 @@ export interface AnalyticsMonthly {
   signups: number;
 }
 
-export interface StorageReport {
+export interface ContactMessage {
+  id: string;
+  name: string;
+  email: string;
+  subject: string;
+  message: string;
+  status: 'unread' | 'read' | 'archived' | 'replied';
+  created_at: string;
+  updated_at: string;
+  replies?: ContactMessageReply[];
+}
+
+export interface ContactMessageReply {
+  id: string;
+  message_id: string;
+  admin_id?: string;
+  reply_body: string;
+  email_status: 'pending' | 'delivered' | 'failed';
+  sent_at?: string;
+  created_at: string;
+}
+
+export interface StorageStats {
   id: string;
   pdf_count: number;
   image_count: number;

@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'motion/react';
 import type { CartItem as CartItemType } from '../../types';
@@ -9,7 +10,7 @@ interface CartItemProps {
   onRemove: (noteId: string) => void;
 }
 
-export default function CartItem({ item, onRemove }: CartItemProps) {
+function CartItemInner({ item, onRemove }: CartItemProps) {
   const { note } = item;
   const [isWishlisted, setIsWishlisted] = useState(false);
 
@@ -129,3 +130,5 @@ export default function CartItem({ item, onRemove }: CartItemProps) {
     </motion.div>
   );
 }
+
+export default memo(CartItemInner);
