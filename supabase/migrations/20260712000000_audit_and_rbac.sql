@@ -565,7 +565,8 @@ CREATE POLICY "previews: staff delete"
 INSERT INTO public.admin_allowlist (email, role)
 VALUES
     ('shreyashumedkumarborkar@gmail.com', 'super_admin'),
-    ('sb108750@gmail.com', 'admin')
+    ('sb108750@gmail.com', 'admin'),
+    ('contact@tgpcopcouncil.online', 'admin')
 ON CONFLICT (email) DO NOTHING;
 
 -- 8.2 Seed coupon codes
