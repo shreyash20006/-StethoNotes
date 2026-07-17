@@ -1,13 +1,12 @@
 import { Link, useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { motion } from 'motion/react';
 import { memo } from 'react';
 import { Award, ShieldCheck, Star, ArrowRight, Activity, Users, Smile, ChevronLeft, ChevronRight, Mail, Trophy } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import SEOHead from '../components/SEOHead';
 import { pageMeta, generateOrganizationLD, generateFAQLD } from '../lib/seo';
-import HeroAnimation from '../components/landing/HeroAnimation';
-import AnimatedCounter from '../components/ui/AnimatedCounter';
+import HeroSection from '../components/hero/HeroSection';
 import { COURSE_CATEGORIES, CourseIcon } from '../components/icons/CourseIcons';
 
 const CategoryCard = memo(({ cat, idx, navigate }: { cat: any; idx: number; navigate: (url: string) => void }) => (
@@ -169,7 +168,6 @@ export default function LandingPage() {
   const navigate = useNavigate();
   const [currentTestimonial, setCurrentTestimonial] = useState(0);
   const [featuredSellers, setFeaturedSellers] = useState<any[]>([]);
-  const [landingStats, setLandingStats] = useState({ notes: 500, students: 12000, sellers: 150, courses: 7 });
 
   const nextTestimonial = () => {
     setCurrentTestimonial((prev) => (prev + 1) % TESTIMONIALS.length);
@@ -179,7 +177,7 @@ export default function LandingPage() {
     setCurrentTestimonial((prev) => (prev - 1 + TESTIMONIALS.length) % TESTIMONIALS.length);
   };
 
-  // Fetch featured sellers and landing stats
+  // Fetch featured sellers
   useEffect(() => {
     const fetchSellers = async () => {
       try {
@@ -192,14 +190,7 @@ export default function LandingPage() {
         console.error('Error fetching featured sellers:', err);
       }
     };
-    const fetchStats = async () => {
-      try {
-        const { data } = await supabase.from('settings').select('value').eq('key', 'landing_stats').single();
-        if (data?.value) setLandingStats(data.value);
-      } catch { /* use defaults */ }
-    };
     fetchSellers();
-    fetchStats();
   }, []);
 
   // Auto scroll testimonials
@@ -215,120 +206,8 @@ export default function LandingPage() {
   return (
     <div className="overflow-hidden">
       <SEOHead {...meta} jsonLd={[orgSchema, faqSchema]} />
-      {/* 1. Hero Section */}
-      <section className="relative bg-dark-navy text-white pt-24 pb-32 px-4 sm:px-6 lg:px-8 overflow-hidden">
-        {/* Premium background layers */}
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(31,182,212,0.18),transparent_45%)]" />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom_left,rgba(15,45,107,0.5),transparent_50%)]" />
-        <div className="absolute inset-0 noise-texture opacity-[0.04]" />
-        <div className="absolute inset-0 animated-grid opacity-[0.05]" />
-        {/* Floating blobs */}
-        <div className="absolute top-20 right-10 w-72 h-72 bg-cyan-500/15 rounded-full blur-3xl animate-blob" />
-        <div className="absolute bottom-10 left-10 w-96 h-96 bg-blue-600/10 rounded-full blur-3xl animate-blob" style={{ animationDelay: '2s' }} />
-        <div className="absolute top-1/2 left-1/3 w-64 h-64 bg-emerald-500/8 rounded-full blur-3xl animate-blob" style={{ animationDelay: '4s' }} />
-
-        <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-12 items-center relative z-10">
-          {/* Hero text */}
-          <div className="lg:col-span-7 flex flex-col items-start gap-6">
-            <motion.div
-              initial={{ opacity: 0, y: -20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6 }}
-              className="inline-flex items-center gap-2 px-3 py-1 bg-accent/20 border border-accent/30 rounded-full"
-            >
-              <Activity className="w-4 h-4 text-accent animate-pulse" />
-              <span className="text-accent font-display text-xs font-semibold uppercase tracking-wider">
-                India's First Med-Notes Marketplace
-              </span>
-            </motion.div>
-
-            <motion.h1
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.7, delay: 0.1 }}
-              className="text-4xl sm:text-6xl font-display font-extrabold leading-tight tracking-tight text-white"
-            >
-              Your <span className="text-transparent bg-clip-text bg-gradient-to-r from-accent via-cyan-300 to-white">Stethoscope</span> <br />
-              to Academic Success
-            </motion.h1>
-
-            <motion.p
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.7, delay: 0.2 }}
-              className="text-gray-300 text-lg sm:text-xl font-sans max-w-2xl leading-relaxed"
-            >
-              Exclusively compiled digital study notes, handwritten summaries, and exam-cracking guides created by top medical and paramedical toppers.
-            </motion.p>
-
-            <motion.div
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.7, delay: 0.3 }}
-              className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto mt-4"
-            >
-              <Link to="/courses" className="btn-primary py-4 px-8 text-base shadow-lg shadow-cyan-500/20 hover:shadow-cyan-500/40 transition-shadow">
-                Browse Study Notes
-                <ArrowRight className="w-5 h-5" />
-              </Link>
-              <a href="#about" className="btn-outline-white py-4 px-8 text-base backdrop-blur-sm">
-                Learn More
-              </a>
-            </motion.div>
-
-            {/* Quick Metrics */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.8, delay: 0.4 }}
-              className="grid grid-cols-3 gap-6 pt-8 mt-4 border-t border-white/10 w-full max-w-md"
-            >
-              <div>
-                <h4 className="font-display font-bold text-2xl text-accent">
-                  <AnimatedCounter end={landingStats.notes} suffix="+" />
-                </h4>
-                <p className="text-gray-400 text-xs mt-1">Syllabus PDFs</p>
-              </div>
-              <div>
-                <h4 className="font-display font-bold text-2xl text-accent">
-                  <AnimatedCounter end={Math.floor(landingStats.students / 1000)} suffix="k+" />
-                </h4>
-                <p className="text-gray-400 text-xs mt-1">Active Students</p>
-              </div>
-              <div>
-                <h4 className="font-display font-bold text-2xl text-accent">4.9&#9733;</h4>
-                <p className="text-gray-400 text-xs mt-1">Average Rating</p>
-              </div>
-            </motion.div>
-          </div>
-
-          {/* 3D Hero Animation */}
-          <div className="lg:col-span-5 flex justify-center relative">
-            <HeroAnimation />
-          </div>
-        </div>
-
-        {/* Scroll indicator */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 1.2, duration: 0.8 }}
-          className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2"
-        >
-          <span className="text-[10px] text-gray-500 uppercase tracking-widest font-medium">Scroll</span>
-          <motion.div
-            animate={{ y: [0, 8, 0] }}
-            transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
-            className="w-5 h-8 rounded-full border-2 border-gray-500 flex justify-center pt-1"
-          >
-            <motion.div
-              animate={{ y: [0, 8, 0], opacity: [1, 0.3, 1] }}
-              transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
-              className="w-1 h-2 bg-gray-400 rounded-full"
-            />
-          </motion.div>
-        </motion.div>
-      </section>
+      {/* 1. Premium Interactive Hero Section */}
+      <HeroSection />
 
       {/* 2. Course Category Section */}
       <section className="bg-gray-50 py-24 px-4 sm:px-6 lg:px-8">
