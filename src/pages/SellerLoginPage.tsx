@@ -15,10 +15,10 @@ const GoogleIcon = () => (
 );
 
 const BENEFITS = [
-  { icon: <TrendingUp className="w-5 h-5 text-emerald-500" />, text: 'Earn from every sale of your notes' },
-  { icon: <BookOpen className="w-5 h-5 text-emerald-500" />, text: 'Upload PDFs, set your own price' },
-  { icon: <GraduationCap className="w-5 h-5 text-emerald-500" />, text: 'Help thousands of medical students' },
-  { icon: <CheckCircle2 className="w-5 h-5 text-emerald-500" />, text: 'Quality review & fast approval' },
+  { icon: <TrendingUp className="w-5 h-5 text-emerald-450" />, text: 'Earn from every sale of your notes' },
+  { icon: <BookOpen className="w-5 h-5 text-emerald-450" />, text: 'Upload PDFs, set your own price' },
+  { icon: <GraduationCap className="w-5 h-5 text-emerald-450" />, text: 'Help thousands of medical students' },
+  { icon: <CheckCircle2 className="w-5 h-5 text-emerald-450" />, text: 'Quality review & fast approval' },
 ];
 
 export default function SellerLoginPage() {
@@ -56,24 +56,12 @@ export default function SellerLoginPage() {
   const isDisabled = submitting || loading;
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 py-12 relative overflow-hidden">
-      {/* Background */}
-      <div className="fixed inset-0 -z-10 bg-gradient-to-br from-emerald-50 via-white to-teal-50" />
-      <div className="fixed top-0 right-0 w-[500px] h-[500px] rounded-full bg-emerald-200/30 blur-[100px] -z-10" />
-      <div className="fixed bottom-0 left-0 w-[400px] h-[400px] rounded-full bg-teal-200/30 blur-[100px] -z-10" />
-      {/* Animated floating orbs */}
-      <motion.div
-        animate={{ y: [0, -20, 0] }}
-        transition={{ duration: 5, repeat: Infinity, ease: 'easeInOut' }}
-        className="fixed top-32 left-20 w-12 h-12 rounded-full bg-emerald-300/40 blur-sm -z-10"
-      />
-      <motion.div
-        animate={{ y: [0, 15, 0] }}
-        transition={{ duration: 7, repeat: Infinity, ease: 'easeInOut', delay: 1 }}
-        className="fixed bottom-40 right-20 w-8 h-8 rounded-full bg-teal-400/30 blur-sm -z-10"
-      />
+    <div className="bg-void min-h-screen flex items-center justify-center px-4 py-28 relative overflow-hidden text-white">
+      {/* Decorative gradients */}
+      <div className="absolute top-20 right-10 w-72 h-72 rounded-full bg-primary/5 blur-3xl pointer-events-none" />
+      <div className="absolute bottom-20 left-10 w-56 h-56 rounded-full bg-primary/5 blur-3xl pointer-events-none" />
 
-      <div className="w-full max-w-5xl grid lg:grid-cols-2 gap-10 items-center">
+      <div className="w-full max-w-5xl grid lg:grid-cols-2 gap-10 items-center relative z-10">
         {/* LEFT: Benefits panel */}
         <motion.div
           initial={{ opacity: 0, x: -30 }}
@@ -82,15 +70,15 @@ export default function SellerLoginPage() {
           className="hidden lg:flex flex-col gap-8"
         >
           <div>
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-100 text-emerald-700 text-xs font-semibold mb-4">
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-semibold mb-4">
               <Store className="w-3.5 h-3.5" />
               Seller Portal
             </div>
-            <h2 className="text-4xl font-bold text-slate-800 leading-tight mb-3">
+            <h2 className="text-4xl font-bold text-white leading-tight mb-3">
               Share Your Knowledge,<br />
-              <span className="text-emerald-600">Earn Passively</span>
+              <span className="text-emerald-400">Earn Passively</span>
             </h2>
-            <p className="text-slate-500 text-base leading-relaxed">
+            <p className="text-muted text-base leading-relaxed">
               Join India's leading medical notes marketplace. Upload your study notes and help thousands of students while earning money.
             </p>
           </div>
@@ -102,21 +90,21 @@ export default function SellerLoginPage() {
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: 0.2 + i * 0.1 }}
-                className="flex items-center gap-3 p-4 bg-white/70 backdrop-blur-sm rounded-2xl border border-emerald-100 shadow-sm"
+                className="flex items-center gap-3 p-4 bg-card/60 backdrop-blur-sm rounded-2xl border border-white/5 shadow-md text-white"
               >
-                <div className="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center shrink-0">
+                <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center shrink-0">
                   {b.icon}
                 </div>
-                <span className="text-slate-700 font-medium text-sm">{b.text}</span>
+                <span className="text-white font-medium text-sm">{b.text}</span>
               </motion.div>
             ))}
           </div>
 
-          <div className="flex items-center gap-4 p-4 bg-emerald-50 rounded-2xl border border-emerald-100">
-            <Clock className="w-8 h-8 text-emerald-500 shrink-0" />
+          <div className="flex items-center gap-4 p-4 bg-emerald-500/10 rounded-2xl border border-emerald-500/20">
+            <Clock className="w-8 h-8 text-emerald-450 shrink-0" />
             <div>
-              <p className="text-sm font-semibold text-emerald-800">24–48 hour review</p>
-              <p className="text-xs text-emerald-600">After submitting, our team reviews and approves your account quickly.</p>
+              <p className="text-sm font-semibold text-emerald-400">24–48 hour review</p>
+              <p className="text-xs text-emerald-500">After submitting, our team reviews and approves your account quickly.</p>
             </div>
           </div>
         </motion.div>
@@ -127,10 +115,9 @@ export default function SellerLoginPage() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.1 }}
         >
-          <div className="bg-white/80 backdrop-blur-xl border border-emerald-100/80 rounded-3xl p-8 shadow-2xl shadow-emerald-100/40 relative overflow-hidden">
+          <div className="glass-card-v2 bg-card/60 backdrop-blur-xl border border-white/10 rounded-3xl p-8 shadow-2xl relative overflow-hidden">
             {/* Decorative corner */}
-            <div className="absolute top-0 right-0 w-28 h-28 bg-emerald-50 rounded-bl-[100px] pointer-events-none" />
-            <div className="absolute -top-3 -right-3 w-12 h-12 rounded-full bg-emerald-400/20 blur-md pointer-events-none" />
+            <div className="absolute top-0 right-0 w-28 h-28 bg-emerald-500/5 rounded-bl-[100px] pointer-events-none" />
 
             {/* Icon + Title */}
             <div className="text-center mb-8">
@@ -138,17 +125,17 @@ export default function SellerLoginPage() {
                 initial={{ scale: 0.8 }}
                 animate={{ scale: 1 }}
                 transition={{ type: 'spring', stiffness: 200 }}
-                className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-emerald-400 to-teal-500 shadow-lg shadow-emerald-200 mb-4"
+                className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-emerald-450 to-teal-500 shadow-lg mb-4"
               >
-                <Store className="w-8 h-8 text-white" />
+                <Store className="w-8 h-8 text-void" />
               </motion.div>
-              <h1 className="font-bold text-2xl text-slate-800 mb-1">Seller Portal</h1>
-              <p className="text-slate-500 text-sm">Sign in with Google to access your seller dashboard</p>
+              <h1 className="font-bold text-2xl text-white mb-1">Seller Portal</h1>
+              <p className="text-muted text-sm">Sign in with Google to access your seller dashboard</p>
             </div>
 
             {/* Process Steps */}
-            <div className="bg-gradient-to-r from-emerald-50 to-teal-50 rounded-2xl p-4 mb-6 border border-emerald-100">
-              <p className="text-xs font-semibold text-emerald-700 mb-3 uppercase tracking-wider">How it works</p>
+            <div className="bg-void/50 border border-white/5 rounded-2xl p-4 mb-6">
+              <p className="text-xs font-semibold text-emerald-400 mb-3 uppercase tracking-wider">How it works</p>
               <div className="flex flex-col gap-2.5">
                 {[
                   'Sign in with your Google account',
@@ -157,10 +144,10 @@ export default function SellerLoginPage() {
                   'Start uploading and earning!'
                 ].map((step, i) => (
                   <div key={i} className="flex items-center gap-3">
-                    <span className="w-5 h-5 rounded-full bg-emerald-500 text-white text-[10px] font-bold flex items-center justify-center shrink-0">
+                    <span className="w-5 h-5 rounded-full bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 text-[10px] font-bold flex items-center justify-center shrink-0">
                       {i + 1}
                     </span>
-                    <span className="text-xs text-slate-600">{step}</span>
+                    <span className="text-xs text-muted">{step}</span>
                   </div>
                 ))}
               </div>
@@ -172,7 +159,7 @@ export default function SellerLoginPage() {
               whileTap={{ scale: 0.98 }}
               onClick={handleGoogleLogin}
               disabled={isDisabled}
-              className="w-full py-4 px-6 bg-white border-2 border-emerald-200 hover:border-emerald-400 hover:bg-emerald-50/50 rounded-2xl text-slate-700 font-bold text-sm flex items-center justify-center gap-3 transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full py-4 px-6 bg-white/5 border border-white/10 hover:border-emerald-500/35 hover:bg-white/10 rounded-2xl text-white font-bold text-sm flex items-center justify-center gap-3 transition-all shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isDisabled ? (
                 <div className="w-5 h-5 border-2 border-emerald-400/30 border-t-emerald-500 rounded-full animate-spin" />
@@ -182,17 +169,17 @@ export default function SellerLoginPage() {
               <span>{isDisabled ? 'Connecting…' : 'Continue with Google'}</span>
             </motion.button>
 
-            <p className="text-center text-[11px] text-slate-400 mt-4 leading-relaxed">
+            <p className="text-center text-[11px] text-muted mt-4 leading-relaxed">
               By signing in, you agree to our{' '}
-              <Link to="/terms" className="text-emerald-600 hover:underline">Terms of Service</Link>
+              <Link to="/terms" className="text-emerald-400 hover:underline">Terms of Service</Link>
               {' '}and{' '}
-              <Link to="/privacy" className="text-emerald-600 hover:underline">Privacy Policy</Link>
+              <Link to="/privacy" className="text-emerald-400 hover:underline">Privacy Policy</Link>
             </p>
 
             {/* Links */}
-            <div className="mt-6 pt-5 border-t border-gray-100 flex flex-col gap-2 text-center">
-              <Link to="/login" className="text-xs text-slate-500 hover:text-accent transition-colors">
-                Already a student? <span className="font-semibold text-accent">Student Login →</span>
+            <div className="mt-6 pt-5 border-t border-white/5 flex flex-col gap-2 text-center">
+              <Link to="/login" className="text-xs text-muted hover:text-primary transition-colors">
+                Already a student? <span className="font-semibold text-primary">Student Login →</span>
               </Link>
             </div>
           </div>

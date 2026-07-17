@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, NavLink, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/useAuthStore';
 import { useCartStore } from '../store/useCartStore';
@@ -13,6 +13,15 @@ export default function Navbar() {
   const { items } = useCartStore();
   const [isOpen, setIsOpen] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [isScrolled, setIsScrolled] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 20);
+    };
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   const storedLogo = localStorage.getItem('brand_logo') || 'https://res.cloudinary.com/dsqxboxoc/image/upload/v1783892715/file_00000000663871fa96d4e5a32de37be1_adwo6u.png';
 
@@ -46,25 +55,29 @@ export default function Navbar() {
   const roleLabel = getRoleLabel(user?.role || 'student');
 
   const roleBadge = isAdmin
-    ? { label: roleLabel, className: 'bg-blue-100 text-blue-700' }
+    ? { label: roleLabel, className: 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/20' }
     : isSeller
-    ? { label: roleLabel, className: 'bg-emerald-100 text-emerald-700' }
+    ? { label: roleLabel, className: 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' }
     : isSellerPending
-    ? { label: roleLabel, className: 'bg-amber-100 text-amber-700' }
-    : { label: roleLabel, className: 'bg-accent/10 text-accent' };
+    ? { label: roleLabel, className: 'bg-amber-500/10 text-amber-400 border border-amber-500/20' }
+    : { label: roleLabel, className: 'bg-primary/10 text-primary border border-primary/20' };
 
   return (
-    <nav className="sticky top-0 z-40 bg-white border-b border-gray-100 shadow-sm">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between h-20">
+    <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${isScrolled ? 'py-2 bg-void/40 backdrop-blur-md' : 'py-5'}`}>
+      <div className={`max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 transition-all duration-300 ${
+        isScrolled 
+          ? 'glass-panel-dark shadow-xl shadow-void/40 mx-4 lg:mx-auto py-1 rounded-2xl border border-white/5'
+          : 'bg-transparent border border-transparent mx-6 lg:mx-auto py-0'
+      }`}>
+        <div className="flex justify-between h-16 items-center">
           {/* Logo */}
           <div className="flex items-center">
             <Link to="/" className="flex items-center gap-3 group">
-              <div className="bg-primary/5 p-1 rounded-xl flex items-center justify-center transition-all duration-300 group-hover:bg-primary/10 w-10 h-10 shrink-0 overflow-hidden">
+              <div className="bg-primary/5 p-1 rounded-xl flex items-center justify-center transition-all duration-300 group-hover:bg-primary/10 w-9 h-9 shrink-0 overflow-hidden border border-white/5 group-hover:border-primary/20">
                 <img src={storedLogo} alt="StethoNotes Logo" className="w-full h-full object-contain" />
               </div>
-              <span className="font-display font-bold text-2xl tracking-tight text-primary">
-                Stetho<span className="text-accent">Notes</span>
+              <span className="font-display font-bold text-xl tracking-tight text-white group-hover:text-primary transition-colors">
+                Stetho<span className="text-primary">Notes</span>
               </span>
             </Link>
           </div>
@@ -75,29 +88,50 @@ export default function Navbar() {
               <NavLink
                 to="/courses"
                 className={({ isActive }) =>
-                  `font-display font-medium text-sm transition-colors ${isActive ? 'text-accent' : 'text-primary hover:text-accent'}`
+                  `font-display font-medium text-xs tracking-wider uppercase transition-colors relative py-1 ${isActive ? 'text-primary' : 'text-muted hover:text-white'}`
                 }
               >
-                Courses
+                {({ isActive }) => (
+                  <>
+                    <span>Courses</span>
+                    {isActive && (
+                      <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary rounded-full" />
+                    )}
+                  </>
+                )}
               </NavLink>
               <NavLink
                 to="/track-order"
                 className={({ isActive }) =>
-                  `font-display font-medium text-sm transition-colors ${isActive ? 'text-accent' : 'text-primary hover:text-accent'}`
+                  `font-display font-medium text-xs tracking-wider uppercase transition-colors relative py-1 ${isActive ? 'text-primary' : 'text-muted hover:text-white'}`
                 }
               >
-                Track Order
+                {({ isActive }) => (
+                  <>
+                    <span>Track Order</span>
+                    {isActive && (
+                      <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary rounded-full" />
+                    )}
+                  </>
+                )}
               </NavLink>
-              <Link to="/#about" className="font-display font-medium text-sm text-primary hover:text-accent transition-colors">
+              <Link to="/#about" className="font-display font-medium text-xs tracking-wider uppercase text-muted hover:text-white transition-colors py-1">
                 About Us
               </Link>
               <NavLink
                 to="/contact"
                 className={({ isActive }) =>
-                  `font-display font-medium text-sm transition-colors ${isActive ? 'text-accent' : 'text-primary hover:text-accent'}`
+                  `font-display font-medium text-xs tracking-wider uppercase transition-colors relative py-1 ${isActive ? 'text-primary' : 'text-muted hover:text-white'}`
                 }
               >
-                Contact
+                {({ isActive }) => (
+                  <>
+                    <span>Contact</span>
+                    {isActive && (
+                      <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary rounded-full" />
+                    )}
+                  </>
+                )}
               </NavLink>
             </div>
           )}
@@ -106,10 +140,10 @@ export default function Navbar() {
           <div className="hidden md:flex items-center gap-5">
             {/* Cart (only for students/public) */}
             {!isAdmin && !isSeller && !isSellerPending && (
-              <Link to="/cart" className="relative p-2 text-primary hover:text-accent transition-colors rounded-full hover:bg-gray-50">
-                <ShoppingCart className="w-6 h-6" />
+              <Link to="/cart" className="relative p-2 text-muted hover:text-white transition-colors rounded-full hover:bg-white/5">
+                <ShoppingCart className="w-5 h-5" />
                 {cartCount > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-accent text-white font-sans text-xs font-bold w-5 h-5 flex items-center justify-center rounded-full border-2 border-white animate-pulse">
+                  <span className="absolute -top-0.5 -right-0.5 bg-primary text-void font-sans text-[10px] font-bold w-4.5 h-4.5 flex items-center justify-center rounded-full border border-void animate-pulse">
                     {cartCount}
                   </span>
                 )}
@@ -121,7 +155,7 @@ export default function Navbar() {
               <div className="relative">
                 <button
                   onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                  className="flex items-center gap-2 px-4 py-2 border border-gray-200 rounded-xl hover:border-accent hover:bg-accent/5 transition-all text-primary font-display text-sm font-medium"
+                  className="flex items-center gap-2 px-3 py-1.5 border border-white/10 bg-white/5 rounded-xl hover:border-primary/30 hover:bg-primary/5 transition-all text-white font-display text-xs font-semibold"
                 >
                   {user.avatar_url ? (
                     <img src={user.avatar_url} alt={user.name} className="w-5 h-5 rounded-full object-cover" />
@@ -134,11 +168,11 @@ export default function Navbar() {
                 {isDropdownOpen && (
                   <>
                     <div className="fixed inset-0 z-10" onClick={() => setIsDropdownOpen(false)} />
-                    <div className="absolute right-0 mt-2 w-60 bg-white rounded-2xl shadow-xl border border-gray-100 py-2 z-20 overflow-hidden font-display">
-                      <div className="px-4 py-3 border-b border-gray-50">
-                        <p className="text-xs text-gray-400 font-sans">Logged in as</p>
-                        <p className="font-display font-semibold text-sm text-primary truncate">{user.name}</p>
-                        <p className="text-[10px] text-gray-400 truncate">{user.email}</p>
+                    <div className="absolute right-0 mt-2 w-60 bg-card rounded-2xl shadow-2xl border border-white/10 py-2 z-20 overflow-hidden font-display text-white">
+                      <div className="px-4 py-3 border-b border-white/5">
+                        <p className="text-xs text-muted font-sans">Logged in as</p>
+                        <p className="font-display font-semibold text-sm text-white truncate">{user.name}</p>
+                        <p className="text-[10px] text-muted truncate">{user.email}</p>
                         <span className={`inline-block mt-1 font-sans text-[10px] font-semibold px-2 py-0.5 rounded-full ${roleBadge.className}`}>
                           {roleBadge.label}
                         </span>
@@ -148,28 +182,28 @@ export default function Navbar() {
                       {isAdmin && (
                         <>
                           <Link to="/admin/dashboard" onClick={() => setIsDropdownOpen(false)}
-                            className="flex items-center gap-2 px-4 py-2.5 text-sm text-primary hover:bg-accent/5 hover:text-accent transition-colors">
-                            <ShieldAlert className="w-4 h-4 text-blue-500" />
+                            className="flex items-center gap-2 px-4 py-2.5 text-sm text-muted hover:bg-primary/5 hover:text-primary transition-colors">
+                            <ShieldAlert className="w-4 h-4 text-primary" />
                             <span>Admin Dashboard</span>
                           </Link>
                           <Link to="/admin/dashboard?tab=notes" onClick={() => setIsDropdownOpen(false)}
-                            className="flex items-center gap-2 px-4 py-2.5 text-sm text-primary hover:bg-accent/5 hover:text-accent transition-colors">
-                            <Package className="w-4 h-4 text-slate-500" />
+                            className="flex items-center gap-2 px-4 py-2.5 text-sm text-muted hover:bg-primary/5 hover:text-primary transition-colors">
+                            <Package className="w-4 h-4 text-muted" />
                             <span>Products</span>
                           </Link>
                           <Link to="/admin/dashboard?tab=orders" onClick={() => setIsDropdownOpen(false)}
-                            className="flex items-center gap-2 px-4 py-2.5 text-sm text-primary hover:bg-accent/5 hover:text-accent transition-colors">
-                            <ShoppingCart className="w-4 h-4 text-slate-500" />
+                            className="flex items-center gap-2 px-4 py-2.5 text-sm text-muted hover:bg-primary/5 hover:text-primary transition-colors">
+                            <ShoppingCart className="w-4 h-4 text-muted" />
                             <span>Orders</span>
                           </Link>
                           <Link to="/admin/dashboard?tab=sellers" onClick={() => setIsDropdownOpen(false)}
-                            className="flex items-center gap-2 px-4 py-2.5 text-sm text-primary hover:bg-accent/5 hover:text-accent transition-colors">
-                            <Users className="w-4 h-4 text-slate-500" />
+                            className="flex items-center gap-2 px-4 py-2.5 text-sm text-muted hover:bg-primary/5 hover:text-primary transition-colors">
+                            <Users className="w-4 h-4 text-muted" />
                             <span>Sellers</span>
                           </Link>
                           <Link to="/admin/dashboard?tab=analytics" onClick={() => setIsDropdownOpen(false)}
-                            className="flex items-center gap-2 px-4 py-2.5 text-sm text-primary hover:bg-accent/5 hover:text-accent transition-colors">
-                            <BarChart3 className="w-4 h-4 text-slate-500" />
+                            className="flex items-center gap-2 px-4 py-2.5 text-sm text-muted hover:bg-primary/5 hover:text-primary transition-colors">
+                            <BarChart3 className="w-4 h-4 text-muted" />
                             <span>Analytics</span>
                           </Link>
                         </>
@@ -179,28 +213,28 @@ export default function Navbar() {
                       {isSeller && (
                         <>
                           <Link to="/seller/dashboard" onClick={() => setIsDropdownOpen(false)}
-                            className="flex items-center gap-2 px-4 py-2.5 text-sm text-primary hover:bg-emerald-50 hover:text-emerald-600 transition-colors">
-                            <Store className="w-4 h-4 text-emerald-500" />
+                            className="flex items-center gap-2 px-4 py-2.5 text-sm text-muted hover:bg-emerald-500/5 hover:text-emerald-400 transition-colors">
+                            <Store className="w-4 h-4 text-emerald-400" />
                             <span>Seller Dashboard</span>
                           </Link>
                           <Link to="/seller/dashboard?tab=products" onClick={() => setIsDropdownOpen(false)}
-                            className="flex items-center gap-2 px-4 py-2.5 text-sm text-primary hover:bg-emerald-50 hover:text-emerald-600 transition-colors">
-                            <Package className="w-4 h-4 text-slate-500" />
+                            className="flex items-center gap-2 px-4 py-2.5 text-sm text-muted hover:bg-emerald-500/5 hover:text-emerald-400 transition-colors">
+                            <Package className="w-4 h-4 text-muted" />
                             <span>Products</span>
                           </Link>
                           <Link to="/seller/dashboard?tab=orders" onClick={() => setIsDropdownOpen(false)}
-                            className="flex items-center gap-2 px-4 py-2.5 text-sm text-primary hover:bg-emerald-50 hover:text-emerald-600 transition-colors">
-                            <ShoppingCart className="w-4 h-4 text-slate-500" />
+                            className="flex items-center gap-2 px-4 py-2.5 text-sm text-muted hover:bg-emerald-500/5 hover:text-emerald-400 transition-colors">
+                            <ShoppingCart className="w-4 h-4 text-muted" />
                             <span>Orders</span>
                           </Link>
                           <Link to="/seller/dashboard?tab=overview" onClick={() => setIsDropdownOpen(false)}
-                            className="flex items-center gap-2 px-4 py-2.5 text-sm text-primary hover:bg-emerald-50 hover:text-emerald-600 transition-colors">
-                            <DollarSign className="w-4 h-4 text-slate-500" />
+                            className="flex items-center gap-2 px-4 py-2.5 text-sm text-muted hover:bg-emerald-500/5 hover:text-emerald-400 transition-colors">
+                            <DollarSign className="w-4 h-4 text-muted" />
                             <span>Earnings</span>
                           </Link>
                           <Link to="/seller/dashboard?tab=profile" onClick={() => setIsDropdownOpen(false)}
-                            className="flex items-center gap-2 px-4 py-2.5 text-sm text-primary hover:bg-emerald-50 hover:text-emerald-600 transition-colors">
-                            <User className="w-4 h-4 text-slate-500" />
+                            className="flex items-center gap-2 px-4 py-2.5 text-sm text-muted hover:bg-emerald-500/5 hover:text-emerald-400 transition-colors">
+                            <User className="w-4 h-4 text-muted" />
                             <span>Profile</span>
                           </Link>
                         </>
@@ -210,12 +244,12 @@ export default function Navbar() {
                       {isSellerPending && (
                         <>
                           <Link to="/seller/application-pending" onClick={() => setIsDropdownOpen(false)}
-                            className="flex items-center gap-2 px-4 py-2.5 text-sm text-amber-600 hover:bg-amber-50 transition-colors">
+                            className="flex items-center gap-2 px-4 py-2.5 text-sm text-amber-450 hover:bg-amber-500/5 transition-colors">
                             <Clock className="w-4 h-4" />
                             <span>Application Status</span>
                           </Link>
                           <Link to="/seller/application-pending" onClick={() => setIsDropdownOpen(false)}
-                            className="flex items-center gap-2 px-4 py-2.5 text-sm text-amber-650 hover:bg-amber-50 transition-colors">
+                            className="flex items-center gap-2 px-4 py-2.5 text-sm text-amber-450 hover:bg-amber-500/5 transition-colors">
                             <User className="w-4 h-4" />
                             <span>Profile</span>
                           </Link>
@@ -226,30 +260,30 @@ export default function Navbar() {
                       {isStudent && (
                         <>
                           <Link to="/dashboard" onClick={() => setIsDropdownOpen(false)}
-                            className="flex items-center gap-2 px-4 py-2.5 text-sm text-primary hover:bg-accent/5 hover:text-accent transition-colors">
-                            <BookOpen className="w-4 h-4 text-accent" />
+                            className="flex items-center gap-2 px-4 py-2.5 text-sm text-muted hover:bg-primary/5 hover:text-primary transition-colors">
+                            <BookOpen className="w-4 h-4 text-primary" />
                             <span>Dashboard</span>
                           </Link>
                           <Link to="/dashboard?tab=purchases" onClick={() => setIsDropdownOpen(false)}
-                            className="flex items-center gap-2 px-4 py-2.5 text-sm text-primary hover:bg-accent/5 hover:text-accent transition-colors">
-                            <BookOpen className="w-4 h-4 text-slate-500" />
+                            className="flex items-center gap-2 px-4 py-2.5 text-sm text-muted hover:bg-primary/5 hover:text-primary transition-colors">
+                            <BookOpen className="w-4 h-4 text-muted" />
                             <span>My Purchases</span>
                           </Link>
                           <Link to="/dashboard?tab=profile" onClick={() => setIsDropdownOpen(false)}
-                            className="flex items-center gap-2 px-4 py-2.5 text-sm text-primary hover:bg-accent/5 hover:text-accent transition-colors">
-                            <User className="w-4 h-4 text-slate-500" />
+                            className="flex items-center gap-2 px-4 py-2.5 text-sm text-muted hover:bg-primary/5 hover:text-primary transition-colors">
+                            <User className="w-4 h-4 text-muted" />
                             <span>Profile</span>
                           </Link>
                           <Link to="/seller/login" onClick={() => setIsDropdownOpen(false)}
-                            className="flex items-center gap-2 px-4 py-2.5 text-sm text-primary hover:bg-emerald-50 hover:text-emerald-600 transition-colors">
-                            <Store className="w-4 h-4 text-emerald-500" />
+                            className="flex items-center gap-2 px-4 py-2.5 text-sm text-muted hover:bg-emerald-500/5 hover:text-emerald-400 transition-colors">
+                            <Store className="w-4 h-4 text-emerald-400" />
                             <span>Become a Seller</span>
                           </Link>
                         </>
                       )}
 
                       <button onClick={handleLogout}
-                        className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors text-left border-t border-gray-50 mt-1">
+                        className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-red-400 hover:bg-red-500/5 transition-colors text-left border-t border-white/5 mt-1 font-semibold">
                         <LogOut className="w-4 h-4" />
                         <span>Sign Out</span>
                       </button>
@@ -259,8 +293,8 @@ export default function Navbar() {
               </div>
             ) : (
               <div className="flex items-center gap-3">
-                <Link to="/login" className="btn-secondary py-2 px-4 text-sm">Login</Link>
-                <Link to="/login?signup=true" className="btn-primary py-2 px-4 text-sm">Sign Up</Link>
+                <Link to="/login" className="btn-secondary py-1.5 px-4 text-xs">Login</Link>
+                <Link to="/login?signup=true" className="btn-primary py-1.5 px-4 text-xs">Sign Up</Link>
               </div>
             )}
           </div>
@@ -268,17 +302,17 @@ export default function Navbar() {
           {/* Mobile hamburger */}
           <div className="flex items-center md:hidden gap-4">
             {!isAdmin && !isSeller && !isSellerPending && (
-              <Link to="/cart" className="relative p-2 text-primary hover:text-accent transition-colors">
-                <ShoppingCart className="w-6 h-6" />
+              <Link to="/cart" className="relative p-2 text-muted hover:text-white transition-colors">
+                <ShoppingCart className="w-5 h-5" />
                 {cartCount > 0 && (
-                  <span className="absolute top-0 right-0 bg-accent text-white font-sans text-[10px] font-bold w-4 h-4 flex items-center justify-center rounded-full border border-white">
+                  <span className="absolute top-0.5 right-0.5 bg-primary text-void font-sans text-[10px] font-bold w-4 h-4 flex items-center justify-center rounded-full border border-void">
                     {cartCount}
                   </span>
                 )}
               </Link>
             )}
-            <button onClick={() => setIsOpen(!isOpen)} className="p-2 text-primary hover:text-accent transition-colors">
-              {isOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+            <button onClick={() => setIsOpen(!isOpen)} className="p-2 text-muted hover:text-white transition-colors">
+              {isOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
             </button>
           </div>
         </div>
@@ -286,33 +320,33 @@ export default function Navbar() {
 
       {/* Mobile Menu */}
       {isOpen && (
-        <div className="md:hidden border-t border-gray-100 bg-white px-4 pt-2 pb-6 flex flex-col gap-3 shadow-lg font-display">
+        <div className="md:hidden border-t border-white/5 bg-darkest/95 backdrop-blur-xl px-4 pt-2 pb-6 flex flex-col gap-3 shadow-2xl font-display">
           {!isAdmin && (
             <>
               <NavLink to="/courses" onClick={() => setIsOpen(false)}
-                className={({ isActive }) => `font-display font-medium text-base p-2 rounded-xl ${isActive ? 'bg-accent/10 text-accent' : 'text-primary hover:bg-gray-50'}`}>
+                className={({ isActive }) => `font-display font-medium text-sm p-2.5 rounded-xl ${isActive ? 'bg-primary/10 text-primary' : 'text-muted hover:bg-white/5'}`}>
                 Courses
               </NavLink>
               <NavLink to="/track-order" onClick={() => setIsOpen(false)}
-                className={({ isActive }) => `font-display font-medium text-base p-2 rounded-xl ${isActive ? 'bg-accent/10 text-accent' : 'text-primary hover:bg-gray-50'}`}>
+                className={({ isActive }) => `font-display font-medium text-sm p-2.5 rounded-xl ${isActive ? 'bg-primary/10 text-primary' : 'text-muted hover:bg-white/5'}`}>
                 Track Order
               </NavLink>
-              <a href="/#about" onClick={() => setIsOpen(false)} className="font-display font-medium text-base p-2 rounded-xl text-primary hover:bg-gray-50">
+              <a href="/#about" onClick={() => setIsOpen(false)} className="font-display font-medium text-sm p-2.5 rounded-xl text-muted hover:bg-white/5">
                 About Us
               </a>
               <NavLink to="/contact" onClick={() => setIsOpen(false)}
-                className={({ isActive }) => `font-display font-medium text-base p-2 rounded-xl ${isActive ? 'bg-accent/10 text-accent' : 'text-primary hover:bg-gray-50'}`}>
+                className={({ isActive }) => `font-display font-medium text-sm p-2.5 rounded-xl ${isActive ? 'bg-primary/10 text-primary' : 'text-muted hover:bg-white/5'}`}>
                 Contact
               </NavLink>
             </>
           )}
 
-          <div className="border-t border-gray-50 pt-3 flex flex-col gap-2">
+          <div className="border-t border-white/5 pt-3 flex flex-col gap-2">
             {user ? (
               <>
                 <div className="px-2 py-1">
-                  <p className="font-display font-semibold text-primary">{user.name}</p>
-                  <p className="text-xs text-gray-500 font-sans">{user.email}</p>
+                  <p className="font-display font-semibold text-white">{user.name}</p>
+                  <p className="text-xs text-muted font-sans">{user.email}</p>
                   <span className={`inline-block mt-1 font-sans text-[10px] font-semibold px-2 py-0.5 rounded-full ${roleBadge.className}`}>
                     {roleBadge.label}
                   </span>
@@ -322,28 +356,28 @@ export default function Navbar() {
                 {isAdmin && (
                   <>
                     <Link to="/admin/dashboard" onClick={() => setIsOpen(false)}
-                      className="flex items-center gap-2 p-2 rounded-xl text-sm text-primary hover:bg-accent/5 hover:text-accent">
-                      <ShieldAlert className="w-4 h-4 text-blue-500" />
+                      className="flex items-center gap-2 p-2 rounded-xl text-sm text-muted hover:bg-primary/5 hover:text-primary">
+                      <ShieldAlert className="w-4 h-4 text-primary" />
                       <span>Admin Dashboard</span>
                     </Link>
                     <Link to="/admin/dashboard?tab=notes" onClick={() => setIsOpen(false)}
-                      className="flex items-center gap-2 p-2 rounded-xl text-sm text-primary hover:bg-accent/5 hover:text-accent">
-                      <Package className="w-4 h-4 text-slate-500" />
+                      className="flex items-center gap-2 p-2 rounded-xl text-sm text-muted hover:bg-primary/5 hover:text-primary">
+                      <Package className="w-4 h-4 text-muted" />
                       <span>Products</span>
                     </Link>
                     <Link to="/admin/dashboard?tab=orders" onClick={() => setIsOpen(false)}
-                      className="flex items-center gap-2 p-2 rounded-xl text-sm text-primary hover:bg-accent/5 hover:text-accent">
-                      <ShoppingCart className="w-4 h-4 text-slate-500" />
+                      className="flex items-center gap-2 p-2 rounded-xl text-sm text-muted hover:bg-primary/5 hover:text-primary">
+                      <ShoppingCart className="w-4 h-4 text-muted" />
                       <span>Orders</span>
                     </Link>
                     <Link to="/admin/dashboard?tab=sellers" onClick={() => setIsOpen(false)}
-                      className="flex items-center gap-2 p-2 rounded-xl text-sm text-primary hover:bg-accent/5 hover:text-accent">
-                      <Users className="w-4 h-4 text-slate-500" />
+                      className="flex items-center gap-2 p-2 rounded-xl text-sm text-muted hover:bg-primary/5 hover:text-primary">
+                      <Users className="w-4 h-4 text-muted" />
                       <span>Sellers</span>
                     </Link>
                     <Link to="/admin/dashboard?tab=analytics" onClick={() => setIsOpen(false)}
-                      className="flex items-center gap-2 p-2 rounded-xl text-sm text-primary hover:bg-accent/5 hover:text-accent">
-                      <BarChart3 className="w-4 h-4 text-slate-500" />
+                      className="flex items-center gap-2 p-2 rounded-xl text-sm text-muted hover:bg-primary/5 hover:text-primary">
+                      <BarChart3 className="w-4 h-4 text-muted" />
                       <span>Analytics</span>
                     </Link>
                   </>
@@ -353,28 +387,28 @@ export default function Navbar() {
                 {isSeller && (
                   <>
                     <Link to="/seller/dashboard" onClick={() => setIsOpen(false)}
-                      className="flex items-center gap-2 p-2 rounded-xl text-sm text-emerald-600 hover:bg-emerald-50">
-                      <Store className="w-4 h-4 text-emerald-500" />
+                      className="flex items-center gap-2 p-2 rounded-xl text-sm text-muted hover:bg-emerald-500/5 hover:text-emerald-400">
+                      <Store className="w-4 h-4 text-emerald-400" />
                       <span>Seller Dashboard</span>
                     </Link>
                     <Link to="/seller/dashboard?tab=products" onClick={() => setIsOpen(false)}
-                      className="flex items-center gap-2 p-2 rounded-xl text-sm text-emerald-650 hover:bg-emerald-50">
-                      <Package className="w-4 h-4 text-slate-500" />
+                      className="flex items-center gap-2 p-2 rounded-xl text-sm text-muted hover:bg-emerald-500/5 hover:text-emerald-400">
+                      <Package className="w-4 h-4 text-muted" />
                       <span>Products</span>
                     </Link>
                     <Link to="/seller/dashboard?tab=orders" onClick={() => setIsOpen(false)}
-                      className="flex items-center gap-2 p-2 rounded-xl text-sm text-emerald-650 hover:bg-emerald-50">
-                      <ShoppingCart className="w-4 h-4 text-slate-500" />
+                      className="flex items-center gap-2 p-2 rounded-xl text-sm text-muted hover:bg-emerald-500/5 hover:text-emerald-400">
+                      <ShoppingCart className="w-4 h-4 text-muted" />
                       <span>Orders</span>
                     </Link>
                     <Link to="/seller/dashboard?tab=overview" onClick={() => setIsOpen(false)}
-                      className="flex items-center gap-2 p-2 rounded-xl text-sm text-emerald-650 hover:bg-emerald-50">
-                      <DollarSign className="w-4 h-4 text-slate-500" />
+                      className="flex items-center gap-2 p-2 rounded-xl text-sm text-muted hover:bg-emerald-500/5 hover:text-emerald-400">
+                      <DollarSign className="w-4 h-4 text-muted" />
                       <span>Earnings</span>
                     </Link>
                     <Link to="/seller/dashboard?tab=profile" onClick={() => setIsOpen(false)}
-                      className="flex items-center gap-2 p-2 rounded-xl text-sm text-emerald-650 hover:bg-emerald-50">
-                      <User className="w-4 h-4 text-slate-500" />
+                      className="flex items-center gap-2 p-2 rounded-xl text-sm text-muted hover:bg-emerald-500/5 hover:text-emerald-400">
+                      <User className="w-4 h-4 text-muted" />
                       <span>Profile</span>
                     </Link>
                   </>
@@ -384,12 +418,12 @@ export default function Navbar() {
                 {isSellerPending && (
                   <>
                     <Link to="/seller/application-pending" onClick={() => setIsOpen(false)}
-                      className="flex items-center gap-2 p-2 rounded-xl text-sm text-amber-600 hover:bg-amber-50">
-                      <Clock className="w-4 h-4 text-amber-500" />
+                      className="flex items-center gap-2 p-2 rounded-xl text-sm text-muted hover:bg-amber-500/5 hover:text-amber-400">
+                      <Clock className="w-4 h-4 text-amber-400" />
                       <span>Application Status</span>
                     </Link>
                     <Link to="/seller/application-pending" onClick={() => setIsOpen(false)}
-                      className="flex items-center gap-2 p-2 rounded-xl text-sm text-amber-650 hover:bg-amber-50">
+                      className="flex items-center gap-2 p-2 rounded-xl text-sm text-muted hover:bg-amber-500/5 hover:text-amber-400">
                       <User className="w-4 h-4" />
                       <span>Profile</span>
                     </Link>
@@ -400,30 +434,30 @@ export default function Navbar() {
                 {isStudent && (
                   <>
                     <Link to="/dashboard" onClick={() => setIsOpen(false)}
-                      className="flex items-center gap-2 p-2 rounded-xl text-sm text-primary hover:bg-accent/5 hover:text-accent">
-                      <BookOpen className="w-4 h-4 text-accent" />
+                      className="flex items-center gap-2 p-2 rounded-xl text-sm text-muted hover:bg-primary/5 hover:text-primary">
+                      <BookOpen className="w-4 h-4 text-primary" />
                       <span>Dashboard</span>
                     </Link>
                     <Link to="/dashboard?tab=purchases" onClick={() => setIsOpen(false)}
-                      className="flex items-center gap-2 p-2 rounded-xl text-sm text-primary hover:bg-accent/5 hover:text-accent">
-                      <BookOpen className="w-4 h-4 text-slate-500" />
+                      className="flex items-center gap-2 p-2 rounded-xl text-sm text-muted hover:bg-primary/5 hover:text-primary">
+                      <BookOpen className="w-4 h-4 text-muted" />
                       <span>My Purchases</span>
                     </Link>
                     <Link to="/dashboard?tab=profile" onClick={() => setIsOpen(false)}
-                      className="flex items-center gap-2 p-2 rounded-xl text-sm text-primary hover:bg-accent/5 hover:text-accent">
-                      <User className="w-4 h-4 text-slate-500" />
+                      className="flex items-center gap-2 p-2 rounded-xl text-sm text-muted hover:bg-primary/5 hover:text-primary">
+                      <User className="w-4 h-4 text-muted" />
                       <span>Profile</span>
                     </Link>
                     <Link to="/seller/login" onClick={() => setIsOpen(false)}
-                      className="flex items-center gap-2 p-2 rounded-xl text-sm text-primary hover:bg-emerald-50 hover:text-emerald-600">
-                      <Store className="w-4 h-4 text-emerald-500" />
+                      className="flex items-center gap-2 p-2 rounded-xl text-sm text-muted hover:bg-emerald-500/5 hover:text-emerald-400">
+                      <Store className="w-4 h-4 text-emerald-400" />
                       <span>Become a Seller</span>
                     </Link>
                   </>
                 )}
 
                 <button onClick={handleLogout}
-                  className="w-full flex items-center gap-2 p-2 rounded-xl text-sm text-red-600 hover:bg-red-50 text-left border-t border-gray-50 mt-1">
+                  className="w-full flex items-center gap-2 p-2 rounded-xl text-sm text-red-400 hover:bg-red-500/5 text-left border-t border-white/5 mt-1 font-semibold">
                   <LogOut className="w-4 h-4" />
                   <span>Sign Out</span>
                 </button>

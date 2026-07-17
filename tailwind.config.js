@@ -8,15 +8,18 @@ export default {
     extend: {
       colors: {
         primary: {
-          DEFAULT: '#0F2D6B',
-          dark: '#0A1F4D',
-          light: '#1D4596',
+          DEFAULT: '#1FB6D4', // Brand Cyan
+          dark: '#189CB6',
         },
         accent: {
-          DEFAULT: '#1FB6D4',
-          hover: '#189CB6',
-          light: '#E6F7FA',
+          DEFAULT: '#3B82F6', // Blue
+          hover: '#2563EB',
         },
+        void: '#060D1A',
+        darkest: '#081729',
+        card: '#0D1B2A',
+        paper: '#FFFFFF',
+        muted: '#94A3B8',
       },
       fontFamily: {
         sans: ['Inter', 'sans-serif'],

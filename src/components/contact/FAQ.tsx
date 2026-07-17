@@ -12,16 +12,16 @@ function FAQItem({ question, answer }: FAQItemProps) {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
-    <div className="border-b border-gray-100 py-4">
+    <div className="border-b border-white/5 py-4">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full flex justify-between items-center text-left py-2 font-display font-bold text-sm sm:text-base text-primary hover:text-accent transition-colors"
+        className="w-full flex justify-between items-center text-left py-2 font-display font-bold text-sm sm:text-base text-white hover:text-primary transition-colors"
       >
         <span>{question}</span>
         <motion.div
           animate={{ rotate: isOpen ? 180 : 0 }}
           transition={{ duration: 0.2 }}
-          className="text-gray-400 shrink-0 ml-4"
+          className="text-muted shrink-0 ml-4"
         >
           <ChevronDown className="w-5 h-5" />
         </motion.div>
@@ -36,7 +36,7 @@ function FAQItem({ question, answer }: FAQItemProps) {
             transition={{ duration: 0.25, ease: 'easeInOut' }}
             className="overflow-hidden"
           >
-            <div className="text-gray-500 text-xs sm:text-sm leading-relaxed pt-2 pb-4 pr-6">
+            <div className="text-muted text-xs sm:text-sm leading-relaxed pt-2 pb-4 pr-6">
               {answer}
             </div>
           </motion.div>
@@ -61,7 +61,7 @@ export default function FAQ() {
       answer: (
         <span>
           Yes! If you lost your email or need a redelivery, go to the{" "}
-          <Link to="/track-order" className="text-accent font-semibold hover:underline">
+          <Link to="/track-order" className="text-primary font-semibold hover:underline">
             Track Order
           </Link>{" "}
           page, enter your order parameters, and hit the resend button to get fresh links instantly.
@@ -75,18 +75,18 @@ export default function FAQ() {
   ];
 
   return (
-    <section className="py-12 bg-white">
+    <section className="py-12 bg-void text-white">
       <div className="max-w-4xl mx-auto px-4 sm:px-6">
         <div className="text-center mb-10">
-          <h2 className="font-display font-extrabold text-2xl sm:text-3xl text-primary tracking-tight">
+          <h2 className="font-display font-extrabold text-2xl sm:text-3xl text-white tracking-tight">
             Frequently Asked Questions
           </h2>
-          <p className="text-gray-400 text-xs sm:text-sm mt-2">
+          <p className="text-muted text-xs sm:text-sm mt-2">
             Quick answers to the most common inquiries from our medical students.
           </p>
         </div>
 
-        <div className="bg-white border border-gray-150 rounded-3xl p-6 sm:p-10 shadow-cyan-soft">
+        <div className="glass-card-v2 bg-card/65 border border-white/10 rounded-3xl p-6 sm:p-10 shadow-2xl">
           {faqs.map((faq, idx) => (
             <FAQItem key={idx} question={faq.question} answer={faq.answer} />
           ))}

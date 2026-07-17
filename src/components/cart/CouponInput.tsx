@@ -33,9 +33,9 @@ export default function CouponInput() {
   };
 
   return (
-    <div className="bg-gray-50 border border-gray-150 rounded-2xl p-4 flex flex-col gap-3">
-      <div className="flex items-center gap-2 text-xs font-display font-bold text-primary">
-        <Tag className="w-4 h-4 text-accent" />
+    <div className="bg-card/45 border border-white/10 rounded-2xl p-4 flex flex-col gap-3 text-white">
+      <div className="flex items-center gap-2 text-xs font-display font-bold text-white">
+        <Tag className="w-4 h-4 text-primary" />
         <span>Promo & Coupon Code</span>
       </div>
 
@@ -46,7 +46,7 @@ export default function CouponInput() {
             placeholder="e.g. WELCOME10"
             value={code}
             onChange={(e) => setCode(e.target.value)}
-            className="flex-grow border border-gray-250 focus:border-accent focus:ring-1 focus:ring-accent outline-none px-3.5 py-2.5 rounded-xl text-xs bg-white text-primary uppercase font-bold"
+            className="flex-grow border border-white/10 focus:border-primary focus:ring-1 focus:ring-primary/50 outline-none px-3.5 py-2.5 rounded-xl text-xs bg-void text-white uppercase font-bold"
           />
           <button
             type="submit"
@@ -56,21 +56,21 @@ export default function CouponInput() {
           </button>
         </form>
       ) : (
-        <div className="flex items-center justify-between bg-emerald-50/50 border border-emerald-100 p-3 rounded-xl">
+        <div className="flex items-center justify-between bg-emerald-500/10 border border-emerald-500/20 p-3 rounded-xl">
           <div className="flex items-center gap-2">
-            <div className="w-5 h-5 bg-emerald-100 rounded-full flex items-center justify-center text-emerald-600 shrink-0">
+            <div className="w-5 h-5 bg-emerald-500/20 rounded-full flex items-center justify-center text-emerald-450 shrink-0">
               <Check className="w-3.5 h-3.5" />
             </div>
             <div>
-              <span className="text-[10px] text-emerald-600 uppercase font-display font-bold">
+              <span className="text-[10px] text-emerald-400 uppercase font-display font-bold">
                 Coupon Applied
               </span>
-              <p className="text-xs text-primary font-bold">{coupon}</p>
+              <p className="text-xs text-white font-bold">{coupon}</p>
             </div>
           </div>
           <button
             onClick={handleRemove}
-            className="p-1 hover:bg-emerald-150 rounded-lg text-gray-400 hover:text-primary transition-all"
+            className="p-1 hover:bg-white/5 rounded-lg text-muted hover:text-white transition-all"
             title="Remove coupon"
           >
             <X className="w-4 h-4" />
@@ -85,7 +85,7 @@ export default function CouponInput() {
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
-            className="text-[10px] sm:text-xs text-emerald-600 font-sans font-medium mt-1 leading-relaxed"
+            className="text-[10px] sm:text-xs text-emerald-400 font-sans font-medium mt-1 leading-relaxed"
           >
             {successMsg}
           </motion.div>
@@ -96,7 +96,7 @@ export default function CouponInput() {
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
-            className="text-[10px] sm:text-xs text-red-500 font-sans font-medium mt-1 leading-relaxed"
+            className="text-[10px] sm:text-xs text-red-400 font-sans font-medium mt-1 leading-relaxed"
           >
             {errorMsg}
           </motion.div>

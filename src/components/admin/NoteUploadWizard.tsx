@@ -814,44 +814,44 @@ export default function NoteUploadWizard({ onClose, onSaveSuccess, note = null, 
     : uploadedPreviewUrls;
 
   return (
-    <div className="bg-slate-50 rounded-3xl p-6 border border-slate-100 shadow-xl max-w-4xl mx-auto">
+    <div className="bg-card rounded-3xl p-6 sm:p-10 border border-white/10 shadow-2xl max-w-4xl mx-auto text-white">
       {/* Wizard Step Navigation */}
-      <div className="flex items-center justify-between pb-4 border-b border-slate-200 mb-6">
+      <div className="flex items-center justify-between pb-4 border-b border-white/5 mb-6">
         <div>
-          <h2 className="text-lg font-bold text-slate-800">{note ? 'Edit Listing' : 'Notes Upload Wizard'}</h2>
-          <p className="text-xs text-slate-400">Step {step} of 4: {
+          <h2 className="text-lg font-bold text-white">{note ? 'Edit Listing' : 'Notes Upload Wizard'}</h2>
+          <p className="text-xs text-muted">Step {step} of 4: {
             step === 1 ? 'Choose Mode' : step === 2 ? 'Attach Files' : step === 3 ? 'Compile & Preview' : 'Metadata Details'
           }</p>
         </div>
         <button
           onClick={onClose}
-          className="p-1.5 hover:bg-slate-200 rounded-xl text-slate-400 hover:text-slate-600 transition-colors"
+          className="p-1.5 hover:bg-white/5 rounded-xl text-muted hover:text-white transition-colors"
         >
           <X className="w-5 h-5" />
         </button>
       </div>
 
       {/* Step Indicators */}
-      <div className="flex items-center gap-2 mb-8 bg-white p-2 border border-slate-100 rounded-2xl">
+      <div className="flex items-center gap-2 mb-8 bg-void/50 border border-white/5 p-2 rounded-2xl">
         {[1, 2, 3, 4].map((num) => (
           <React.Fragment key={num}>
             <div className="flex items-center gap-1.5">
               <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
                 step === num
-                  ? 'bg-emerald-500 text-white ring-4 ring-emerald-100'
+                  ? 'bg-primary text-void ring-4 ring-primary/20'
                   : step > num
-                  ? 'bg-emerald-100 text-emerald-600'
-                  : 'bg-slate-100 text-slate-400'
+                  ? 'bg-primary/20 text-primary border border-primary/30'
+                  : 'bg-white/5 text-muted'
               }`}>
                 {num}
               </span>
               <span className={`text-xs font-semibold hidden sm:inline ${
-                step === num ? 'text-slate-800' : 'text-slate-400'
+                step === num ? 'text-white' : 'text-muted'
               }`}>
                 {num === 1 ? 'Mode' : num === 2 ? 'Upload' : num === 3 ? 'Verify' : 'Publish'}
               </span>
             </div>
-            {num < 4 && <ChevronRight className="w-4 h-4 text-slate-300 hidden sm:block" />}
+            {num < 4 && <ChevronRight className="w-4 h-4 text-white/10 hidden sm:block" />}
           </React.Fragment>
         ))}
       </div>
@@ -862,34 +862,34 @@ export default function NoteUploadWizard({ onClose, onSaveSuccess, note = null, 
       {step === 1 && (
         <div className="space-y-6">
           <div className="text-center max-w-md mx-auto space-y-2">
-            <h3 className="font-bold text-slate-800 text-sm">Select content delivery model</h3>
-            <p className="text-xs text-slate-400">Choose between uploading a single combined PDF document or dragging multiple image pages together.</p>
+            <h3 className="font-bold text-white text-sm">Select content delivery model</h3>
+            <p className="text-xs text-muted">Choose between uploading a single combined PDF document or dragging multiple image pages together.</p>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <button
               onClick={() => { setUploadType('pdf'); setStep(2); }}
-              className="bg-white p-6 rounded-2xl border border-slate-200 hover:border-emerald-500 hover:shadow-md transition-all text-left flex items-start gap-4"
+              className="bg-void/50 p-6 rounded-2xl border border-white/10 hover:border-primary/30 transition-all text-left flex items-start gap-4"
             >
-              <div className="w-12 h-12 bg-red-50 rounded-xl flex items-center justify-center text-red-500 shrink-0">
+              <div className="w-12 h-12 bg-white/5 border border-white/10 rounded-xl flex items-center justify-center text-red-400 shrink-0">
                 <FileText className="w-6 h-6" />
               </div>
               <div className="space-y-1">
-                <h4 className="font-bold text-slate-800 text-sm">Direct PDF Upload</h4>
-                <p className="text-xs text-slate-400 leading-relaxed">Directly upload a prepared medical notes document in PDF format. Fastest listing method.</p>
+                <h4 className="font-bold text-white text-sm">Direct PDF Upload</h4>
+                <p className="text-xs text-muted leading-relaxed">Directly upload a prepared medical notes document in PDF format. Fastest listing method.</p>
               </div>
             </button>
 
             <button
               onClick={() => { setUploadType('images'); setStep(2); }}
-              className="bg-white p-6 rounded-2xl border border-slate-200 hover:border-emerald-500 hover:shadow-md transition-all text-left flex items-start gap-4"
+              className="bg-void/50 p-6 rounded-2xl border border-white/10 hover:border-primary/30 transition-all text-left flex items-start gap-4"
             >
-              <div className="w-12 h-12 bg-emerald-50 rounded-xl flex items-center justify-center text-emerald-500 shrink-0">
+              <div className="w-12 h-12 bg-white/5 border border-white/10 rounded-xl flex items-center justify-center text-emerald-400 shrink-0">
                 <ImageIcon className="w-6 h-6" />
               </div>
               <div className="space-y-1">
-                <h4 className="font-bold text-slate-800 text-sm">Image Compilation (Convert to PDF)</h4>
-                <p className="text-xs text-slate-400 leading-relaxed">Upload note pages as individual photos. We compile them into a secure A4 portrait PDF document automatically.</p>
+                <h4 className="font-bold text-white text-sm">Image Compilation (Convert to PDF)</h4>
+                <p className="text-xs text-muted leading-relaxed">Upload note pages as individual photos. We compile them into a secure A4 portrait PDF document automatically.</p>
               </div>
             </button>
           </div>
@@ -905,16 +905,16 @@ export default function NoteUploadWizard({ onClose, onSaveSuccess, note = null, 
             <div className="space-y-4 text-left">
               {/* PDF file dropzone */}
               <div className="space-y-1">
-                <label className="text-[10px] font-bold text-slate-400 uppercase">Study Files *</label>
-                <div {...getPdfRootProps()} className="border-2 border-dashed border-slate-200 hover:border-emerald-500 bg-white rounded-2xl p-6 text-center transition-colors">
+                <label className="text-[10px] font-bold text-muted uppercase">Study Files *</label>
+                <div {...getPdfRootProps()} className="border-2 border-dashed border-white/10 hover:border-primary/30 bg-void/50 rounded-2xl p-6 text-center transition-colors">
                   <input {...getPdfInputProps()} />
-                  <Upload className="w-8 h-8 text-slate-350 mx-auto mb-2" />
-                  <p className="text-xs font-bold text-slate-700">Drag & drop PDF files here</p>
-                  <p className="text-[10px] text-slate-400 mt-1">PDF only. Maximum {MAX_PDF_FILES} PDFs, 100 MB per file.</p>
+                  <Upload className="w-8 h-8 text-muted mx-auto mb-2" />
+                  <p className="text-xs font-bold text-white">Drag & drop PDF files here</p>
+                  <p className="text-[10px] text-muted mt-1 font-sans">PDF only. Maximum {MAX_PDF_FILES} PDFs, 100 MB per file.</p>
                   <button
                     type="button"
                     onClick={openPdfPicker}
-                    className="mt-4 mx-auto py-2 px-4 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-xs font-bold transition-colors flex items-center gap-1.5"
+                    className="mt-4 mx-auto py-2 px-4 bg-primary hover:bg-primary-dark text-void rounded-xl text-xs font-bold transition-colors flex items-center gap-1.5 shadow-md"
                   >
                     <Plus className="w-3.5 h-3.5" />
                     <span>{pdfFiles.length > 0 ? 'Add More PDFs' : 'Add PDF Files'}</span>
@@ -923,16 +923,16 @@ export default function NoteUploadWizard({ onClose, onSaveSuccess, note = null, 
               </div>
 
               {pdfFiles.length > 0 && (
-                <div className="space-y-3 bg-white border border-slate-200 rounded-2xl p-4">
+                <div className="space-y-3 bg-void/50 border border-white/10 rounded-2xl p-4">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                     <div>
-                      <label className="text-[10px] font-bold text-slate-400 uppercase block">PDF Files ({pdfFiles.length}/{MAX_PDF_FILES})</label>
-                      <span className="text-[10px] text-slate-400">Drag rows, or use arrows, to reorder delivery files.</span>
+                      <label className="text-[10px] font-bold text-muted uppercase block">PDF Files ({pdfFiles.length}/{MAX_PDF_FILES})</label>
+                      <span className="text-[10px] text-muted font-sans">Drag rows, or use arrows, to reorder delivery files.</span>
                     </div>
                     <button
                       type="button"
                       onClick={openPdfPicker}
-                      className="py-2 px-3 bg-slate-100 hover:bg-slate-200 rounded-xl text-[10px] font-bold text-slate-700 transition-colors flex items-center justify-center gap-1.5"
+                      className="py-2 px-3 bg-white/5 border border-white/10 hover:bg-white/10 rounded-xl text-[10px] font-bold text-white transition-colors flex items-center justify-center gap-1.5"
                     >
                       <Plus className="w-3.5 h-3.5" />
                       <span>Add More PDFs</span>
@@ -947,27 +947,27 @@ export default function NoteUploadWizard({ onClose, onSaveSuccess, note = null, 
                         onDragStart={() => setDraggedPdfIndex(index)}
                         onDragOver={(e) => e.preventDefault()}
                         onDrop={() => handlePdfDropReorder(index)}
-                        className="bg-slate-50 border border-slate-150 rounded-xl p-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between"
+                        className="bg-card border border-white/5 rounded-xl p-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between text-white"
                       >
                         <div className="flex items-center gap-3 min-w-0 flex-1">
-                          <GripVertical className="w-4 h-4 text-slate-300 shrink-0 cursor-grab" />
-                          <div className="w-10 h-10 rounded-xl bg-red-50 text-red-500 flex items-center justify-center shrink-0">
+                          <GripVertical className="w-4 h-4 text-muted shrink-0 cursor-grab" />
+                          <div className="w-10 h-10 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 flex items-center justify-center shrink-0">
                             <FileText className="w-5 h-5" />
                           </div>
                           <div className="min-w-0 flex-1">
                             <input
                               value={file.name}
                               onChange={(e) => renamePdfFile(file.id, e.target.value)}
-                              className="w-full bg-transparent text-xs font-bold text-slate-800 focus:outline-none focus:bg-white focus:border focus:border-emerald-200 rounded-lg px-1 py-0.5"
+                              className="w-full bg-void text-xs font-bold text-white border border-white/10 focus:outline-none focus:border-primary/50 rounded-lg px-2 py-1"
                             />
-                            <div className="flex flex-wrap items-center gap-2 text-[10px] text-slate-400 font-sans mt-0.5">
+                            <div className="flex flex-wrap items-center gap-2 text-[10px] text-muted font-sans mt-1">
                               <span>{formatFileSize(file.size)}</span>
                               <span>{file.pages || 0} pages</span>
                               <span>Order {index + 1}</span>
                             </div>
                             {typeof file.uploadProgress === 'number' && file.uploadProgress > 0 && file.uploadProgress < 100 && (
-                              <div className="w-full bg-slate-200 h-1 rounded-full overflow-hidden mt-2">
-                                <div className="bg-emerald-500 h-full transition-all duration-300" style={{ width: `${file.uploadProgress}%` }} />
+                              <div className="w-full bg-white/5 h-1 rounded-full overflow-hidden mt-2">
+                                <div className="bg-primary h-full transition-all duration-300" style={{ width: `${file.uploadProgress}%` }} />
                               </div>
                             )}
                           </div>
@@ -977,7 +977,7 @@ export default function NoteUploadWizard({ onClose, onSaveSuccess, note = null, 
                             type="button"
                             disabled={index === 0}
                             onClick={() => movePdfFile(index, 'up')}
-                            className="p-1.5 hover:bg-white text-slate-600 rounded-lg disabled:opacity-30"
+                            className="p-1.5 hover:bg-white/5 text-white rounded-lg disabled:opacity-30"
                             title="Move up"
                           >
                             <ArrowLeft className="w-3.5 h-3.5 rotate-90" />
@@ -986,7 +986,7 @@ export default function NoteUploadWizard({ onClose, onSaveSuccess, note = null, 
                             type="button"
                             disabled={index === pdfFiles.length - 1}
                             onClick={() => movePdfFile(index, 'down')}
-                            className="p-1.5 hover:bg-white text-slate-600 rounded-lg disabled:opacity-30"
+                            className="p-1.5 hover:bg-white/5 text-white rounded-lg disabled:opacity-30"
                             title="Move down"
                           >
                             <ArrowRight className="w-3.5 h-3.5 rotate-90" />
@@ -994,7 +994,7 @@ export default function NoteUploadWizard({ onClose, onSaveSuccess, note = null, 
                           <button
                             type="button"
                             onClick={() => removePdfFile(file.id)}
-                            className="px-2 py-1.5 hover:bg-red-50 text-red-500 rounded-lg text-[10px] font-bold flex items-center gap-1"
+                            className="px-2 py-1.5 hover:bg-red-500/10 text-red-400 rounded-lg text-[10px] font-bold flex items-center gap-1 border border-transparent hover:border-red-500/20"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
                             <span>Remove</span>
@@ -1018,18 +1018,18 @@ export default function NoteUploadWizard({ onClose, onSaveSuccess, note = null, 
               />
 
               {/* Auto Generated Previews Status & List */}
-              <div className="space-y-3 bg-white p-5 border border-slate-200 rounded-2xl">
-                <div className="flex justify-between items-center border-b border-slate-100 pb-2">
+              <div className="space-y-3 bg-void/50 p-5 border border-white/10 rounded-2xl">
+                <div className="flex justify-between items-center border-b border-white/5 pb-2">
                   <div>
-                    <label className="text-[10px] font-bold text-slate-400 uppercase block">Preview Pages (Auto-Generated)</label>
-                    <span className="text-[10px] text-emerald-600 font-medium font-sans">✓ System Extracted & Watermarked</span>
+                    <label className="text-[10px] font-bold text-muted uppercase block">Preview Pages (Auto-Generated)</label>
+                    <span className="text-[10px] text-emerald-400 font-medium font-sans">✓ System Extracted & Watermarked</span>
                   </div>
                   {(pdfFiles.length > 0 || note) && (
                     <button
                       type="button"
                       onClick={handleRegeneratePreviews}
                       disabled={isGeneratingPreviews}
-                      className="py-1.5 px-3 bg-slate-100 hover:bg-slate-200 rounded-lg text-[10px] font-bold text-slate-700 transition-colors flex items-center gap-1 disabled:opacity-50"
+                      className="py-1.5 px-3 bg-white/5 border border-white/5 hover:bg-white/10 rounded-lg text-[10px] font-bold text-white transition-colors flex items-center gap-1 disabled:opacity-50"
                     >
                       <RefreshCw className="w-3 h-3" />
                       <span>Regenerate Previews</span>
@@ -1038,18 +1038,19 @@ export default function NoteUploadWizard({ onClose, onSaveSuccess, note = null, 
                 </div>
 
                 {pdfFiles.length > 0 && (
-                  <div className="bg-slate-50 border border-slate-100 rounded-xl p-3 space-y-3">
-                    <label className="text-[10px] font-bold text-slate-400 uppercase block">Preview Source</label>
-                    <div className="flex flex-col sm:flex-row gap-2 text-xs text-slate-700">
-                      <label className="flex items-center gap-2">
+                  <div className="bg-card border border-white/5 rounded-xl p-3 space-y-3">
+                    <label className="text-[10px] font-bold text-muted uppercase block font-sans">Preview Source</label>
+                    <div className="flex flex-col sm:flex-row gap-4 text-xs text-white">
+                      <label className="flex items-center gap-2 cursor-pointer">
                         <input
                           type="radio"
                           checked={previewSourceMode === 'first'}
                           onChange={() => setPreviewSourceMode('first')}
+                          className="accent-primary"
                         />
                         <span>First PDF (default)</span>
                       </label>
-                      <label className="flex items-center gap-2">
+                      <label className="flex items-center gap-2 cursor-pointer">
                         <input
                           type="radio"
                           checked={previewSourceMode === 'choose'}
@@ -1057,6 +1058,7 @@ export default function NoteUploadWizard({ onClose, onSaveSuccess, note = null, 
                             setPreviewSourceMode('choose');
                             setPreviewSourcePdfId(previewSourcePdfId || pdfFiles[0]?.id || '');
                           }}
+                          className="accent-primary"
                         />
                         <span>Choose PDF</span>
                       </label>
@@ -1065,7 +1067,7 @@ export default function NoteUploadWizard({ onClose, onSaveSuccess, note = null, 
                       <select
                         value={previewSourcePdfId}
                         onChange={(e) => setPreviewSourcePdfId(e.target.value)}
-                        className="w-full px-3 py-2 border border-slate-200 focus:border-emerald-500 focus:outline-none rounded-xl text-xs bg-white"
+                        className="w-full px-3 py-2.5 border border-white/10 focus:border-primary/50 focus:outline-none rounded-xl text-xs bg-void text-white"
                       >
                         {pdfFiles.map((file) => (
                           <option key={file.id} value={file.id}>{file.name}</option>
@@ -1077,21 +1079,21 @@ export default function NoteUploadWizard({ onClose, onSaveSuccess, note = null, 
 
                 {/* Progress and status indicators */}
                 {isGeneratingPreviews && (
-                  <div className="space-y-1.5 py-2 font-sans">
-                    <div className="flex justify-between text-[10px] font-bold text-slate-500">
+                  <div className="space-y-1.5 py-2 font-sans text-left">
+                    <div className="flex justify-between text-[10px] font-bold text-muted">
                       <span className="flex items-center gap-1">
-                        <Loader2 className="w-3.5 h-3.5 animate-spin text-cyan-500" />
+                        <Loader2 className="w-3.5 h-3.5 animate-spin text-primary" />
                         <span>Generating high-quality previews ({previewProgress}%)...</span>
                       </span>
                     </div>
-                    <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
-                      <div className="bg-cyan-500 h-full transition-all duration-300" style={{ width: `${previewProgress}%` }} />
+                    <div className="w-full bg-white/5 h-1.5 rounded-full overflow-hidden">
+                      <div className="bg-primary h-full transition-all duration-300" style={{ width: `${previewProgress}%` }} />
                     </div>
                   </div>
                 )}
 
                 {previewError && (
-                  <div className="bg-red-50 text-red-750 border border-red-100 rounded-xl p-3 text-xs leading-relaxed flex flex-col gap-1 text-left font-sans">
+                  <div className="bg-red-500/10 text-red-400 border border-red-500/20 rounded-xl p-3 text-xs leading-relaxed flex flex-col gap-1 text-left font-sans animate-pulse">
                     <span className="font-bold">Preview Extraction Failed</span>
                     <span>{previewError}</span>
                     <button
@@ -1107,7 +1109,7 @@ export default function NoteUploadWizard({ onClose, onSaveSuccess, note = null, 
                 {displayPreviewUrls.length > 0 ? (
                   <div className="grid grid-cols-3 gap-4 pt-2">
                     {displayPreviewUrls.map((url, i) => (
-                      <div key={i} className="group relative aspect-[3/4] bg-slate-50 border border-slate-200 rounded-xl overflow-hidden shadow-sm">
+                      <div key={i} className="group relative aspect-[3/4] bg-void border border-white/10 rounded-xl overflow-hidden shadow-md">
                         <img src={url} alt={`Preview ${i+1}`} className="w-full h-full object-cover select-none pointer-events-none" />
                         <span className="absolute top-2 left-2 bg-slate-900/60 backdrop-blur-xs text-white text-[9px] px-1.5 py-0.5 rounded-md font-bold font-mono">
                           Page {i+1}
@@ -1117,7 +1119,7 @@ export default function NoteUploadWizard({ onClose, onSaveSuccess, note = null, 
                   </div>
                 ) : (
                   !isGeneratingPreviews && (
-                    <p className="text-[10px] text-slate-400 italic py-2 font-sans">
+                    <p className="text-[10px] text-muted italic py-2 font-sans">
                       {pdfFiles.length > 0 ? 'Preparing preview extraction...' : 'Upload PDF files to extract previews automatically.'}
                     </p>
                   )
@@ -1128,12 +1130,12 @@ export default function NoteUploadWizard({ onClose, onSaveSuccess, note = null, 
             <div className="space-y-6 text-left">
               {/* Note images dropzone */}
               <div className="space-y-1">
-                <label className="text-[10px] font-bold text-slate-400 uppercase">Upload Note Pages (Images) *</label>
-                <div {...getImagesRootProps()} className="border-2 border-dashed border-slate-200 hover:border-emerald-500 bg-white rounded-2xl p-8 text-center cursor-pointer transition-colors">
+                <label className="text-[10px] font-bold text-muted uppercase">Upload Note Pages (Images) *</label>
+                <div {...getImagesRootProps()} className="border-2 border-dashed border-white/10 hover:border-primary bg-void/50 rounded-2xl p-8 text-center cursor-pointer transition-colors">
                   <input {...getImagesInputProps()} />
-                  <Upload className="w-8 h-8 text-slate-350 mx-auto mb-2" />
-                  <p className="text-xs font-bold text-slate-700">Drag & drop note pages or click to browse</p>
-                  <p className="text-[10px] text-slate-400 mt-1">Upload multiple files (JPG, PNG, JPEG, WEBP). Max 100 MB.</p>
+                  <Upload className="w-8 h-8 text-muted mx-auto mb-2" />
+                  <p className="text-xs font-bold text-white">Drag & drop note pages or click to browse</p>
+                  <p className="text-[10px] text-muted mt-1">Upload multiple files (JPG, PNG, JPEG, WEBP). Max 100 MB.</p>
                 </div>
               </div>
 
@@ -1141,39 +1143,39 @@ export default function NoteUploadWizard({ onClose, onSaveSuccess, note = null, 
               {noteImages.length > 0 && (
                 <div className="space-y-2">
                   <div className="flex justify-between items-center">
-                    <label className="text-[10px] font-bold text-slate-400 uppercase">Pages List ({noteImages.length} uploaded)</label>
-                    <span className="text-[10px] text-slate-400">Reorder pages using the arrow actions</span>
+                    <label className="text-[10px] font-bold text-muted uppercase">Pages List ({noteImages.length} uploaded)</label>
+                    <span className="text-[10px] text-muted">Reorder pages using the arrow actions</span>
                   </div>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 bg-white p-4 border border-slate-200 rounded-2xl max-h-96 overflow-y-auto">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 bg-void/50 p-4 border border-white/10 rounded-2xl max-h-96 overflow-y-auto">
                     {noteImages.map((img, i) => (
-                      <div key={i} className="group relative aspect-[3/4] bg-slate-50 border border-slate-100 rounded-xl overflow-hidden flex flex-col justify-between shadow-sm">
-                        <div className="relative aspect-[3/4] bg-slate-100 overflow-hidden">
+                      <div key={i} className="group relative aspect-[3/4] bg-card border border-white/5 rounded-xl overflow-hidden flex flex-col justify-between shadow-md">
+                        <div className="relative aspect-[3/4] bg-void overflow-hidden">
                           <img src={img.previewUrl} alt={`Page ${i+1}`} className="w-full h-full object-cover" />
                           <span className="absolute top-2 left-2 bg-slate-900/60 backdrop-blur-xs text-white text-[9px] px-1.5 py-0.5 rounded-md font-bold font-mono">
                             P. {i+1}
                           </span>
                         </div>
                         {/* Actions overlay panel */}
-                        <div className="p-2 bg-slate-50 flex items-center justify-between border-t border-slate-100">
+                        <div className="p-2 bg-card flex items-center justify-between border-t border-white/5">
                           <button
                             type="button"
                             disabled={i === 0}
                             onClick={() => moveImage(i, 'left')}
-                            className="p-1 hover:bg-slate-200 text-slate-600 rounded disabled:opacity-30"
+                            className="p-1 hover:bg-white/5 text-white rounded disabled:opacity-30"
                           >
                             <ArrowLeft className="w-3.5 h-3.5" />
                           </button>
                           <button
                             type="button"
                             onClick={() => setZoomImgUrl(img.previewUrl)}
-                            className="p-1 hover:bg-slate-200 text-slate-600 rounded"
+                            className="p-1 hover:bg-white/5 text-white rounded"
                           >
                             <Eye className="w-3.5 h-3.5" />
                           </button>
                           <button
                             type="button"
                             onClick={() => removeImage(i)}
-                            className="p-1 hover:bg-red-50 text-red-500 rounded"
+                            className="p-1 hover:bg-red-500/10 text-red-400 rounded"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>
@@ -1181,7 +1183,7 @@ export default function NoteUploadWizard({ onClose, onSaveSuccess, note = null, 
                             type="button"
                             disabled={i === noteImages.length - 1}
                             onClick={() => moveImage(i, 'right')}
-                            className="p-1 hover:bg-slate-200 text-slate-600 rounded disabled:opacity-30"
+                            className="p-1 hover:bg-white/5 text-white rounded disabled:opacity-30"
                           >
                             <ArrowRight className="w-3.5 h-3.5" />
                           </button>
@@ -1195,17 +1197,17 @@ export default function NoteUploadWizard({ onClose, onSaveSuccess, note = null, 
           )}
 
           {/* Footer Actions Step 2 */}
-          <div className="flex justify-between pt-4 border-t border-slate-200">
+          <div className="flex justify-between pt-4 border-t border-white/5">
             <button
               onClick={() => setStep(1)}
-              className="py-2.5 px-5 hover:bg-slate-250 border border-slate-200 text-slate-600 text-xs font-bold rounded-xl transition-colors"
+              className="py-2.5 px-5 hover:bg-white/5 border border-white/10 text-white text-xs font-bold rounded-xl transition-colors"
             >
               Back
             </button>
             <button
               onClick={uploadType === 'pdf' ? compilePdfMetadata : compileImages}
               disabled={isCompiling || (uploadType === 'pdf' && pdfFiles.length === 0) || (uploadType === 'images' && noteImages.length === 0)}
-              className="py-2.5 px-6 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold rounded-xl transition-colors disabled:opacity-50 flex items-center gap-1.5"
+              className="py-2.5 px-6 bg-primary hover:bg-primary-dark text-void text-xs font-bold rounded-xl transition-colors disabled:opacity-50 flex items-center gap-1.5 shadow-md"
             >
               {isCompiling ? (
                 <>
@@ -1224,41 +1226,41 @@ export default function NoteUploadWizard({ onClose, onSaveSuccess, note = null, 
           STEP 3: COMPILATION & VERIFICATION PREVIEW
           ========================================== */}
       {step === 3 && (
-        <div className="space-y-6">
+        <div className="space-y-6 text-left">
           {/* Compilation status */}
-          <div className="bg-white border border-slate-200 rounded-2xl p-6 text-center space-y-4">
-            <div className="w-16 h-16 bg-emerald-50 rounded-full flex items-center justify-center text-emerald-500 mx-auto">
+          <div className="bg-void/50 border border-white/10 rounded-2xl p-6 text-center space-y-4">
+            <div className="w-16 h-16 bg-primary/10 border border-primary/20 rounded-full flex items-center justify-center text-primary mx-auto">
               <ShieldCheck className="w-8 h-8" />
             </div>
             
             <div className="space-y-1">
-              <h3 className="font-bold text-slate-800 text-sm">Verify note documents compiled</h3>
-              <p className="text-xs text-slate-400 max-w-sm mx-auto">
+              <h3 className="font-bold text-white text-sm">Verify note documents compiled</h3>
+              <p className="text-xs text-muted max-w-sm mx-auto">
                 Review the file page counts and sizing. We will upload this compiled file to private storage.
               </p>
             </div>
 
-            <div className="grid grid-cols-2 gap-4 bg-slate-50 p-4 border border-slate-100 rounded-xl text-left font-sans max-w-xs mx-auto">
+            <div className="grid grid-cols-2 gap-4 bg-card p-4 border border-white/5 rounded-xl text-left font-sans max-w-xs mx-auto">
               <div>
-                <span className="text-[10px] text-slate-400 font-bold block">PAGE COUNT</span>
-                <span className="text-xs text-slate-800 font-bold">{pageCount} Pages</span>
+                <span className="text-[10px] text-muted font-bold block font-sans">PAGE COUNT</span>
+                <span className="text-xs text-white font-bold font-sans">{pageCount} Pages</span>
               </div>
               <div>
-                <span className="text-[10px] text-slate-400 font-bold block">FILE SIZE</span>
-                <span className="text-xs text-slate-800 font-bold">{(fileSize / (1024 * 1024)).toFixed(2)} MB</span>
+                <span className="text-[10px] text-muted font-bold block font-sans">FILE SIZE</span>
+                <span className="text-xs text-white font-bold font-sans">{(fileSize / (1024 * 1024)).toFixed(2)} MB</span>
               </div>
             </div>
           </div>
 
           {/* Previews display in Step 3 */}
-          <div className="bg-white border border-slate-200 rounded-2xl p-5 text-left space-y-3 font-sans">
-            <div className="flex justify-between items-center border-b border-slate-100 pb-2">
+          <div className="bg-void/50 border border-white/10 rounded-2xl p-5 text-left space-y-3 font-sans">
+            <div className="flex justify-between items-center border-b border-white/5 pb-2">
               <div>
-                <label className="text-[10px] font-bold text-slate-400 uppercase block font-sans">Preview Pages</label>
-                <span className="text-[10px] text-emerald-600 font-semibold font-sans">✓ Auto Generated & Watermarked</span>
+                <label className="text-[10px] font-bold text-muted uppercase block font-sans">Preview Pages</label>
+                <span className="text-[10px] text-emerald-450 font-semibold font-sans">✓ Auto Generated & Watermarked</span>
               </div>
               {isGeneratingPreviews && (
-                <span className="flex items-center gap-1 text-[10px] font-bold text-cyan-600 font-sans">
+                <span className="flex items-center gap-1 text-[10px] font-bold text-primary font-sans animate-pulse">
                   <Loader2 className="w-3.5 h-3.5 animate-spin" />
                   <span>Extracting...</span>
                 </span>
@@ -1267,8 +1269,8 @@ export default function NoteUploadWizard({ onClose, onSaveSuccess, note = null, 
 
             {isGeneratingPreviews && (
               <div className="space-y-1 py-1 font-sans">
-                <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
-                  <div className="bg-cyan-550 h-full transition-all duration-300" style={{ width: `${previewProgress}%` }} />
+                <div className="w-full bg-white/5 h-1.5 rounded-full overflow-hidden">
+                  <div className="bg-primary h-full transition-all duration-300" style={{ width: `${previewProgress}%` }} />
                 </div>
               </div>
             )}
@@ -1276,7 +1278,7 @@ export default function NoteUploadWizard({ onClose, onSaveSuccess, note = null, 
             {displayPreviewUrls.length > 0 ? (
               <div className="grid grid-cols-3 gap-4">
                 {displayPreviewUrls.map((url, i) => (
-                  <div key={i} className="group relative aspect-[3/4] bg-slate-50 border border-slate-200 rounded-xl overflow-hidden shadow-sm">
+                  <div key={i} className="group relative aspect-[3/4] bg-void border border-white/10 rounded-xl overflow-hidden shadow-md animate-fade-in">
                     <img src={url} alt={`Preview ${i+1}`} className="w-full h-full object-cover select-none pointer-events-none" />
                     <span className="absolute top-2 left-2 bg-slate-900/60 backdrop-blur-xs text-white text-[9px] px-1.5 py-0.5 rounded-md font-bold font-mono">
                       Page {i+1}
@@ -1286,37 +1288,37 @@ export default function NoteUploadWizard({ onClose, onSaveSuccess, note = null, 
               </div>
             ) : (
               !isGeneratingPreviews && (
-                <p className="text-[10px] text-slate-400 italic py-1 font-sans">No previews generated yet.</p>
+                <p className="text-[10px] text-muted italic py-1 font-sans">No previews generated yet.</p>
               )
             )}
           </div>
 
           {/* Upload Progress Bar if active */}
           {isCompiling && (
-            <div className="space-y-2 text-left">
-              <div className="flex justify-between text-xs text-slate-500 font-semibold">
+            <div className="space-y-2 text-left font-sans">
+              <div className="flex justify-between text-xs text-muted font-semibold">
                 <span>Uploading note assets to storage...</span>
                 <span>{compilationProgress}%</span>
               </div>
-              <div className="w-full bg-slate-200 h-2 rounded-full overflow-hidden">
+              <div className="w-full bg-white/5 h-2 rounded-full overflow-hidden">
                 <div className="bg-emerald-500 h-full transition-all duration-300" style={{ width: `${compilationProgress}%` }} />
               </div>
             </div>
           )}
 
           {/* Footer Actions Step 3 */}
-          <div className="flex justify-between pt-4 border-t border-slate-200">
+          <div className="flex justify-between pt-4 border-t border-white/5">
             <button
               onClick={() => setStep(2)}
               disabled={isCompiling}
-              className="py-2.5 px-5 hover:bg-slate-250 border border-slate-200 text-slate-600 text-xs font-bold rounded-xl transition-colors disabled:opacity-50"
+              className="py-2.5 px-5 hover:bg-white/5 border border-white/10 text-white text-xs font-bold rounded-xl transition-colors disabled:opacity-50"
             >
               Back
             </button>
             <button
               onClick={uploadWizardAssets}
               disabled={isCompiling}
-              className="py-2.5 px-6 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition-colors disabled:opacity-50 flex items-center gap-1.5 shadow-md shadow-emerald-100"
+              className="py-2.5 px-6 bg-primary hover:bg-primary-dark text-void text-xs font-bold rounded-xl transition-colors disabled:opacity-50 flex items-center gap-1.5 shadow-lg"
             >
               {isCompiling ? (
                 <>
@@ -1339,30 +1341,30 @@ export default function NoteUploadWizard({ onClose, onSaveSuccess, note = null, 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {/* Note Title */}
             <div className="space-y-1 sm:col-span-2">
-              <label className="text-[10px] font-bold text-slate-400 uppercase">Note Title *</label>
+              <label className="text-[10px] font-bold text-muted uppercase">Note Title *</label>
               <input
                 type="text"
                 required
                 value={title}
                 onChange={e => setTitle(e.target.value)}
                 placeholder="e.g. Pathology Lecture Notes — Inflammation & Cell Repair"
-                className="w-full px-3 py-2.5 border border-slate-200 focus:border-emerald-500 focus:outline-none rounded-xl text-xs"
+                className="w-full px-3 py-2.5 border border-white/10 focus:border-primary/50 focus:outline-none rounded-xl text-xs bg-void text-white"
               />
             </div>
 
             {/* Course select */}
             <div className="space-y-1">
-              <label className="text-[10px] font-bold text-slate-400 uppercase">Academic Course *</label>
+              <label className="text-[10px] font-bold text-muted uppercase">Academic Course *</label>
               {coursesLoading ? (
-                <div className="py-2 px-3 bg-slate-100 rounded-xl animate-pulse text-xs text-slate-400">Loading courses...</div>
+                <div className="py-2 px-3 bg-void rounded-xl animate-pulse text-xs text-muted border border-white/10">Loading courses...</div>
               ) : (
                 <select
                   value={courseId}
                   onChange={e => setCourseId(e.target.value)}
-                  className="w-full px-3 py-2.5 border border-slate-200 focus:border-emerald-500 focus:outline-none rounded-xl text-xs"
+                  className="w-full px-3 py-2.5 border border-white/10 focus:border-primary/50 focus:outline-none rounded-xl text-xs bg-void text-white"
                 >
                   {courses.map(course => (
-                    <option key={course.id} value={course.id}>{course.name}</option>
+                    <option key={course.id} value={course.id} className="bg-card text-white">{course.name}</option>
                   ))}
                 </select>
               )}
@@ -1370,32 +1372,32 @@ export default function NoteUploadWizard({ onClose, onSaveSuccess, note = null, 
 
             {/* Subject */}
             <div className="space-y-1">
-              <label className="text-[10px] font-bold text-slate-400 uppercase">Subject *</label>
+              <label className="text-[10px] font-bold text-muted uppercase">Subject *</label>
               <input
                 type="text"
                 required
                 value={subject}
                 onChange={e => setSubject(e.target.value)}
                 placeholder="e.g. Pathology"
-                className="w-full px-3 py-2.5 border border-slate-200 focus:border-emerald-500 focus:outline-none rounded-xl text-xs"
+                className="w-full px-3 py-2.5 border border-white/10 focus:border-primary/50 focus:outline-none rounded-xl text-xs bg-void text-white"
               />
             </div>
 
             {/* Semester */}
             <div className="space-y-1">
-              <label className="text-[10px] font-bold text-slate-400 uppercase">Semester / Year</label>
+              <label className="text-[10px] font-bold text-muted uppercase">Semester / Year</label>
               <input
                 type="text"
                 value={semester}
                 onChange={e => setSemester(e.target.value)}
                 placeholder="e.g. Semester 3"
-                className="w-full px-3 py-2.5 border border-slate-200 focus:border-emerald-500 focus:outline-none rounded-xl text-xs"
+                className="w-full px-3 py-2.5 border border-white/10 focus:border-primary/50 focus:outline-none rounded-xl text-xs bg-void text-white"
               />
             </div>
 
             {/* Price */}
             <div className="space-y-1">
-              <label className="text-[10px] font-bold text-slate-400 uppercase">Price (INR) *</label>
+              <label className="text-[10px] font-bold text-muted uppercase">Price (INR) *</label>
               <input
                 type="number"
                 required
@@ -1403,35 +1405,35 @@ export default function NoteUploadWizard({ onClose, onSaveSuccess, note = null, 
                 value={price}
                 onChange={e => setPrice(e.target.value)}
                 placeholder="e.g. 149"
-                className="w-full px-3 py-2.5 border border-slate-200 focus:border-emerald-500 focus:outline-none rounded-xl text-xs font-mono"
+                className="w-full px-3 py-2.5 border border-white/10 focus:border-primary/50 focus:outline-none rounded-xl text-xs font-mono bg-void text-white"
               />
             </div>
           </div>
 
           {/* Status select */}
           <div className="space-y-1">
-            <label className="text-[10px] font-bold text-slate-400 uppercase">Catalogue Visibility</label>
+            <label className="text-[10px] font-bold text-muted uppercase">Catalogue Visibility</label>
             <select
               value={status}
               onChange={e => setStatus(e.target.value as any)}
-              className="w-full px-3 py-2.5 border border-slate-200 focus:border-emerald-500 focus:outline-none rounded-xl text-xs"
+              className="w-full px-3 py-2.5 border border-white/10 focus:border-primary/50 focus:outline-none rounded-xl text-xs bg-void text-white"
             >
-              <option value="active">Active (Published on store)</option>
-              <option value="draft">Draft (Private)</option>
+              <option value="active" className="bg-card text-white">Active (Published on store)</option>
+              <option value="draft" className="bg-card text-white">Draft (Private)</option>
             </select>
           </div>
 
           {uploadType === 'pdf' && (
-            <div className="space-y-3 bg-white border border-slate-200 rounded-2xl p-4">
+            <div className="space-y-3 bg-void/50 border border-white/10 rounded-2xl p-4">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <div>
-                  <label className="text-[10px] font-bold text-slate-400 uppercase block">Study Files</label>
-                  <span className="text-xs font-bold text-slate-800">{pdfFiles.length} PDF File{pdfFiles.length === 1 ? '' : 's'}</span>
+                  <label className="text-[10px] font-bold text-muted uppercase block">Study Files</label>
+                  <span className="text-xs font-bold text-white">{pdfFiles.length} PDF File{pdfFiles.length === 1 ? '' : 's'}</span>
                 </div>
                 <button
                   type="button"
                   onClick={() => setStep(2)}
-                  className="py-2 px-3 bg-slate-100 hover:bg-slate-200 rounded-xl text-[10px] font-bold text-slate-700 transition-colors"
+                  className="py-2 px-3 bg-white/5 border border-white/10 hover:bg-white/10 rounded-xl text-[10px] font-bold text-white transition-colors"
                 >
                   Add / Delete / Replace / Reorder
                 </button>
@@ -1439,12 +1441,12 @@ export default function NoteUploadWizard({ onClose, onSaveSuccess, note = null, 
               {pdfFiles.length > 0 && (
                 <div className="space-y-2">
                   {pdfFiles.map((file, index) => (
-                    <div key={file.id} className="flex items-center justify-between gap-3 bg-slate-50 border border-slate-100 rounded-xl p-3">
+                    <div key={file.id} className="flex items-center justify-between gap-3 bg-card border border-white/5 rounded-xl p-3">
                       <div className="min-w-0">
-                        <p className="text-xs font-bold text-slate-800 truncate">{index + 1}. {file.name}</p>
-                        <p className="text-[10px] text-slate-400 font-sans">{formatFileSize(file.size)} - {file.pages || 0} pages</p>
+                        <p className="text-xs font-bold text-white truncate">{index + 1}. {file.name}</p>
+                        <p className="text-[10px] text-muted font-sans">{formatFileSize(file.size)} - {file.pages || 0} pages</p>
                       </div>
-                      <FileText className="w-4 h-4 text-red-500 shrink-0" />
+                      <FileText className="w-4 h-4 text-red-400 shrink-0" />
                     </div>
                   ))}
                 </div>
@@ -1454,28 +1456,28 @@ export default function NoteUploadWizard({ onClose, onSaveSuccess, note = null, 
 
           {/* Description */}
           <div className="space-y-1">
-            <label className="text-[10px] font-bold text-slate-400 uppercase">Description</label>
+            <label className="text-[10px] font-bold text-muted uppercase">Description</label>
             <textarea
               rows={4}
               value={description}
               onChange={e => setDescription(e.target.value)}
               placeholder="Enter topics, diagrams, memory mnemonics covered..."
-              className="w-full p-3 border border-slate-200 focus:border-emerald-500 focus:outline-none rounded-xl text-xs resize-none leading-relaxed"
+              className="w-full p-3 border border-white/10 focus:border-primary/50 focus:outline-none rounded-xl text-xs bg-void text-white resize-none leading-relaxed"
             />
           </div>
 
           {/* Footer Actions Step 4 */}
-          <div className="flex justify-between pt-4 border-t border-slate-200">
+          <div className="flex justify-between pt-4 border-t border-white/5">
             <button
               type="button"
               onClick={() => setStep(3)}
-              className="py-2.5 px-5 hover:bg-slate-250 border border-slate-200 text-slate-650 text-xs font-bold rounded-xl transition-colors"
+              className="py-2.5 px-5 hover:bg-white/5 border border-white/10 text-white text-xs font-bold rounded-xl transition-colors"
             >
               Back
             </button>
             <button
               type="submit"
-              className="py-2.5 px-6 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold rounded-xl transition-colors shadow-md shadow-emerald-100 flex items-center gap-1.5"
+              className="py-2.5 px-6 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition-colors shadow-lg flex items-center gap-1.5"
             >
               <CheckCircle2 className="w-4 h-4" />
               <span>{note ? 'Save Updates' : 'Publish Note'}</span>
@@ -1486,11 +1488,11 @@ export default function NoteUploadWizard({ onClose, onSaveSuccess, note = null, 
 
       {/* Image Preview Modal Zoom */}
       {zoomImgUrl && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
-          <div className="relative max-w-lg max-h-[85vh] bg-white p-2 rounded-2xl shadow-2xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-void/90 backdrop-blur-md">
+          <div className="relative max-w-lg max-h-[85vh] bg-card p-2 border border-white/10 rounded-2xl shadow-2xl">
             <button
               onClick={() => setZoomImgUrl(null)}
-              className="absolute top-4 right-4 p-1.5 bg-slate-900/60 text-white rounded-full hover:bg-slate-800 transition-colors"
+              className="absolute top-4 right-4 p-1.5 bg-void/60 text-white border border-white/10 rounded-full hover:bg-white/10 transition-colors"
             >
               <X className="w-4 h-4" />
             </button>

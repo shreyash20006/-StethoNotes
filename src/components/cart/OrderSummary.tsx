@@ -43,7 +43,7 @@ export default function OrderSummary({
   const isProcessing = paymentState === 'redirecting' || paymentState === 'verifying';
 
   return (
-    <div className="flex flex-col gap-6 sticky top-6">
+    <div className="flex flex-col gap-6 sticky top-6 text-white">
       {/* 1. SECURE CHECKOUT DETAILS FORM */}
       <CheckoutForm
         name={name}
@@ -58,21 +58,21 @@ export default function OrderSummary({
       <CouponInput />
 
       {/* 3. STICKY ORDER SUMMARY BILLING CARD (Glassmorphism) */}
-      <div className="bg-white/80 backdrop-blur-md border border-white/60 rounded-2xl p-6 shadow-cyan-soft flex flex-col gap-4">
-        <h3 className="font-display font-extrabold text-base text-primary border-b border-gray-50 pb-3">
+      <div className="glass-card-v2 bg-card/60 backdrop-blur-md border border-white/10 rounded-2xl p-6 shadow-2xl flex flex-col gap-4 shadow-[0_0_50px_-12px_rgba(31,182,212,0.05)] text-left">
+        <h3 className="font-display font-extrabold text-base text-white border-b border-white/5 pb-3">
           Order Summary
         </h3>
 
-        <div className="flex flex-col gap-2.5 text-xs text-gray-500 font-sans">
+        <div className="flex flex-col gap-2.5 text-xs text-muted font-sans">
           {/* Subtotal */}
           <div className="flex justify-between">
             <span>Subtotal</span>
-            <span className="font-semibold text-primary">₹{getSubtotal().toFixed(2)}</span>
+            <span className="font-semibold text-white">₹{getSubtotal().toFixed(2)}</span>
           </div>
 
           {/* Coupon Discount */}
           {coupon && (
-            <div className="flex justify-between text-emerald-600 font-semibold">
+            <div className="flex justify-between text-emerald-450 font-semibold bg-emerald-500/10 px-2 py-1 rounded border border-emerald-500/20">
               <span>Coupon Discount ({coupon})</span>
               <span>-₹{getDiscount().toFixed(2)}</span>
             </div>
@@ -81,19 +81,19 @@ export default function OrderSummary({
           {/* GST */}
           <div className="flex justify-between">
             <span>GST (18% Standard)</span>
-            <span className="font-semibold text-primary">₹{getGST().toFixed(2)}</span>
+            <span className="font-semibold text-white">₹{getGST().toFixed(2)}</span>
           </div>
 
           {/* Platform fee */}
           <div className="flex justify-between">
             <span>Secured Platform Fee</span>
-            <span className="font-semibold text-primary">₹{getPlatformFee().toFixed(2)}</span>
+            <span className="font-semibold text-white">₹{getPlatformFee().toFixed(2)}</span>
           </div>
 
           {/* Grand Total */}
-          <div className="flex justify-between border-t border-gray-100 pt-3 mt-1.5 text-sm font-display font-extrabold text-primary">
+          <div className="flex justify-between border-t border-white/5 pt-3 mt-1.5 text-sm font-display font-extrabold text-white">
             <span>Grand Total</span>
-            <span className="text-accent text-base">₹{getGrandTotal().toFixed(2)}</span>
+            <span className="text-primary text-base font-black tracking-tight">₹{getGrandTotal().toFixed(2)}</span>
           </div>
         </div>
 
@@ -104,7 +104,7 @@ export default function OrderSummary({
         <button
           onClick={onProceedCheckout}
           disabled={!isFormValid || isCartEmpty || isProcessing}
-          className="w-full bg-gradient-to-r from-primary to-accent hover:from-primary-dark hover:to-accent text-white font-display font-extrabold text-sm py-4 rounded-xl flex items-center justify-center gap-2 shadow-md hover:shadow-cyan-soft transition-all disabled:opacity-50 disabled:cursor-not-allowed active:scale-98"
+          className="w-full bg-primary hover:bg-primary-dark text-void font-display font-extrabold text-xs py-4 rounded-xl flex items-center justify-center gap-2 transition-all hover:shadow-[0_0_20px_rgba(31,182,212,0.25)] disabled:opacity-50 disabled:cursor-not-allowed active:scale-98 hover:scale-[1.01]"
         >
           {isProcessing ? (
             <>

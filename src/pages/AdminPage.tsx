@@ -33,7 +33,7 @@ import {
 const TabSuspense = ({ children }: { children: React.ReactNode }) => (
   <Suspense fallback={
     <div className="flex items-center justify-center min-h-[40vh]">
-      <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-cyan-400" />
+      <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary" />
     </div>
   }>
     {children}
@@ -166,32 +166,32 @@ export default function AdminPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#0a0f1e] flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-cyan-400" />
+      <div className="min-h-screen bg-void flex items-center justify-center text-white">
+        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#f8fafc] flex flex-col lg:flex-row font-display text-slate-800 antialiased">
-      {/* SIDEBAR NAVIGATION (Linear/Shopify-style) */}
-      <aside className="w-full lg:w-64 bg-[#0a0f1e] text-white shrink-0 flex flex-col justify-between border-b lg:border-b-0 lg:border-r border-slate-800 z-40">
+    <div className="min-h-screen bg-void flex flex-col lg:flex-row font-display text-white antialiased">
+      {/* SIDEBAR NAVIGATION */}
+      <aside className="w-full lg:w-64 bg-card text-white shrink-0 flex flex-col justify-between border-b lg:border-b-0 lg:border-r border-white/5 z-40">
         <div>
           {/* Sidebar Header */}
-          <div className="p-6 border-b border-slate-800/60 flex items-center justify-between">
+          <div className="p-6 border-b border-white/5 flex items-center justify-between">
             <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-cyan-400 to-blue-500 flex items-center justify-center shadow-lg shadow-cyan-500/20">
-                <ShieldCheck className="w-4 h-4 text-white" />
+              <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-primary to-accent flex items-center justify-center shadow-lg">
+                <ShieldCheck className="w-4 h-4 text-void" />
               </div>
               <div>
                 <span className="text-sm font-bold tracking-tight block">StethoNotes</span>
-                <span className="text-[10px] text-cyan-400 uppercase font-semibold tracking-wider">Admin Control</span>
+                <span className="text-[10px] text-primary uppercase font-semibold tracking-wider">Admin Control</span>
               </div>
             </div>
             {/* Mobile Menu trigger */}
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="lg:hidden p-1 text-slate-400 hover:text-white"
+              className="lg:hidden p-1 text-muted hover:text-white"
             >
               {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
             </button>
@@ -225,8 +225,8 @@ export default function AdminPage() {
                 onClick={() => handleTabChange(tab.id)}
                 className={`w-full px-4 py-2.5 rounded-xl text-xs font-semibold flex items-center justify-between transition-all ${
                   activeTab === tab.id
-                    ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 shadow-inner'
-                    : 'text-slate-400 hover:text-white hover:bg-white/5 border border-transparent'
+                    ? 'bg-primary/10 text-primary border border-primary/20 shadow-inner'
+                    : 'text-muted hover:text-white hover:bg-white/5 border border-transparent'
                 }`}
               >
                 <div className="flex items-center gap-3">
@@ -240,12 +240,12 @@ export default function AdminPage() {
         </div>
 
         {/* Sidebar Footer */}
-        <div className={`p-4 border-t border-slate-800/60 lg:block ${mobileMenuOpen ? 'block' : 'hidden'}`}>
+        <div className={`p-4 border-t border-white/5 lg:block ${mobileMenuOpen ? 'block' : 'hidden'}`}>
           <div className="flex items-center gap-3 mb-4">
-            <img src={user?.avatar_url || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=100'} alt="Avatar" className="w-9 h-9 rounded-full border border-slate-700" />
+            <img src={user?.avatar_url || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=100'} alt="Avatar" className="w-9 h-9 rounded-full border border-white/10" />
             <div className="overflow-hidden">
               <p className="text-xs font-bold text-white truncate">{user?.name}</p>
-              <span className="text-[9px] text-slate-400 truncate block">{user?.email}</span>
+              <span className="text-[9px] text-muted truncate block">{user?.email}</span>
             </div>
           </div>
           <button
@@ -283,23 +283,23 @@ export default function AdminPage() {
         {activeTab === 'courses' && (
           <div className="space-y-6">
             <div>
-              <h1 className="text-3xl font-bold text-[#0c1230]">Academic Courses</h1>
-              <p className="text-sm text-slate-500 mt-1">Manage note course boundaries and register catalog channels.</p>
+              <h1 className="text-3xl font-bold text-white">Academic Courses</h1>
+              <p className="text-sm text-muted mt-1 font-sans">Manage note course boundaries and register catalog channels.</p>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               {/* COURSE LIST TABLE */}
-              <div className="lg:col-span-2 bg-white border border-slate-100 rounded-3xl shadow-sm overflow-hidden">
-                <div className="p-5 border-b border-slate-50 flex items-center justify-between gap-4">
-                  <h3 className="text-base font-bold text-slate-900">Registered Courses</h3>
+              <div className="lg:col-span-2 glass-card-v2 bg-card/60 border border-white/10 rounded-3xl shadow-2xl overflow-hidden text-left">
+                <div className="p-5 border-b border-white/5 flex items-center justify-between gap-4">
+                  <h3 className="text-base font-bold text-white">Registered Courses</h3>
                   <div className="relative w-60">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />
                     <input
                       type="text"
                       placeholder="Search course name..."
                       value={courseSearch}
                       onChange={(e) => setCourseSearch(e.target.value)}
-                      className="w-full pl-9 pr-3 py-1.5 border border-slate-200 rounded-lg text-xs placeholder-slate-400 text-slate-700 focus:outline-none"
+                      className="w-full pl-9 pr-3 py-1.5 border border-white/10 rounded-lg text-xs placeholder-slate-400 bg-void text-white focus:outline-none focus:border-primary/50"
                     />
                   </div>
                 </div>
@@ -307,28 +307,28 @@ export default function AdminPage() {
                 <div className="overflow-x-auto">
                   <table className="w-full text-left border-collapse">
                     <thead>
-                      <tr className="border-b border-slate-100 bg-slate-50/50 text-[10px] text-slate-400 uppercase tracking-widest font-semibold">
+                      <tr className="border-b border-white/5 bg-void/50 text-[10px] text-muted uppercase tracking-widest font-semibold font-sans">
                         <th className="px-6 py-4">Course Name</th>
                         <th className="px-6 py-4 text-center">Notes Count</th>
                         <th className="px-6 py-4 text-right">Action</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-50 text-xs text-slate-800">
+                    <tbody className="divide-y divide-white/5 text-xs text-white">
                       {filteredCourses.length === 0 ? (
                         <tr>
-                          <td colSpan={3} className="text-center py-12 text-slate-450">No courses matching search query.</td>
+                          <td colSpan={3} className="text-center py-12 text-muted">No courses matching search query.</td>
                         </tr>
                       ) : (
                         filteredCourses.map(course => {
                             const noteCount = notes.filter(n => n.course_id === course.id).length;
                             return (
-                              <tr key={course.id} className="hover:bg-slate-50/60">
-                                <td className="px-6 py-4 font-semibold text-slate-850">{course.name}</td>
-                                <td className="px-6 py-4 text-center font-bold text-slate-600 font-sans">{noteCount} items</td>
+                              <tr key={course.id} className="hover:bg-white/5 transition-colors">
+                                <td className="px-6 py-4 font-semibold text-white">{course.name}</td>
+                                <td className="px-6 py-4 text-center font-bold text-muted font-sans">{noteCount} items</td>
                                 <td className="px-6 py-4 text-right shrink-0">
                                   <button
                                     onClick={() => handleDeleteCourse(course.id)}
-                                    className="p-1.5 bg-slate-50 border border-slate-250 hover:bg-red-50 hover:text-red-600 hover:border-red-200 rounded-lg transition-colors"
+                                    className="p-1.5 bg-white/5 border border-white/10 hover:bg-red-500/10 hover:text-red-400 hover:border-red-500/30 rounded-lg transition-colors"
                                   >
                                     <Trash2 className="w-3.5 h-3.5" />
                                   </button>
@@ -343,23 +343,23 @@ export default function AdminPage() {
               </div>
 
               {/* NEW COURSE ADD FORM */}
-              <div className="bg-white border border-slate-100 p-6 rounded-3xl shadow-sm h-fit">
+              <div className="glass-card-v2 bg-card/60 border border-white/10 p-6 rounded-3xl shadow-2xl h-fit text-left">
                 <form onSubmit={handleCreateCourse} className="space-y-4">
-                  <h3 className="text-base font-bold text-slate-900 border-b border-slate-50 pb-3">Add Academic Course</h3>
+                  <h3 className="text-base font-bold text-white border-b border-white/5 pb-3">Add Academic Course</h3>
                   <div className="space-y-1.5">
-                    <label className="text-xs font-semibold text-slate-500">Course Name</label>
+                    <label className="text-xs font-semibold text-muted">Course Name</label>
                     <input
                       type="text"
                       placeholder="e.g. MBBS (Medicine)"
                       value={newCourseName}
                       onChange={(e) => setNewCourseName(e.target.value)}
-                      className="w-full px-4 py-2 border border-slate-200 rounded-xl text-xs text-slate-850 focus:outline-none focus:border-cyan-500 bg-slate-50/20"
+                      className="w-full px-4 py-2.5 border border-white/10 rounded-xl text-xs text-white focus:outline-none focus:border-primary/50 bg-void"
                       required
                     />
                   </div>
                   <button
                     type="submit"
-                    className="w-full py-2.5 bg-cyan-600 hover:bg-cyan-700 text-white text-xs font-semibold rounded-xl flex items-center justify-center gap-1 transition-colors"
+                    className="w-full py-2.5 bg-primary hover:bg-primary-dark text-void text-xs font-semibold rounded-xl flex items-center justify-center gap-1 transition-colors"
                   >
                     <Plus className="w-4 h-4" />
                     <span>Create Course</span>
@@ -375,24 +375,24 @@ export default function AdminPage() {
             ========================================== */}
         {activeTab === 'orders' && (
           <div className="space-y-6">
-            <div className="flex justify-between items-center">
+            <div className="flex justify-between items-center text-left">
               <div>
-                <h1 className="text-3xl font-bold text-[#0c1230]">Order Audits</h1>
-                <p className="text-sm text-slate-500 mt-1">Review student payments, checkout success logs, and email dispatch.</p>
+                <h1 className="text-3xl font-bold text-white">Order Audits</h1>
+                <p className="text-sm text-muted mt-1 font-sans">Review student payments, checkout success logs, and email dispatch.</p>
               </div>
             </div>
 
-            <div className="bg-white border border-slate-100 rounded-3xl shadow-sm overflow-hidden">
-              <div className="p-5 border-b border-slate-50 flex items-center justify-between gap-4">
-                <h3 className="text-base font-bold text-slate-900">Purchase Transaction Logs</h3>
+            <div className="glass-card-v2 bg-card/60 border border-white/10 rounded-3xl shadow-2xl overflow-hidden text-left">
+              <div className="p-5 border-b border-white/5 flex items-center justify-between gap-4">
+                <h3 className="text-base font-bold text-white">Purchase Transaction Logs</h3>
                 <div className="relative w-64">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />
                   <input
                     type="text"
                     placeholder="Search name, email, or ID..."
                     value={orderSearch}
                     onChange={(e) => setOrderSearch(e.target.value)}
-                    className="w-full pl-9 pr-3 py-1.5 border border-slate-200 rounded-lg text-xs placeholder-slate-400 text-slate-700 focus:outline-none"
+                    className="w-full pl-9 pr-3 py-1.5 border border-white/10 rounded-lg text-xs placeholder-slate-450 bg-void text-white focus:outline-none focus:border-primary/50"
                   />
                 </div>
               </div>
@@ -400,7 +400,7 @@ export default function AdminPage() {
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse">
                   <thead>
-                    <tr className="border-b border-slate-100 bg-slate-50/50 text-[10px] text-slate-400 uppercase tracking-widest font-semibold">
+                    <tr className="border-b border-white/5 bg-void/50 text-[10px] text-muted uppercase tracking-widest font-semibold font-sans">
                       <th className="px-6 py-4">Order ID</th>
                       <th className="px-6 py-4">Buyer</th>
                       <th className="px-6 py-4">Total Amount</th>
@@ -409,33 +409,33 @@ export default function AdminPage() {
                       <th className="px-6 py-4 text-right">Date</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-50 text-xs">
+                  <tbody className="divide-y divide-white/5 text-xs text-white">
                     {filteredOrders.length === 0 ? (
                       <tr>
-                        <td colSpan={6} className="text-center py-12 text-slate-450">No orders logged matching search query.</td>
+                        <td colSpan={6} className="text-center py-12 text-muted">No orders logged matching search query.</td>
                       </tr>
                     ) : (
                       filteredOrders.map(order => (
-                          <tr key={order.id} className="hover:bg-slate-50/60">
-                            <td className="px-6 py-4 font-mono font-bold text-slate-750">{order.id}</td>
+                          <tr key={order.id} className="hover:bg-white/5 transition-colors">
+                            <td className="px-6 py-4 font-mono font-bold text-white">{order.id}</td>
                             <td className="px-6 py-4">
-                              <p className="font-semibold text-slate-800">{order.customer_name}</p>
-                              <span className="text-[10px] text-slate-400 font-sans">{order.customer_email}</span>
+                              <p className="font-semibold text-white">{order.customer_name}</p>
+                              <span className="text-[10px] text-muted font-sans">{order.customer_email}</span>
                             </td>
-                            <td className="px-6 py-4 font-bold text-slate-800 font-sans">₹{order.total_amount}</td>
-                            <td className="px-6 py-4 font-mono text-slate-500">{order.razorpay_payment_id || 'Cash/Demo checkout'}</td>
+                            <td className="px-6 py-4 font-bold text-white font-sans">₹{order.total_amount}</td>
+                            <td className="px-6 py-4 font-mono text-muted">{order.razorpay_payment_id || 'Cash/Demo checkout'}</td>
                             <td className="px-6 py-4 text-center">
-                              <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${
+                              <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase border ${
                                 order.payment_status === 'completed'
-                                  ? 'bg-emerald-100 text-emerald-700'
+                                  ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
                                   : order.payment_status === 'failed'
-                                  ? 'bg-red-100 text-red-700'
-                                  : 'bg-amber-100 text-amber-700'
+                                  ? 'bg-red-500/10 border-red-500/20 text-red-400'
+                                  : 'bg-amber-500/10 border border-amber-500/20 text-amber-400'
                               }`}>
                                 {order.payment_status}
                               </span>
                             </td>
-                            <td className="px-6 py-4 text-right text-slate-400 font-sans">{new Date(order.created_at).toLocaleDateString()}</td>
+                            <td className="px-6 py-4 text-right text-muted font-sans">{new Date(order.created_at).toLocaleDateString()}</td>
                           </tr>
                         ))
                     )}
@@ -451,22 +451,22 @@ export default function AdminPage() {
             ========================================== */}
         {activeTab === 'customers' && (
           <div className="space-y-6">
-            <div>
-              <h1 className="text-3xl font-bold text-[#0c1230]">Customers Log</h1>
-              <p className="text-sm text-slate-500 mt-1">Review list of registered students who have purchased products.</p>
+            <div className="text-left">
+              <h1 className="text-3xl font-bold text-white">Customers Log</h1>
+              <p className="text-sm text-muted mt-1 font-sans">Review list of registered students who have purchased products.</p>
             </div>
 
-            <div className="bg-white border border-slate-100 rounded-3xl shadow-sm overflow-hidden">
-              <div className="p-5 border-b border-slate-50 flex items-center justify-between gap-4">
-                <h3 className="text-base font-bold text-slate-900">Customers Database</h3>
+            <div className="glass-card-v2 bg-card/60 border border-white/10 rounded-3xl shadow-2xl overflow-hidden text-left">
+              <div className="p-5 border-b border-white/5 flex items-center justify-between gap-4">
+                <h3 className="text-base font-bold text-white">Customers Database</h3>
                 <div className="relative w-64">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />
                   <input
                     type="text"
                     placeholder="Search by name or email..."
                     value={customerSearch}
                     onChange={(e) => setCustomerSearch(e.target.value)}
-                    className="w-full pl-9 pr-3 py-1.5 border border-slate-200 rounded-lg text-xs placeholder-slate-400 text-slate-700 focus:outline-none"
+                    className="w-full pl-9 pr-3 py-1.5 border border-white/10 rounded-lg text-xs placeholder-slate-450 bg-void text-white focus:outline-none focus:border-primary/50"
                   />
                 </div>
               </div>
@@ -474,25 +474,25 @@ export default function AdminPage() {
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse">
                   <thead>
-                    <tr className="border-b border-slate-100 bg-slate-50/50 text-[10px] text-slate-400 uppercase tracking-widest font-semibold">
+                    <tr className="border-b border-white/5 bg-void/50 text-[10px] text-muted uppercase tracking-widest font-semibold font-sans">
                       <th className="px-6 py-4">Customer Name</th>
                       <th className="px-6 py-4">Email</th>
                       <th className="px-6 py-4 text-center">Orders Count</th>
                       <th className="px-6 py-4 text-right font-semibold">Total Spend</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-50 text-xs">
+                  <tbody className="divide-y divide-white/5 text-xs text-white">
                     {filteredCustomers.length === 0 ? (
                       <tr>
-                        <td colSpan={4} className="text-center py-12 text-slate-450">No customers mapped.</td>
+                        <td colSpan={4} className="text-center py-12 text-muted">No customers mapped.</td>
                       </tr>
                     ) : (
                       filteredCustomers.map((cust, idx) => (
-                          <tr key={idx} className="hover:bg-slate-50/60">
-                            <td className="px-6 py-4 font-semibold text-slate-850">{cust.name}</td>
-                            <td className="px-6 py-4 text-slate-500 font-sans">{cust.email}</td>
-                            <td className="px-6 py-4 text-center font-bold text-slate-600 font-sans">{cust.ordersCount} orders</td>
-                            <td className="px-6 py-4 text-right font-bold text-emerald-600 font-sans">₹{cust.spend.toLocaleString()}</td>
+                          <tr key={idx} className="hover:bg-white/5 transition-colors">
+                            <td className="px-6 py-4 font-semibold text-white">{cust.name}</td>
+                            <td className="px-6 py-4 text-muted font-sans">{cust.email}</td>
+                            <td className="px-6 py-4 text-center font-bold text-muted font-sans">{cust.ordersCount} orders</td>
+                            <td className="px-6 py-4 text-right font-bold text-emerald-400 font-sans">₹{cust.spend.toLocaleString()}</td>
                           </tr>
                         ))
                     )}

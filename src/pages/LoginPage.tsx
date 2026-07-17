@@ -120,83 +120,93 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-[85vh] flex items-center justify-center px-4 py-12">
-      {/* Background gradient */}
-      <div className="fixed inset-0 -z-10 bg-gradient-to-br from-cyan-50 via-white to-blue-50 pointer-events-none" />
-      <div className="fixed top-20 right-10 w-72 h-72 rounded-full bg-accent/8 blur-3xl pointer-events-none -z-10" />
-      <div className="fixed bottom-20 left-10 w-56 h-56 rounded-full bg-blue-200/40 blur-3xl pointer-events-none -z-10" />
+    <div className="bg-void min-h-screen flex items-center justify-center px-4 py-28 relative text-white">
+      {/* Decorative gradients */}
+      <div className="absolute top-20 right-10 w-96 h-96 rounded-full bg-primary/5 blur-3xl pointer-events-none" />
+      <div className="absolute bottom-20 left-10 w-80 h-80 rounded-full bg-primary/5 blur-3xl pointer-events-none" />
 
       <motion.div
         initial={{ opacity: 0, y: 24 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
-        className="w-full max-w-md"
+        className="w-full max-w-md relative z-10 animate-fade-in"
       >
-        <div className="bg-white/80 backdrop-blur-xl border border-white/60 rounded-3xl p-6 sm:p-8 shadow-xl shadow-cyan-100/50 relative overflow-hidden">
-          {/* Decorative corner */}
-          <div className="absolute top-0 right-0 w-32 h-32 bg-accent/5 rounded-bl-[120px] pointer-events-none" />
+        <div className="glass-card-v2 bg-card/60 backdrop-blur-xl border border-white/10 rounded-3xl p-7 sm:p-9 shadow-2xl relative overflow-hidden shadow-[0_0_50px_-12px_rgba(31,182,212,0.15)]">
+          {/* Decorative corner glow */}
+          <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-bl-[120px] pointer-events-none" />
 
           {/* Header */}
-          <div className="text-center mb-7">
-            <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-accent/10 mb-4 overflow-hidden p-2">
+          <div className="text-center mb-8">
+            <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-white/5 border border-white/10 mb-4 overflow-hidden p-2 shadow-inner">
               <img src={storedLogo} alt="StethoNotes Logo" className="w-full h-full object-contain" />
             </div>
-            <h1 className="font-display font-extrabold text-2xl text-primary tracking-tight">
-              Student <span className="text-accent">Login</span>
+            <h1 className="font-display font-extrabold text-2xl text-white tracking-tight">
+              Student <span className="text-primary">Portal</span>
             </h1>
-            <p className="text-gray-400 text-xs mt-1">
-              {isSignUp ? 'Join 10k+ medical students accessing topper notes' : 'Access your purchased notes and study materials'}
+            <p className="text-muted text-xs mt-2 leading-relaxed">
+              {isSignUp ? 'Join 10,000+ medical students accessing topper notes' : 'Access your purchased study notes and guides'}
             </p>
           </div>
 
-          {/* Tab */}
-          <div className="flex bg-gray-50 p-1 rounded-2xl mb-6 text-xs font-medium font-sans">
+          {/* Tab Selection */}
+          <div className="flex bg-void/70 border border-white/5 p-1 rounded-2xl mb-7 text-xs font-semibold font-sans relative">
             <button
               onClick={() => { setIsSignUp(false); navigate('/login'); }}
-              className={`flex-1 py-2 rounded-xl text-center transition-all ${!isSignUp ? 'bg-white text-primary shadow-sm font-semibold' : 'text-gray-400 hover:text-primary'}`}
+              className={`flex-1 py-2.5 rounded-xl text-center transition-all duration-300 ${!isSignUp ? 'bg-white/10 text-white shadow-sm font-bold border border-white/5' : 'text-muted hover:text-white'}`}
             >
               Log In
             </button>
             <button
               onClick={() => { setIsSignUp(true); navigate('/login?signup=true'); }}
-              className={`flex-1 py-2 rounded-xl text-center transition-all ${isSignUp ? 'bg-white text-primary shadow-sm font-semibold' : 'text-gray-400 hover:text-primary'}`}
+              className={`flex-1 py-2.5 rounded-xl text-center transition-all duration-300 ${isSignUp ? 'bg-white/10 text-white shadow-sm font-bold border border-white/5' : 'text-muted hover:text-white'}`}
             >
               Create Account
             </button>
           </div>
 
-          <form onSubmit={handleSubmit} className="flex flex-col gap-4 text-xs">
+          <form onSubmit={handleSubmit} className="flex flex-col gap-4 text-left text-xs">
             {/* Sign up fields */}
             {isSignUp && (
               <>
                 <div className="flex flex-col gap-1.5">
-                  <label className="font-display font-semibold text-gray-400">Full Name</label>
+                  <label className="font-display font-semibold text-muted">Full Name</label>
                   <div className="relative">
-                    <input type="text" placeholder="John Doe" value={name} onChange={e => setName(e.target.value)} required
-                      className="w-full pl-10 pr-4 py-3 border border-gray-200 focus:border-accent focus:ring-1 focus:ring-accent outline-none rounded-xl bg-white text-primary" />
-                    <User className="w-4 h-4 text-gray-400 absolute left-3.5 top-3.5" />
+                    <input 
+                      type="text" 
+                      placeholder="John Doe" 
+                      value={name} 
+                      onChange={e => setName(e.target.value)} 
+                      required
+                      className="w-full pl-10 pr-4 py-3.5 bg-void/50 border border-white/10 focus:border-primary/50 focus:ring-2 focus:ring-primary/20 outline-none rounded-xl text-white transition-all duration-200" 
+                    />
+                    <User className="w-4 h-4 text-muted absolute left-3.5 top-3.5" />
                   </div>
                 </div>
                 <div className="flex flex-col gap-1.5">
-                  <label className="font-display font-semibold text-gray-400">Phone Number</label>
+                  <label className="font-display font-semibold text-muted">Phone Number</label>
                   <div className="relative">
-                    <input type="tel" placeholder="9876543210" value={phone} onChange={e => setPhone(e.target.value)}
-                      className="w-full pl-10 pr-4 py-3 border border-gray-200 focus:border-accent focus:ring-1 focus:ring-accent outline-none rounded-xl bg-white text-primary" />
-                    <Phone className="w-4 h-4 text-gray-400 absolute left-3.5 top-3.5" />
+                    <input 
+                      type="tel" 
+                      placeholder="9876543210" 
+                      value={phone} 
+                      onChange={e => setPhone(e.target.value)}
+                      className="w-full pl-10 pr-4 py-3.5 bg-void/50 border border-white/10 focus:border-primary/50 focus:ring-2 focus:ring-primary/20 outline-none rounded-xl text-white transition-all duration-200" 
+                    />
+                    <Phone className="w-4 h-4 text-muted absolute left-3.5 top-3.5" />
                   </div>
                 </div>
                 <div className="flex flex-col gap-1.5">
-                  <label className="font-display font-semibold text-gray-400">Referral Code <span className="text-gray-300 font-normal">(optional)</span></label>
+                  <label className="font-display font-semibold text-muted">Referral Code <span className="text-muted font-normal">(optional)</span></label>
                   <div className="relative">
                     <input
                       type="text"
                       placeholder="FRIEND1234"
                       value={refCode}
                       onChange={e => setRefCode(e.target.value.toUpperCase())}
-                      className="w-full pl-10 pr-4 py-3 border border-gray-200 focus:border-accent focus:ring-1 focus:ring-accent outline-none rounded-xl bg-white text-primary font-mono uppercase tracking-widest"
+                      className="w-full pl-10 pr-4 py-3.5 bg-void/50 border border-white/10 focus:border-primary/50 focus:ring-2 focus:ring-primary/20 outline-none rounded-xl text-white font-mono uppercase tracking-widest transition-all duration-200"
                       data-testid="signup-ref-code"
                     />
-                    <KeyRound className="w-4 h-4 text-gray-400 absolute left-3.5 top-3.5" />
+                    <KeyRound className="w-4 h-4 text-muted absolute left-3.5 top-3.5" />
                   </div>
                 </div>
               </>
@@ -204,24 +214,36 @@ export default function LoginPage() {
 
             {/* Email */}
             <div className="flex flex-col gap-1.5">
-              <label className="font-display font-semibold text-gray-400">Email Address</label>
+              <label className="font-display font-semibold text-muted">Email Address</label>
               <div className="relative">
-                <input type="email" placeholder="john@example.com" value={email} onChange={e => setEmail(e.target.value)} required
+                <input 
+                  type="email" 
+                  placeholder="john@example.com" 
+                  value={email} 
+                  onChange={e => setEmail(e.target.value)} 
+                  required
                   disabled={!isSignUp && loginMethod === 'otp' && otpSent}
-                  className="w-full pl-10 pr-4 py-3 border border-gray-200 focus:border-accent focus:ring-1 focus:ring-accent outline-none rounded-xl bg-white text-primary disabled:bg-gray-50 disabled:text-gray-400" />
-                <Mail className="w-4 h-4 text-gray-400 absolute left-3.5 top-3.5" />
+                  className="w-full pl-10 pr-4 py-3.5 bg-void/50 border border-white/10 focus:border-primary/50 focus:ring-2 focus:ring-primary/20 outline-none rounded-xl text-white disabled:bg-void/40 disabled:text-muted transition-all duration-200" 
+                />
+                <Mail className="w-4 h-4 text-muted absolute left-3.5 top-3.5" />
               </div>
             </div>
 
             {/* Login method toggle */}
             {!isSignUp && (
-              <div className="flex bg-gray-50 p-1 rounded-xl mb-1 text-[10px] font-medium font-sans">
-                <button type="button" onClick={() => { setLoginMethod('password'); setOtpSent(false); }}
-                  className={`flex-1 py-1.5 rounded-lg text-center transition-all ${loginMethod === 'password' ? 'bg-white text-primary shadow-sm font-semibold' : 'text-gray-400 hover:text-primary'}`}>
+              <div className="flex bg-void/70 border border-white/5 p-1 rounded-xl mb-1 text-[10px] font-semibold font-sans">
+                <button 
+                  type="button" 
+                  onClick={() => { setLoginMethod('password'); setOtpSent(false); }}
+                  className={`flex-1 py-2 rounded-lg text-center transition-all duration-350 ${loginMethod === 'password' ? 'bg-white/10 text-white shadow-sm font-bold border border-white/5' : 'text-muted hover:text-white'}`}
+                >
                   Password
                 </button>
-                <button type="button" onClick={() => setLoginMethod('otp')}
-                  className={`flex-1 py-1.5 rounded-lg text-center transition-all ${loginMethod === 'otp' ? 'bg-white text-primary shadow-sm font-semibold' : 'text-gray-400 hover:text-primary'}`}>
+                <button 
+                  type="button" 
+                  onClick={() => setLoginMethod('otp')}
+                  className={`flex-1 py-2 rounded-lg text-center transition-all duration-350 ${loginMethod === 'otp' ? 'bg-white/10 text-white shadow-sm font-bold border border-white/5' : 'text-muted hover:text-white'}`}
+                >
                   OTP Login
                 </button>
               </div>
@@ -230,11 +252,17 @@ export default function LoginPage() {
             {/* Password */}
             {(isSignUp || loginMethod === 'password') && (
               <div className="flex flex-col gap-1.5">
-                <label className="font-display font-semibold text-gray-400">Password</label>
+                <label className="font-display font-semibold text-muted">Password</label>
                 <div className="relative">
-                  <input type="password" placeholder="••••••••" value={password} onChange={e => setPassword(e.target.value)} required
-                    className="w-full pl-10 pr-4 py-3 border border-gray-200 focus:border-accent focus:ring-1 focus:ring-accent outline-none rounded-xl bg-white text-primary" />
-                  <Lock className="w-4 h-4 text-gray-400 absolute left-3.5 top-3.5" />
+                  <input 
+                    type="password" 
+                    placeholder="••••••••" 
+                    value={password} 
+                    onChange={e => setPassword(e.target.value)} 
+                    required
+                    className="w-full pl-10 pr-4 py-3.5 bg-void/50 border border-white/10 focus:border-primary/50 focus:ring-2 focus:ring-primary/20 outline-none rounded-xl text-white transition-all duration-200" 
+                  />
+                  <Lock className="w-4 h-4 text-muted absolute left-3.5 top-3.5" />
                 </div>
               </div>
             )}
@@ -242,18 +270,27 @@ export default function LoginPage() {
             {/* OTP input */}
             {!isSignUp && loginMethod === 'otp' && otpSent && (
               <div className="flex flex-col gap-1.5">
-                <label className="font-display font-semibold text-gray-400">6-Digit Code</label>
+                <label className="font-display font-semibold text-muted">6-Digit Code</label>
                 <div className="relative">
-                  <input type="text" placeholder="123456" maxLength={6} value={otpToken}
-                    onChange={e => setOtpToken(e.target.value.replace(/\D/g, ''))} required
-                    className="w-full pl-10 pr-4 py-3 border border-gray-200 focus:border-accent focus:ring-1 focus:ring-accent outline-none rounded-xl bg-white text-primary font-mono text-center tracking-widest text-base font-bold" />
-                  <KeyRound className="w-4 h-4 text-gray-400 absolute left-3.5 top-3.5" />
+                  <input 
+                    type="text" 
+                    placeholder="123456" 
+                    maxLength={6} 
+                    value={otpToken}
+                    onChange={e => setOtpToken(e.target.value.replace(/\D/g, ''))} 
+                    required
+                    className="w-full pl-10 pr-4 py-3.5 bg-void/50 border border-white/10 focus:border-primary/50 focus:ring-2 focus:ring-primary/20 outline-none rounded-xl text-white font-mono text-center tracking-widest text-base font-bold transition-all duration-200" 
+                  />
+                  <KeyRound className="w-4 h-4 text-muted absolute left-3.5 top-3.5" />
                 </div>
               </div>
             )}
 
-            <button type="submit" disabled={submitting}
-              className="btn-primary py-3.5 mt-1 font-bold text-sm w-full shadow-md flex items-center justify-center gap-2 disabled:opacity-50">
+            <button 
+              type="submit" 
+              disabled={submitting}
+              className="w-full bg-primary hover:bg-primary-dark text-void font-display font-extrabold text-sm py-4 rounded-xl shadow-lg flex items-center justify-center gap-2 disabled:opacity-50 transition-all hover:scale-[1.01] active:scale-[0.99] mt-2"
+            >
               <span>
                 {submitting ? 'Please wait…'
                   : isSignUp ? 'Create Student Account'
@@ -263,30 +300,34 @@ export default function LoginPage() {
             </button>
 
             {/* Divider */}
-            <div className="relative my-2 flex items-center justify-center">
-              <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-gray-100" /></div>
-              <span className="relative px-3 bg-white text-[10px] text-gray-400 font-sans uppercase">Or continue with</span>
+            <div className="relative my-3 flex items-center justify-center">
+              <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-white/5" /></div>
+              <span className="relative px-3 bg-card/60 backdrop-blur-md text-[10px] text-muted font-sans uppercase">Or continue with</span>
             </div>
 
             {/* Google */}
-            <button type="button" onClick={handleGoogleLogin} disabled={submitting}
-              className="w-full py-3 px-4 border border-gray-200 hover:border-accent hover:bg-accent/5 rounded-xl text-primary font-sans font-semibold text-xs flex items-center justify-center gap-2.5 transition-all disabled:opacity-50">
+            <button 
+              type="button" 
+              onClick={handleGoogleLogin} 
+              disabled={submitting}
+              className="w-full py-3.5 px-4 border border-white/10 hover:border-primary/30 hover:bg-white/5 rounded-xl text-white font-sans font-semibold text-xs flex items-center justify-center gap-2.5 transition-all disabled:opacity-50 hover:scale-[1.01] active:scale-[0.99]"
+            >
               <GoogleIcon />
               <span>Continue with Google</span>
             </button>
           </form>
 
           {/* Other portal links */}
-          <div className="mt-6 pt-5 border-t border-gray-100 flex flex-col gap-2.5">
+          <div className="mt-7 pt-5 border-t border-white/5 flex flex-col gap-3 text-left">
             <Link to="/seller/login"
-              className="flex items-center justify-center gap-2 text-xs text-gray-500 hover:text-emerald-600 transition-colors">
-              <Store className="w-3.5 h-3.5" />
-              <span>Want to sell notes? <span className="font-semibold text-emerald-600">Seller Login →</span></span>
+              className="flex items-center gap-2 text-xs text-muted hover:text-emerald-400 transition-colors">
+              <Store className="w-3.5 h-3.5 text-emerald-400" />
+              <span>Want to sell notes? <span className="font-semibold text-emerald-400">Seller Login →</span></span>
             </Link>
             <Link to="/admin/login"
-              className="flex items-center justify-center gap-2 text-xs text-gray-500 hover:text-slate-700 transition-colors">
-              <ShieldAlert className="w-3.5 h-3.5" />
-              <span>Administrator? <span className="font-semibold text-slate-600">Admin Login →</span></span>
+              className="flex items-center gap-2 text-xs text-muted hover:text-white transition-colors">
+              <ShieldAlert className="w-3.5 h-3.5 text-white" />
+              <span>Administrator? <span className="font-semibold text-white">Admin Login →</span></span>
             </Link>
           </div>
         </div>

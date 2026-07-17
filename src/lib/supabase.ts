@@ -25,69 +25,7 @@ const initializeMockData = () => {
   }
 
   if (!localStorage.getItem('stetho_notes')) {
-    const mockNotes = [
-      {
-        id: 'n1',
-        title: 'Anatomy Upper Limb Lecture Notes',
-        description: 'Comprehensive, high-yield lecture notes on Upper Limb Anatomy including bones, muscles, nerves, and clinical correlations. Curated by top medical students, includes hand-drawn diagrams and mnemonics for BHMS/MBBS students.',
-        course_id: 'c1',
-        subject: 'Anatomy',
-        price: 299.00,
-        pdf_url: 'pdfs/anatomy_upper_limb.pdf',
-        thumbnail_url: 'https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?auto=format&fit=crop&q=80&w=400',
-        preview_images: [
-          'https://images.unsplash.com/photo-1532187643603-ba119ca4109e?auto=format&fit=crop&q=80&w=400',
-          'https://images.unsplash.com/photo-1505751172876-fa1923c5c528?auto=format&fit=crop&q=80&w=400'
-        ],
-        status: 'active',
-        created_at: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
-      },
-      {
-        id: 'n2',
-        title: 'Physiology Cardiovascular System Study Guide',
-        description: 'Master cardiac cycle, blood pressure regulation, and ECG interpretation. Includes high-quality summary tables, flowcharts, and practice questions. Essential for MBBS/BAMS first-year students.',
-        course_id: 'c1',
-        subject: 'Physiology',
-        price: 199.00,
-        pdf_url: 'pdfs/physio_cvs.pdf',
-        thumbnail_url: 'https://images.unsplash.com/photo-1559757175-5700dde675bc?auto=format&fit=crop&q=80&w=400',
-        preview_images: [
-          'https://images.unsplash.com/photo-1579684389782-64d84b5e901a?auto=format&fit=crop&q=80&w=400'
-        ],
-        status: 'active',
-        created_at: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000).toISOString()
-      },
-      {
-        id: 'n3',
-        title: 'Organon of Medicine - BHMS High-Yield Notes',
-        description: 'Detailed study notes explaining Hahnemannian principles, homoeopathic philosophy, and aphorism breakdowns. Ideal for professional examinations.',
-        course_id: 'c2',
-        subject: 'Organon of Medicine',
-        price: 249.00,
-        pdf_url: 'pdfs/organon.pdf',
-        thumbnail_url: 'https://images.unsplash.com/photo-1584017911766-d451b3d0e843?auto=format&fit=crop&q=80&w=400',
-        preview_images: [
-          'https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?auto=format&fit=crop&q=80&w=400'
-        ],
-        status: 'active',
-        created_at: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString()
-      },
-      {
-        id: 'n4',
-        title: 'BAMS Dravyaguna Vijnana Notes',
-        description: 'Essential Ayurvedic pharmacology, classification of herbs, dravya qualities, and chemical compositions. Perfect guide for second-year BAMS exams.',
-        course_id: 'c3',
-        subject: 'Dravyaguna Vijnana',
-        price: 349.00,
-        pdf_url: 'pdfs/dravyaguna.pdf',
-        thumbnail_url: 'https://images.unsplash.com/photo-1611082229985-b6200f68b201?auto=format&fit=crop&q=80&w=400',
-        preview_images: [
-          'https://images.unsplash.com/photo-1512290923902-8a9f81dc236c?auto=format&fit=crop&q=80&w=400'
-        ],
-        status: 'active',
-        created_at: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString()
-      }
-    ];
+    const mockNotes: any[] = [];
     localStorage.setItem('stetho_notes', JSON.stringify(mockNotes));
   }
 

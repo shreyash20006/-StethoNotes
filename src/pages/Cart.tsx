@@ -401,34 +401,34 @@ export default function Cart() {
 
   if (items.length === 0) {
     return (
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 min-h-[75vh] flex items-center justify-center">
+      <div className="bg-void max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24 min-h-[75vh] flex items-center justify-center text-white">
         <EmptyCart />
       </div>
     );
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 min-h-screen">
+    <div className="bg-void max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24 min-h-screen text-white">
       {/* Breadcrumb navigation */}
-      <nav className="flex items-center gap-1.5 text-xs text-gray-400 mb-6 font-sans">
+      <nav className="flex items-center gap-1.5 text-xs text-muted mb-6 font-sans">
         <span className="hover:text-primary transition-colors cursor-pointer" onClick={() => navigate('/')}>Home</span>
-        <ChevronRight className="w-3.5 h-3.5" />
+        <ChevronRight className="w-3.5 h-3.5 text-muted" />
         <span className="hover:text-primary transition-colors cursor-pointer" onClick={() => navigate('/courses')}>Courses</span>
-        <ChevronRight className="w-3.5 h-3.5" />
+        <ChevronRight className="w-3.5 h-3.5 text-muted" />
         <span className="text-primary font-semibold">Cart</span>
       </nav>
 
       {/* Heading Block */}
-      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 border-b border-gray-100 pb-6 mb-10">
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 border-b border-white/5 pb-6 mb-10">
         <div>
-          <h1 className="text-3xl sm:text-4xl font-display font-extrabold text-primary tracking-tight">
+          <h1 className="text-3xl sm:text-4xl font-display font-extrabold text-white tracking-tight">
             Shopping Cart
           </h1>
-          <p className="text-gray-400 text-sm mt-1.5 font-sans">
+          <p className="text-muted text-sm mt-1.5 font-sans">
             You're just one step away from smarter studying.
           </p>
         </div>
-        <span className="bg-accent/10 text-accent font-display font-bold text-xs sm:text-sm px-4 py-1.5 rounded-full shadow-sm shrink-0 border border-accent/15">
+        <span className="bg-primary/10 text-primary font-display font-bold text-xs sm:text-sm px-4 py-1.5 rounded-full shadow-sm shrink-0 border border-primary/20">
           👜 {items.length} Note{items.length !== 1 ? 's' : ''} Selected
         </span>
       </div>
@@ -479,10 +479,10 @@ export default function Cart() {
       </div>
 
       {/* Mobile Sticky bottom Summary bar */}
-      <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-gray-100 p-4 shadow-xl z-40 flex items-center justify-between gap-4 animate-slide-up">
+      <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-card/90 backdrop-blur-xl border-t border-white/10 p-4 shadow-2xl z-40 flex items-center justify-between gap-4 animate-slide-up text-white">
         <div>
-          <span className="text-[10px] text-gray-400 font-sans block">Pay Grand Total</span>
-          <span className="font-display font-extrabold text-base text-accent">
+          <span className="text-[10px] text-muted font-sans block">Pay Grand Total</span>
+          <span className="font-display font-extrabold text-base text-primary">
             ₹{getGrandTotal().toFixed(2)}
           </span>
         </div>

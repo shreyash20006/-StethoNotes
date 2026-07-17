@@ -85,8 +85,8 @@ export default function ContactForm() {
   };
 
   return (
-    <div className="bg-white border border-gray-150 rounded-3xl p-6 sm:p-10 shadow-cyan-soft relative overflow-hidden">
-      <div className="absolute top-0 right-0 w-24 h-24 bg-accent/5 rounded-bl-[100px] pointer-events-none" />
+    <div className="glass-card-v2 bg-card/60 backdrop-blur-md border border-white/10 rounded-3xl p-6 sm:p-10 shadow-2xl relative overflow-hidden text-white">
+      <div className="absolute top-0 right-0 w-24 h-24 bg-primary/5 rounded-bl-[100px] pointer-events-none" />
 
       {success ? (
         <motion.div
@@ -94,16 +94,16 @@ export default function ContactForm() {
           animate={{ opacity: 1, scale: 1 }}
           className="text-center py-12 flex flex-col items-center gap-4"
         >
-          <div className="w-16 h-16 bg-green-50 text-green-500 rounded-full flex items-center justify-center mb-2">
+          <div className="w-16 h-16 bg-primary/10 text-primary border border-primary/20 rounded-full flex items-center justify-center mb-2 animate-bounce">
             <CheckCircle2 className="w-8 h-8" />
           </div>
-          <h3 className="font-display font-extrabold text-xl text-primary">Message Sent Successfully!</h3>
-          <p className="text-gray-500 text-sm max-w-sm mx-auto leading-relaxed">
+          <h3 className="font-display font-extrabold text-xl text-white font-sans">Message Sent Successfully!</h3>
+          <p className="text-muted text-sm max-w-sm mx-auto leading-relaxed">
             Thank you for reaching out. Our support team has received your message and will get back to you within 24–48 hours.
           </p>
           <button
             onClick={() => setSuccess(false)}
-            className="btn-secondary py-2.5 px-6 text-xs mt-4"
+            className="w-auto px-8 py-3 bg-white/5 border border-white/10 rounded-xl hover:bg-white/10 transition-all font-display font-bold text-xs text-white"
           >
             Send Another Message
           </button>
@@ -111,13 +111,13 @@ export default function ContactForm() {
       ) : (
         <form onSubmit={handleSubmit} className="flex flex-col gap-5 text-xs sm:text-sm">
           <div className="mb-2">
-            <h3 className="font-display font-extrabold text-xl text-primary tracking-tight">Send us a Message</h3>
-            <p className="text-gray-400 text-xs mt-1">Have custom note requests or corporate inquiries?</p>
+            <h3 className="font-display font-extrabold text-xl text-white tracking-tight">Send us a Message</h3>
+            <p className="text-muted text-xs mt-1">Have custom note requests or corporate inquiries?</p>
           </div>
 
           {/* Full Name */}
           <div className="flex flex-col gap-1.5">
-            <label className="font-display font-bold text-gray-500 text-xs">Full Name</label>
+            <label className="font-display font-bold text-muted text-xs">Full Name</label>
             <div className="relative">
               <input
                 type="text"
@@ -125,17 +125,17 @@ export default function ContactForm() {
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 className={`w-full pl-10 pr-4 py-3 border ${
-                  errors.name ? 'border-red-500 bg-red-50/20' : 'border-gray-200'
-                } focus:border-accent focus:ring-1 focus:ring-accent outline-none rounded-xl bg-white text-primary text-xs`}
+                  errors.name ? 'border-red-500 bg-red-950/20' : 'border-white/10'
+                } focus:border-primary focus:ring-1 focus:ring-primary/50 outline-none rounded-xl bg-void text-white text-xs`}
               />
-              <User className="w-4 h-4 text-gray-400 absolute left-3.5 top-3.5" />
+              <User className="w-4 h-4 text-muted absolute left-3.5 top-3.5" />
             </div>
-            {errors.name && <span className="text-red-500 text-[10px]">{errors.name}</span>}
+            {errors.name && <span className="text-red-400 text-[10px]">{errors.name}</span>}
           </div>
 
           {/* Email Address */}
           <div className="flex flex-col gap-1.5">
-            <label className="font-display font-bold text-gray-500 text-xs">Email Address</label>
+            <label className="font-display font-bold text-muted text-xs">Email Address</label>
             <div className="relative">
               <input
                 type="email"
@@ -143,17 +143,17 @@ export default function ContactForm() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className={`w-full pl-10 pr-4 py-3 border ${
-                  errors.email ? 'border-red-500 bg-red-50/20' : 'border-gray-200'
-                } focus:border-accent focus:ring-1 focus:ring-accent outline-none rounded-xl bg-white text-primary text-xs`}
+                  errors.email ? 'border-red-500 bg-red-950/20' : 'border-white/10'
+                } focus:border-primary focus:ring-1 focus:ring-primary/50 outline-none rounded-xl bg-void text-white text-xs`}
               />
-              <Mail className="w-4 h-4 text-gray-400 absolute left-3.5 top-3.5" />
+              <Mail className="w-4 h-4 text-muted absolute left-3.5 top-3.5" />
             </div>
-            {errors.email && <span className="text-red-500 text-[10px]">{errors.email}</span>}
+            {errors.email && <span className="text-red-400 text-[10px]">{errors.email}</span>}
           </div>
 
           {/* Subject */}
           <div className="flex flex-col gap-1.5">
-            <label className="font-display font-bold text-gray-500 text-xs">Subject</label>
+            <label className="font-display font-bold text-muted text-xs">Subject</label>
             <div className="relative">
               <input
                 type="text"
@@ -161,17 +161,17 @@ export default function ContactForm() {
                 value={subject}
                 onChange={(e) => setSubject(e.target.value)}
                 className={`w-full pl-10 pr-4 py-3 border ${
-                  errors.subject ? 'border-red-500 bg-red-50/20' : 'border-gray-200'
-                } focus:border-accent focus:ring-1 focus:ring-accent outline-none rounded-xl bg-white text-primary text-xs`}
+                  errors.subject ? 'border-red-500 bg-red-950/20' : 'border-white/10'
+                } focus:border-primary focus:ring-1 focus:ring-primary/50 outline-none rounded-xl bg-void text-white text-xs`}
               />
-              <FileText className="w-4 h-4 text-gray-400 absolute left-3.5 top-3.5" />
+              <FileText className="w-4 h-4 text-muted absolute left-3.5 top-3.5" />
             </div>
-            {errors.subject && <span className="text-red-500 text-[10px]">{errors.subject}</span>}
+            {errors.subject && <span className="text-red-400 text-[10px]">{errors.subject}</span>}
           </div>
 
           {/* Message */}
           <div className="flex flex-col gap-1.5">
-            <label className="font-display font-bold text-gray-500 text-xs">Your Message</label>
+            <label className="font-display font-bold text-muted text-xs">Your Message</label>
             <div className="relative">
               <textarea
                 placeholder="Write your request details here..."
@@ -179,12 +179,12 @@ export default function ContactForm() {
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
                 className={`w-full pl-10 pr-4 py-3 border ${
-                  errors.message ? 'border-red-500 bg-red-50/20' : 'border-gray-200'
-                } focus:border-accent focus:ring-1 focus:ring-accent outline-none rounded-xl bg-white text-primary text-xs resize-none`}
+                  errors.message ? 'border-red-500 bg-red-950/20' : 'border-white/10'
+                } focus:border-primary focus:ring-1 focus:ring-primary/50 outline-none rounded-xl bg-void text-white text-xs resize-none`}
               />
-              <MessageSquare className="w-4 h-4 text-gray-400 absolute left-3.5 top-3.5" />
+              <MessageSquare className="w-4 h-4 text-muted absolute left-3.5 top-3.5" />
             </div>
-            {errors.message && <span className="text-red-500 text-[10px]">{errors.message}</span>}
+            {errors.message && <span className="text-red-400 text-[10px]">{errors.message}</span>}
           </div>
 
           {/* Submit Button */}

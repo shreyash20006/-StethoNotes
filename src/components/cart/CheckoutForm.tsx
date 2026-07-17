@@ -22,15 +22,15 @@ export default function CheckoutForm({
   const isPhoneValid = /^[6-9]\d{9}$/.test(phone.trim()); // Standard Indian phone number format
 
   return (
-    <div className="bg-white border border-gray-100 rounded-2xl p-6 shadow-cyan-soft flex flex-col gap-5">
-      <h3 className="font-display font-extrabold text-base text-primary border-b border-gray-50 pb-3">
+    <div className="glass-card-v2 bg-card/60 backdrop-blur-md border border-white/10 rounded-2xl p-6 shadow-2xl flex flex-col gap-5 text-white shadow-[0_0_50px_-12px_rgba(31,182,212,0.05)]">
+      <h3 className="font-display font-extrabold text-base text-white border-b border-white/5 pb-3">
         Secure Checkout Details
       </h3>
 
       <div className="flex flex-col gap-4 text-xs">
         {/* Full Name */}
-        <div className="flex flex-col gap-1.5">
-          <label className="font-display font-semibold text-gray-400">Full Name</label>
+        <div className="flex flex-col gap-1.5 text-left">
+          <label className="font-display font-semibold text-muted">Full Name</label>
           <div className="relative">
             <input
               type="text"
@@ -38,20 +38,20 @@ export default function CheckoutForm({
               value={name}
               onChange={(e) => setName(e.target.value)}
               required
-              className="w-full pl-10 pr-4 py-3.5 border border-gray-200 focus:border-accent focus:ring-1 focus:ring-accent outline-none rounded-xl bg-white text-primary"
+              className="w-full pl-10 pr-10 py-3.5 bg-void/50 border border-white/10 focus:border-primary/50 focus:ring-2 focus:ring-primary/20 outline-none rounded-xl text-white transition-all duration-200"
             />
-            <User className="w-4 h-4 text-gray-400 absolute left-3.5 top-3.5" />
+            <User className="w-4 h-4 text-muted absolute left-3.5 top-3.5" />
             {name.trim().length >= 3 && (
-              <span className="absolute right-3.5 top-3.5 text-emerald-500">
-                <CheckCircle2 className="w-5 h-5" />
+              <span className="absolute right-3.5 top-3.5 text-primary">
+                <CheckCircle2 className="w-5 h-5 drop-shadow-[0_0_8px_rgba(31,182,212,0.5)]" />
               </span>
             )}
           </div>
         </div>
 
         {/* Email Address */}
-        <div className="flex flex-col gap-1.5">
-          <label className="font-display font-semibold text-gray-400">Email Address</label>
+        <div className="flex flex-col gap-1.5 text-left">
+          <label className="font-display font-semibold text-muted">Email Address</label>
           <div className="relative">
             <input
               type="email"
@@ -59,23 +59,23 @@ export default function CheckoutForm({
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
-              className="w-full pl-10 pr-10 py-3.5 border border-gray-200 focus:border-accent focus:ring-1 focus:ring-accent outline-none rounded-xl bg-white text-primary"
+              className="w-full pl-10 pr-10 py-3.5 bg-void/50 border border-white/10 focus:border-primary/50 focus:ring-2 focus:ring-primary/20 outline-none rounded-xl text-white transition-all duration-200"
             />
-            <Mail className="w-4 h-4 text-gray-400 absolute left-3.5 top-3.5" />
+            <Mail className="w-4 h-4 text-muted absolute left-3.5 top-3.5" />
             {isEmailValid && (
-              <span className="absolute right-3.5 top-3.5 text-emerald-500">
-                <CheckCircle2 className="w-5 h-5 fill-current text-white stroke-emerald-500" />
+              <span className="absolute right-3.5 top-3.5 text-primary">
+                <CheckCircle2 className="w-5 h-5 drop-shadow-[0_0_8px_rgba(31,182,212,0.5)]" />
               </span>
             )}
           </div>
-          <p className="text-[10px] text-gray-400 leading-normal block italic">
+          <p className="text-[10px] text-muted leading-normal block italic mt-0.5">
             📧 We will deliver your note PDF download links to this email. Please double-check it.
           </p>
         </div>
 
         {/* Phone Number */}
-        <div className="flex flex-col gap-1.5">
-          <label className="font-display font-semibold text-gray-400">Phone Number</label>
+        <div className="flex flex-col gap-1.5 text-left">
+          <label className="font-display font-semibold text-muted">Phone Number</label>
           <div className="relative">
             <input
               type="tel"
@@ -84,16 +84,16 @@ export default function CheckoutForm({
               value={phone}
               onChange={(e) => setPhone(e.target.value.replace(/\D/g, ''))}
               required
-              className="w-full pl-10 pr-4 py-3.5 border border-gray-200 focus:border-accent focus:ring-1 focus:ring-accent outline-none rounded-xl bg-white text-primary"
+              className="w-full pl-10 pr-10 py-3.5 bg-void/50 border border-white/10 focus:border-primary/50 focus:ring-2 focus:ring-primary/20 outline-none rounded-xl text-white transition-all duration-200"
             />
-            <Phone className="w-4 h-4 text-gray-400 absolute left-3.5 top-3.5" />
+            <Phone className="w-4 h-4 text-muted absolute left-3.5 top-3.5" />
             {isPhoneValid && (
-              <span className="absolute right-3.5 top-3.5 text-emerald-500">
-                <CheckCircle2 className="w-5 h-5" />
+              <span className="absolute right-3.5 top-3.5 text-primary">
+                <CheckCircle2 className="w-5 h-5 drop-shadow-[0_0_8px_rgba(31,182,212,0.5)]" />
               </span>
             )}
           </div>
-          <p className="text-[10px] text-gray-400 leading-normal block">
+          <p className="text-[10px] text-muted leading-normal block mt-0.5">
             Used only for Razorpay checkout validation and SMS notifications.
           </p>
         </div>

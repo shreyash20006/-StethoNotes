@@ -48,34 +48,12 @@ export default function AdminLoginPage() {
   const isDisabled = submitting || loading;
 
   return (
-    <div className="min-h-screen bg-[#07091a] flex items-center justify-center px-4 py-12 relative overflow-hidden">
-      {/* Deep navy background layers */}
-      <div className="fixed inset-0 -z-10">
-        <div className="absolute inset-0 bg-gradient-to-br from-[#07091a] via-[#0d1230] to-[#0a0f1e]" />
-        {/* Subtle grid */}
-        <div
-          className="absolute inset-0 opacity-[0.03]"
-          style={{
-            backgroundImage: `linear-gradient(rgba(255,255,255,0.5) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.5) 1px, transparent 1px)`,
-            backgroundSize: '40px 40px'
-          }}
-        />
-      </div>
+    <div className="bg-void min-h-screen flex items-center justify-center px-4 py-28 relative overflow-hidden text-white">
       {/* Glow orbs */}
-      <div className="fixed top-1/4 left-1/4 w-96 h-96 rounded-full bg-blue-600/5 blur-[100px] pointer-events-none -z-10" />
-      <div className="fixed bottom-1/4 right-1/4 w-72 h-72 rounded-full bg-indigo-600/5 blur-[100px] pointer-events-none -z-10" />
-      <motion.div
-        animate={{ opacity: [0.3, 0.6, 0.3] }}
-        transition={{ duration: 4, repeat: Infinity }}
-        className="fixed top-20 right-32 w-2 h-2 rounded-full bg-blue-400/60 -z-10"
-      />
-      <motion.div
-        animate={{ opacity: [0.2, 0.5, 0.2] }}
-        transition={{ duration: 6, repeat: Infinity, delay: 2 }}
-        className="fixed bottom-32 left-40 w-1.5 h-1.5 rounded-full bg-indigo-300/60 -z-10"
-      />
+      <div className="fixed top-1/4 left-1/4 w-96 h-96 rounded-full bg-primary/5 blur-[100px] pointer-events-none" />
+      <div className="fixed bottom-1/4 right-1/4 w-72 h-72 rounded-full bg-primary/5 blur-[100px] pointer-events-none" />
 
-      <div className="w-full max-w-md">
+      <div className="w-full max-w-md relative z-10">
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
@@ -87,25 +65,25 @@ export default function AdminLoginPage() {
               initial={{ scale: 0.7, rotate: -10 }}
               animate={{ scale: 1, rotate: 0 }}
               transition={{ type: 'spring', stiffness: 200, delay: 0.2 }}
-              className="inline-flex items-center justify-center w-20 h-20 rounded-3xl bg-gradient-to-br from-slate-700 to-slate-900 border border-slate-600/50 shadow-2xl shadow-black/50 mb-5"
+              className="inline-flex items-center justify-center w-20 h-20 rounded-3xl bg-gradient-to-br from-slate-700 to-slate-900 border border-slate-650/50 shadow-2xl mb-5"
             >
-              <ShieldCheck className="w-10 h-10 text-blue-400" />
+              <ShieldCheck className="w-10 h-10 text-primary" />
             </motion.div>
             <h1 className="text-3xl font-bold text-white tracking-tight mb-1">
               Admin Portal
             </h1>
-            <p className="text-slate-500 text-sm">
+            <p className="text-muted text-sm">
               StethoNotes — Restricted Access
             </p>
           </div>
 
           {/* Login Card */}
-          <div className="bg-white/[0.03] backdrop-blur-xl border border-white/10 rounded-3xl p-8 shadow-2xl">
+          <div className="glass-card-v2 bg-card/60 backdrop-blur-xl border border-white/10 rounded-3xl p-8 shadow-2xl">
             {/* Warning banner */}
             <div className="flex items-start gap-3 p-4 bg-amber-500/10 border border-amber-500/20 rounded-2xl mb-6">
               <Lock className="w-4 h-4 text-amber-400 mt-0.5 shrink-0" />
               <div>
-                <p className="text-amber-300 text-xs font-semibold mb-0.5">Authorized Personnel Only</p>
+                <p className="text-amber-350 text-xs font-semibold mb-0.5">Authorized Personnel Only</p>
                 <p className="text-amber-400/70 text-[11px] leading-relaxed">
                   Only pre-approved administrator accounts can access this panel. All login attempts are logged.
                 </p>
@@ -118,7 +96,7 @@ export default function AdminLoginPage() {
               whileTap={{ scale: 0.98 }}
               onClick={handleGoogleLogin}
               disabled={isDisabled}
-              className="w-full py-4 px-6 bg-white/5 hover:bg-white/10 border border-white/15 hover:border-white/25 rounded-2xl text-white font-semibold text-sm flex items-center justify-center gap-3 transition-all shadow-lg disabled:opacity-50 disabled:cursor-not-allowed group"
+              className="w-full py-4 px-6 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-primary/30 rounded-2xl text-white font-semibold text-sm flex items-center justify-center gap-3 transition-all shadow-lg disabled:opacity-50 disabled:cursor-not-allowed group"
             >
               <AnimatePresence mode="wait">
                 {isDisabled ? (
@@ -141,13 +119,13 @@ export default function AdminLoginPage() {
               )}
             </motion.button>
 
-            {/* Restricted access notice (replacing Authorized accounts list) */}
+            {/* Restricted access notice */}
             <div className="mt-8 pt-6 border-t border-white/5">
-              <div className="bg-blue-950/20 border border-blue-800/10 p-4 rounded-2xl text-center">
-                <h3 className="font-display font-semibold text-xs text-blue-400 tracking-wider uppercase mb-1">
+              <div className="bg-void/50 border border-white/5 p-4 rounded-2xl text-center">
+                <h3 className="font-display font-semibold text-xs text-primary tracking-wider uppercase mb-1">
                   Restricted Access
                 </h3>
-                <p className="text-[11px] text-slate-400 leading-relaxed">
+                <p className="text-[11px] text-muted leading-relaxed">
                   Only authorized StethoNotes administrators can access this portal. Unauthorized login attempts are monitored and logged.
                 </p>
               </div>
@@ -164,7 +142,7 @@ export default function AdminLoginPage() {
 
           {/* Back link */}
           <div className="text-center mt-6">
-            <Link to="/login" className="text-xs text-slate-600 hover:text-slate-400 transition-colors">
+            <Link to="/login" className="text-xs text-muted hover:text-white transition-colors">
               ← Back to Student Login
             </Link>
           </div>

@@ -45,7 +45,7 @@ export default function Contact() {
   };
 
   return (
-    <div className="bg-white min-h-screen">
+    <div className="bg-void min-h-screen text-white pt-10">
       <SEOHead {...meta} jsonLd={localBusinessSchema} />
       {/* Hero Header */}
       <Hero />
@@ -57,7 +57,7 @@ export default function Contact() {
       <ContactCards />
 
       {/* Form & Map section */}
-      <div ref={formRef} className="py-12 bg-white scroll-mt-24">
+      <div ref={formRef} className="py-12 bg-void scroll-mt-24">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch">
             {/* Form component */}
