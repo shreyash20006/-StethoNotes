@@ -442,6 +442,7 @@ class MockQueryBuilder {
   private filterField = '';
   private filterValue: any = null;
   private singleResult = false;
+  private isMaybeSingle = false;
   private limitCount = 0;
   private _orderField = '';
   private _orderAsc = true;
@@ -463,6 +464,12 @@ class MockQueryBuilder {
 
   single() {
     this.singleResult = true;
+    return this;
+  }
+
+  maybeSingle() {
+    this.singleResult = true;
+    this.isMaybeSingle = true;
     return this;
   }
 
@@ -516,7 +523,11 @@ class MockQueryBuilder {
 
     if (this.singleResult) {
       const res = filtered[0] || null;
-      resolve({ data: res, error: res ? null : { message: 'Not found' } });
+      if (this.isMaybeSingle) {
+        resolve({ data: res, error: null });
+      } else {
+        resolve({ data: res, error: res ? null : { message: 'Not found' } });
+      }
       return;
     }
 
