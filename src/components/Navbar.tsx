@@ -2,15 +2,19 @@ import { useState, useEffect } from 'react';
 import { Link, NavLink, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/useAuthStore';
 import { useCartStore } from '../store/useCartStore';
+import { useThemeStore } from '../store/useThemeStore';
+import { motion, AnimatePresence } from 'motion/react';
 import {
   ShoppingCart, User, LogOut, Menu, X, ShieldAlert,
-  BookOpen, Store, Clock, Package, Users, BarChart3, DollarSign
+  BookOpen, Store, Clock, Package, Users, BarChart3, DollarSign,
+  Sun, Moon
 } from 'lucide-react';
 
 export default function Navbar() {
   const navigate = useNavigate();
   const { user, signOut } = useAuthStore();
   const { items } = useCartStore();
+  const { theme, toggleTheme } = useThemeStore();
   const [isOpen, setIsOpen] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
@@ -63,12 +67,16 @@ export default function Navbar() {
     : { label: roleLabel, className: 'bg-primary/10 text-primary border border-primary/20' };
 
   return (
-    <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${isScrolled ? 'py-2 bg-void/40 backdrop-blur-md' : 'py-5'}`}>
+    <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${isScrolled ? 'py-2' : 'py-5'}`}
+      style={{ background: isScrolled ? 'color-mix(in srgb, var(--bg-base) 70%, transparent)' : 'transparent' }}
+    >
       <div className={`max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 transition-all duration-300 ${
         isScrolled 
-          ? 'glass-panel-dark shadow-xl shadow-void/40 mx-4 lg:mx-auto py-1 rounded-2xl border border-white/5'
+          ? 'glass-panel-dark shadow-xl mx-4 lg:mx-auto py-1 rounded-2xl border'
           : 'bg-transparent border border-transparent mx-6 lg:mx-auto py-0'
-      }`}>
+      }`}
+        style={{ borderColor: isScrolled ? 'var(--glass-border)' : 'transparent' }}
+      >
         <div className="flex justify-between h-16 items-center">
           {/* Logo */}
           <div className="flex items-center">
@@ -137,7 +145,40 @@ export default function Navbar() {
           )}
 
           {/* Desktop Actions */}
-          <div className="hidden md:flex items-center gap-5">
+          <div className="hidden md:flex items-center gap-3">
+            {/* Theme Toggle Button */}
+            <button
+              onClick={toggleTheme}
+              className="theme-toggle w-9 h-9 flex items-center justify-center"
+              aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+              role="switch"
+              aria-checked={theme === 'light'}
+            >
+              <AnimatePresence mode="wait" initial={false}>
+                {theme === 'dark' ? (
+                  <motion.div
+                    key="moon"
+                    initial={{ rotate: -90, opacity: 0, scale: 0.5 }}
+                    animate={{ rotate: 0, opacity: 1, scale: 1 }}
+                    exit={{ rotate: 90, opacity: 0, scale: 0.5 }}
+                    transition={{ duration: 0.3, ease: 'easeInOut' }}
+                  >
+                    <Moon className="w-4 h-4" style={{ color: 'var(--accent-primary)' }} />
+                  </motion.div>
+                ) : (
+                  <motion.div
+                    key="sun"
+                    initial={{ rotate: 90, opacity: 0, scale: 0.5 }}
+                    animate={{ rotate: 0, opacity: 1, scale: 1 }}
+                    exit={{ rotate: -90, opacity: 0, scale: 0.5 }}
+                    transition={{ duration: 0.3, ease: 'easeInOut' }}
+                  >
+                    <Sun className="w-4 h-4" style={{ color: 'var(--accent-primary)' }} />
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </button>
+
             {/* Cart (only for students/public) */}
             {!isAdmin && !isSeller && !isSellerPending && (
               <Link to="/cart" className="relative p-2 text-muted hover:text-white transition-colors rounded-full hover:bg-white/5">
@@ -300,9 +341,40 @@ export default function Navbar() {
           </div>
 
           {/* Mobile hamburger */}
-          <div className="flex items-center md:hidden gap-4">
+          <div className="flex items-center md:hidden gap-2">
+            {/* Mobile theme toggle */}
+            <button
+              onClick={toggleTheme}
+              className="theme-toggle w-9 h-9 flex items-center justify-center"
+              aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+            >
+              <AnimatePresence mode="wait" initial={false}>
+                {theme === 'dark' ? (
+                  <motion.div
+                    key="moon-mobile"
+                    initial={{ rotate: -90, opacity: 0, scale: 0.5 }}
+                    animate={{ rotate: 0, opacity: 1, scale: 1 }}
+                    exit={{ rotate: 90, opacity: 0, scale: 0.5 }}
+                    transition={{ duration: 0.3 }}
+                  >
+                    <Moon className="w-4 h-4" style={{ color: 'var(--accent-primary)' }} />
+                  </motion.div>
+                ) : (
+                  <motion.div
+                    key="sun-mobile"
+                    initial={{ rotate: 90, opacity: 0, scale: 0.5 }}
+                    animate={{ rotate: 0, opacity: 1, scale: 1 }}
+                    exit={{ rotate: -90, opacity: 0, scale: 0.5 }}
+                    transition={{ duration: 0.3 }}
+                  >
+                    <Sun className="w-4 h-4" style={{ color: 'var(--accent-primary)' }} />
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </button>
+
             {!isAdmin && !isSeller && !isSellerPending && (
-              <Link to="/cart" className="relative p-2 text-muted hover:text-white transition-colors">
+              <Link to="/cart" className="relative p-2 transition-colors" style={{ color: 'var(--text-muted)' }}>
                 <ShoppingCart className="w-5 h-5" />
                 {cartCount > 0 && (
                   <span className="absolute top-0.5 right-0.5 bg-primary text-void font-sans text-[10px] font-bold w-4 h-4 flex items-center justify-center rounded-full border border-void">
@@ -311,7 +383,7 @@ export default function Navbar() {
                 )}
               </Link>
             )}
-            <button onClick={() => setIsOpen(!isOpen)} className="p-2 text-muted hover:text-white transition-colors">
+            <button onClick={() => setIsOpen(!isOpen)} className="p-2 transition-colors" style={{ color: 'var(--text-muted)' }}>
               {isOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
             </button>
           </div>
@@ -320,7 +392,10 @@ export default function Navbar() {
 
       {/* Mobile Menu */}
       {isOpen && (
-        <div className="md:hidden border-t border-white/5 bg-darkest/95 backdrop-blur-xl px-4 pt-2 pb-6 flex flex-col gap-3 shadow-2xl font-display">
+        <div
+          className="md:hidden border-t px-4 pt-2 pb-6 flex flex-col gap-3 shadow-2xl font-display backdrop-blur-xl"
+          style={{ borderColor: 'var(--glass-border)', background: 'color-mix(in srgb, var(--bg-layer) 95%, transparent)' }}
+        >
           {!isAdmin && (
             <>
               <NavLink to="/courses" onClick={() => setIsOpen(false)}

@@ -64,18 +64,23 @@ export default function ParticleField({ scrollProgress }: ParticleFieldProps) {
     }
 
     const drawParticle = (p: Particle) => {
+      // Read current theme colors from CSS variables
+      const root = document.documentElement;
+      const accentPrimary = getComputedStyle(root).getPropertyValue('--accent-primary').trim() || '#22C7F2';
+      const textFaint = getComputedStyle(root).getPropertyValue('--text-faint').trim() || '#5A7090';
+
       ctx.save();
       ctx.globalAlpha = p.opacity;
       ctx.translate(p.x, p.y);
       ctx.rotate(p.rotation);
 
       if (p.type === 'dot') {
-        ctx.fillStyle = '#1FB6D4';
+        ctx.fillStyle = accentPrimary;
         ctx.beginPath();
         ctx.arc(0, 0, p.size / 2, 0, Math.PI * 2);
         ctx.fill();
       } else if (p.type === 'plus') {
-        ctx.strokeStyle = '#4DE8FF';
+        ctx.strokeStyle = accentPrimary;
         ctx.lineWidth = 1.5;
         ctx.beginPath();
         ctx.moveTo(-p.size / 2, 0);
@@ -84,7 +89,7 @@ export default function ParticleField({ scrollProgress }: ParticleFieldProps) {
         ctx.lineTo(0, p.size / 2);
         ctx.stroke();
       } else if (p.type === 'hexagon') {
-        ctx.strokeStyle = '#8FA3C4';
+        ctx.strokeStyle = textFaint;
         ctx.lineWidth = 1.2;
         ctx.beginPath();
         for (let side = 0; side < 6; side++) {
@@ -97,9 +102,8 @@ export default function ParticleField({ scrollProgress }: ParticleFieldProps) {
         ctx.closePath();
         ctx.stroke();
       } else if (p.type === 'dna') {
-        // Simple helical rung representation
-        ctx.strokeStyle = '#8FA3C4';
-        ctx.fillStyle = '#1FB6D4';
+        ctx.strokeStyle = textFaint;
+        ctx.fillStyle = accentPrimary;
         ctx.lineWidth = 1;
         ctx.beginPath();
         ctx.moveTo(-p.size / 2, -p.size / 4);
@@ -110,9 +114,10 @@ export default function ParticleField({ scrollProgress }: ParticleFieldProps) {
         ctx.arc(p.size / 2, p.size / 4, 2, 0, Math.PI * 2);
         ctx.fill();
       } else if (p.type === 'glow') {
+        const isLightTheme = document.documentElement.getAttribute('data-theme') === 'light';
         const gradient = ctx.createRadialGradient(0, 0, 0, 0, 0, p.size);
-        gradient.addColorStop(0, 'rgba(31,182,212,0.3)');
-        gradient.addColorStop(1, 'rgba(6,13,26,0)');
+        gradient.addColorStop(0, isLightTheme ? 'rgba(45,107,255,0.2)' : 'rgba(31,182,212,0.3)');
+        gradient.addColorStop(1, 'rgba(0,0,0,0)');
         ctx.fillStyle = gradient;
         ctx.beginPath();
         ctx.arc(0, 0, p.size, 0, Math.PI * 2);

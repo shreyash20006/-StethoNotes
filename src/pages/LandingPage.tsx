@@ -8,6 +8,13 @@ import SEOHead from '../components/SEOHead';
 import { pageMeta, generateOrganizationLD, generateFAQLD } from '../lib/seo';
 import HeroSection from '../components/hero/HeroSection';
 import { COURSE_CATEGORIES, CourseIcon } from '../components/icons/CourseIcons';
+import {
+  StudyDeskBackground,
+  AnatomyWallBackground,
+  SecureArchiveBackground,
+  CampusBackground,
+  ConstellationBackground,
+} from '../components/backgrounds/MedicalIllustrations';
 
 const CategoryCard = memo(({ cat, idx, navigate }: { cat: any; idx: number; navigate: (url: string) => void }) => (
   <motion.div
@@ -16,23 +23,22 @@ const CategoryCard = memo(({ cat, idx, navigate }: { cat: any; idx: number; navi
     viewport={{ once: true }}
     transition={{ duration: 0.6, delay: idx * 0.05 }}
     onClick={() => navigate(`/courses?course=${encodeURIComponent(cat.name)}`)}
-    className="glass-card-v2 p-8 rounded-3xl cursor-pointer hover:border-primary/40 relative overflow-hidden group flex flex-col justify-between h-72 border border-white/5 bg-gradient-to-br from-card/80 to-void/35"
+    className="glass-card-v2 p-8 rounded-3xl cursor-pointer relative overflow-hidden group flex flex-col justify-between h-72"
   >
-    {/* Decorative inner gradient orbs */}
-    <div className="absolute -top-10 -right-10 w-24 h-24 bg-primary/10 rounded-full blur-2xl group-hover:bg-primary/20 transition-colors" />
-
     <div>
-      <div className="w-14 h-14 mb-6 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center group-hover:border-primary/30 group-hover:bg-primary/5 transition-all">
+      <div className="w-14 h-14 mb-6 rounded-2xl flex items-center justify-center group-hover:border-primary/30 transition-all"
+        style={{ background: 'color-mix(in srgb, var(--text-primary) 5%, transparent)', border: '1px solid var(--glass-border)' }}
+      >
         <CourseIcon name={cat.name} size={40} />
       </div>
-      <h3 className="font-display font-bold text-xl text-white mb-2 group-hover:text-primary transition-colors">
+      <h3 className="font-display font-bold text-xl mb-2 group-hover:text-primary transition-colors" style={{ color: 'var(--text-primary)' }}>
         {cat.name}
       </h3>
-      <p className="text-muted text-xs leading-relaxed">
+      <p className="text-xs leading-relaxed" style={{ color: 'var(--text-muted)' }}>
         {cat.desc}
       </p>
     </div>
-    <div className="flex items-center gap-2 text-primary font-display text-xs font-semibold mt-6 group-hover:translate-x-1.5 transition-transform duration-300">
+    <div className="flex items-center gap-2 font-display text-xs font-semibold mt-6 group-hover:translate-x-1.5 transition-transform duration-300" style={{ color: 'var(--accent-primary)' }}>
       <span>Explore Catalog</span>
       <ArrowRight className="w-4 h-4" />
     </div>
@@ -47,7 +53,7 @@ const SellerCard = memo(({ seller, idx }: { seller: any; idx: number }) => (
     whileInView={{ opacity: 1, y: 0 }}
     viewport={{ once: true }}
     transition={{ duration: 0.6, delay: idx * 0.1 }}
-    className="glass-card-v2 rounded-3xl p-6 flex flex-col justify-between group bg-gradient-to-b from-card to-void/20 hover:border-primary/30 border border-white/5"
+    className="glass-card-v2 rounded-3xl p-6 flex flex-col justify-between group bg-[#102640] hover:border-primary/30 border border-white/8"
   >
     <div>
       <div className="flex items-center gap-3.5 mb-5">
@@ -55,10 +61,10 @@ const SellerCard = memo(({ seller, idx }: { seller: any; idx: number }) => (
           <img 
             src={seller.avatar_url} 
             alt={seller.store_name || seller.name} 
-            className="w-11 h-11 rounded-2xl object-cover border border-white/10 group-hover:border-primary/30 transition-all"
+            className="w-11 h-11 rounded-2xl object-cover border border-white/8 group-hover:border-primary/30 transition-all"
           />
         ) : (
-          <div className="w-11 h-11 rounded-2xl bg-primary/5 border border-white/10 flex items-center justify-center text-primary text-lg font-bold shrink-0">
+          <div className="w-11 h-11 rounded-2xl bg-primary/5 border border-white/8 flex items-center justify-center text-primary text-lg font-bold shrink-0">
             {(seller.store_name || seller.name || 'S').substring(0, 1).toUpperCase()}
           </div>
         )}
@@ -77,7 +83,7 @@ const SellerCard = memo(({ seller, idx }: { seller: any; idx: number }) => (
       </p>
     </div>
     <div>
-      <div className="flex items-center justify-between border-t border-white/5 pt-4 mb-4">
+      <div className="flex items-center justify-between border-t border-white/8 pt-4 mb-4">
         <div className="flex items-center gap-1.5 text-muted text-xs">
           <Trophy className="w-3.5 h-3.5 text-amber-400" />
           <span>{seller.total_sales}+ Sales</span>
@@ -88,7 +94,7 @@ const SellerCard = memo(({ seller, idx }: { seller: any; idx: number }) => (
       </div>
       <Link
         to={`/courses?seller_id=${seller.id}`}
-        className="w-full py-2.5 rounded-xl text-xs font-semibold text-center block bg-white/5 border border-white/10 text-white hover:bg-primary hover:border-primary hover:text-void transition-all duration-300"
+        className="w-full py-2.5 rounded-xl text-xs font-semibold text-center block bg-white/5 border border-white/8 text-white hover:bg-primary hover:border-primary hover:text-void transition-all duration-300"
       >
         View Notes
       </Link>
@@ -207,25 +213,30 @@ export default function LandingPage() {
   const faqSchema = generateFAQLD();
 
   return (
-    <div className="overflow-hidden bg-void min-h-screen text-white">
+    <div
+      className="overflow-hidden min-h-screen"
+      style={{ background: 'var(--bg-base)', color: 'var(--text-primary)' }}
+    >
       <SEOHead {...meta} jsonLd={[orgSchema, faqSchema]} />
       {/* 1. Premium Interactive Hero Section */}
       <HeroSection />
 
       {/* 2. Course Category Section */}
-      <section className="py-28 px-4 sm:px-6 lg:px-8 relative">
-        <div className="absolute top-1/2 left-1/4 w-96 h-96 bg-primary/5 rounded-full blur-3xl pointer-events-none -translate-y-1/2" />
+      <section className="py-28 px-4 sm:px-6 lg:px-8 relative" style={{ borderTop: '1px solid var(--glass-border)' }}>
+        <AnatomyWallBackground />
         
         <div className="max-w-7xl mx-auto relative z-10">
           <div className="text-center max-w-3xl mx-auto mb-20 flex flex-col items-center gap-4">
-            <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-xs font-semibold tracking-wider text-primary uppercase">
+            <div className="flex items-center gap-2 px-3 py-1 rounded-full border text-xs font-semibold tracking-wider uppercase"
+              style={{ background: 'color-mix(in srgb, var(--accent-primary) 10%, transparent)', borderColor: 'color-mix(in srgb, var(--accent-primary) 25%, transparent)', color: 'var(--accent-primary)' }}
+            >
               <Sparkles className="w-3.5 h-3.5" />
               <span>Academic Catalog</span>
             </div>
-            <h2 className="text-3xl sm:text-5xl font-display font-bold text-white tracking-tight">
+            <h2 className="text-3xl sm:text-5xl font-display font-bold tracking-tight" style={{ color: 'var(--text-primary)' }}>
               Notes Classified by Course
             </h2>
-            <p className="text-muted font-sans text-sm max-w-2xl mt-1">
+            <p className="font-sans text-sm max-w-2xl mt-1" style={{ color: 'var(--text-muted)' }}>
               Select your academic discipline to filter our library of university-specific study guides, handwritten topper cards, and diagrams.
             </p>
           </div>
@@ -240,8 +251,8 @@ export default function LandingPage() {
 
       {/* Featured Sellers Section */}
       {featuredSellers.length > 0 && (
-        <section className="py-28 px-4 sm:px-6 lg:px-8 border-t border-white/5 relative">
-          <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-primary/5 rounded-full blur-3xl pointer-events-none" />
+        <section className="py-28 px-4 sm:px-6 lg:px-8 relative" style={{ borderTop: '1px solid var(--glass-border)' }}>
+          <StudyDeskBackground />
           
           <div className="max-w-7xl mx-auto relative z-10">
             <div className="text-center max-w-3xl mx-auto mb-20 flex flex-col items-center gap-4">
@@ -267,17 +278,20 @@ export default function LandingPage() {
       )}
 
       {/* 3. Why StethoNotes Bento Section */}
-      <section id="why-us" className="py-28 px-4 sm:px-6 lg:px-8 border-t border-white/5 relative">
-        <div className="max-w-7xl mx-auto">
+      <section id="why-us" className="py-28 px-4 sm:px-6 lg:px-8 relative" style={{ borderTop: '1px solid var(--glass-border)' }}>
+        <SecureArchiveBackground />
+        <div className="max-w-7xl mx-auto relative z-10">
           <div className="text-center max-w-3xl mx-auto mb-20 flex flex-col items-center gap-4">
-            <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-xs font-semibold tracking-wider text-primary uppercase">
+            <div className="flex items-center gap-2 px-3 py-1 rounded-full border text-xs font-semibold tracking-wider uppercase"
+              style={{ background: 'color-mix(in srgb, var(--accent-primary) 10%, transparent)', borderColor: 'color-mix(in srgb, var(--accent-primary) 25%, transparent)', color: 'var(--accent-primary)' }}
+            >
               <BookOpen className="w-3.5 h-3.5" />
               <span>Core Benefits</span>
             </div>
-            <h2 className="text-3xl sm:text-5xl font-display font-bold text-white tracking-tight">
+            <h2 className="text-3xl sm:text-5xl font-display font-bold tracking-tight" style={{ color: 'var(--text-primary)' }}>
               Why Study with StethoNotes?
             </h2>
-            <p className="text-muted font-sans text-sm max-w-2xl mt-1">
+            <p className="font-sans text-sm max-w-2xl mt-1" style={{ color: 'var(--text-muted)' }}>
               Designed specifically to meet the high academic demands of modern medicine, surgery, and health sciences.
             </p>
           </div>
@@ -291,29 +305,33 @@ export default function LandingPage() {
       </section>
 
       {/* 4. Testimonials Section */}
-      <section id="testimonials" className="py-28 px-4 sm:px-6 lg:px-8 relative overflow-hidden border-t border-white/5">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom_left,rgba(31,182,212,0.08),transparent_45%)]" />
+      <section id="testimonials" className="py-28 px-4 sm:px-6 lg:px-8 relative overflow-hidden" style={{ borderTop: '1px solid var(--glass-border)' }}>
+        <CampusBackground />
         
         <div className="max-w-4xl mx-auto relative z-10">
           <div className="text-center mb-16 flex flex-col items-center gap-3">
-            <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-xs font-semibold tracking-wider text-primary uppercase">
+            <div className="flex items-center gap-2 px-3 py-1 rounded-full border text-xs font-semibold tracking-wider uppercase"
+              style={{ background: 'color-mix(in srgb, var(--accent-primary) 10%, transparent)', borderColor: 'color-mix(in srgb, var(--accent-primary) 25%, transparent)', color: 'var(--accent-primary)' }}
+            >
               <Heart className="w-3.5 h-3.5" />
               <span>Wall of Love</span>
             </div>
-            <h2 className="text-3xl sm:text-5xl font-display font-bold text-white tracking-tight">
+            <h2 className="text-3xl sm:text-5xl font-display font-bold tracking-tight" style={{ color: 'var(--text-primary)' }}>
               Loved by Thousands of Medics
             </h2>
           </div>
 
           {/* Testimonial slider */}
-          <div className="relative bg-card/60 backdrop-blur-md p-8 sm:p-14 rounded-3xl border border-white/10 shadow-2xl flex flex-col items-center gap-6">
-            <div className="flex gap-1 text-primary mb-2">
+          <div className="relative p-8 sm:p-14 rounded-3xl border shadow-xl flex flex-col items-center gap-6"
+            style={{ background: 'var(--surface)', borderColor: 'var(--glass-border)' }}
+          >
+            <div className="flex gap-1 mb-2" style={{ color: 'var(--accent-primary)' }}>
               {Array.from({ length: TESTIMONIALS[currentTestimonial].rating }).map((_, i) => (
-                <Star key={i} className="w-5 h-5 fill-current text-primary" />
+                <Star key={i} className="w-5 h-5 fill-current" />
               ))}
             </div>
 
-            <p className="text-center text-gray-200 text-base sm:text-lg italic leading-relaxed font-sans max-w-2xl">
+            <p className="text-center text-base sm:text-lg italic leading-relaxed font-sans max-w-2xl" style={{ color: 'var(--text-muted)' }}>
               "{TESTIMONIALS[currentTestimonial].comment}"
             </p>
 
@@ -321,13 +339,14 @@ export default function LandingPage() {
               <img
                 src={TESTIMONIALS[currentTestimonial].avatar}
                 alt={TESTIMONIALS[currentTestimonial].name}
-                className="w-12 h-12 rounded-full border border-primary/30 object-cover"
+                className="w-12 h-12 rounded-full object-cover"
+                style={{ border: '1px solid var(--glass-border)' }}
               />
               <div className="text-left">
-                <h4 className="font-display font-bold text-sm text-white">
+                <h4 className="font-display font-bold text-sm" style={{ color: 'var(--text-primary)' }}>
                   {TESTIMONIALS[currentTestimonial].name}
                 </h4>
-                <p className="text-primary text-xs font-sans">
+                <p className="text-xs font-sans" style={{ color: 'var(--accent-primary)' }}>
                   {TESTIMONIALS[currentTestimonial].role}
                 </p>
               </div>
@@ -337,13 +356,15 @@ export default function LandingPage() {
             <div className="flex gap-4 mt-6">
               <button
                 onClick={prevTestimonial}
-                className="p-2.5 border border-white/10 hover:border-primary hover:text-primary rounded-xl transition-colors bg-white/5"
+                className="p-2.5 rounded-xl transition-colors"
+                style={{ border: '1px solid var(--glass-border)', background: 'color-mix(in srgb, var(--text-primary) 5%, transparent)', color: 'var(--text-muted)' }}
               >
                 <ChevronLeft className="w-5 h-5" />
               </button>
               <button
                 onClick={nextTestimonial}
-                className="p-2.5 border border-white/10 hover:border-primary hover:text-primary rounded-xl transition-colors bg-white/5"
+                className="p-2.5 rounded-xl transition-colors"
+                style={{ border: '1px solid var(--glass-border)', background: 'color-mix(in srgb, var(--text-primary) 5%, transparent)', color: 'var(--text-muted)' }}
               >
                 <ChevronRight className="w-5 h-5" />
               </button>
@@ -353,36 +374,35 @@ export default function LandingPage() {
       </section>
 
       {/* 5. About Section */}
-      <section id="about" className="py-28 px-4 sm:px-6 lg:px-8 border-t border-white/5 relative">
+      <section id="about" className="py-28 px-4 sm:px-6 lg:px-8 relative" style={{ borderTop: '1px solid var(--glass-border)' }}>
         <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-16 items-center">
           <div className="lg:col-span-5 relative group">
-            {/* Soft glowing mesh frame */}
-            <div className="absolute -inset-1.5 bg-gradient-to-r from-primary to-accent rounded-3xl blur-xl opacity-20 group-hover:opacity-30 transition-all duration-300" />
             <img
               src="https://res.cloudinary.com/dsqxboxoc/image/upload/v1784056611/ChatGPT_Image_Jul_15_2026_12_45_53_AM_edclrq.png"
               alt="Medical Students Studying"
-              className="rounded-3xl border border-white/10 relative z-10 object-cover w-full h-[420px]"
+              className="rounded-3xl relative z-10 object-cover w-full h-[420px]"
+              style={{ border: '1px solid var(--glass-border)' }}
             />
           </div>
           <div className="lg:col-span-7 flex flex-col items-start gap-5">
-            <h2 className="text-3xl sm:text-4xl font-display font-bold text-white tracking-tight">
+            <h2 className="text-3xl sm:text-4xl font-display font-bold tracking-tight" style={{ color: 'var(--text-primary)' }}>
               Empowering the Next Generation of Healthcare Professionals
             </h2>
-            <div className="w-12 h-1 bg-primary rounded-full" />
-            <p className="text-muted text-sm leading-relaxed mt-2 font-sans">
+            <div className="w-12 h-1 rounded-full" style={{ background: 'var(--accent-primary)' }} />
+            <p className="text-sm leading-relaxed mt-2 font-sans" style={{ color: 'var(--text-muted)' }}>
               StethoNotes was created by medical students, for medical students. We understand that medical and paramedical syllabi are vast, and traditional textbook layouts can sometimes feel overwhelming during final revision cycles.
             </p>
-            <p className="text-muted text-sm leading-relaxed font-sans">
+            <p className="text-sm leading-relaxed font-sans" style={{ color: 'var(--text-muted)' }}>
               Our marketplace brings together university toppers, instructors, and experienced doctors to upload high-yield, structured study notes. Each note PDF undergoes review for accuracy and syllabus coverage, ensuring that your study prep is focused, concise, and highly effective.
             </p>
             <div className="grid grid-cols-2 gap-4 mt-4 w-full">
               <div className="flex items-center gap-3">
-                <Users className="w-5 h-5 text-primary shrink-0" />
-                <span className="font-display font-semibold text-white text-sm">Topper Community</span>
+                <Users className="w-5 h-5 shrink-0" style={{ color: 'var(--accent-primary)' }} />
+                <span className="font-display font-semibold text-sm" style={{ color: 'var(--text-primary)' }}>Topper Community</span>
               </div>
               <div className="flex items-center gap-3">
-                <Smile className="w-5 h-5 text-primary shrink-0" />
-                <span className="font-display font-semibold text-white text-sm">Affordable Study Aids</span>
+                <Smile className="w-5 h-5 shrink-0" style={{ color: 'var(--accent-primary)' }} />
+                <span className="font-display font-semibold text-sm" style={{ color: 'var(--text-primary)' }}>Affordable Study Aids</span>
               </div>
             </div>
           </div>
@@ -390,55 +410,56 @@ export default function LandingPage() {
       </section>
 
       {/* 6. Contact Section */}
-      <section id="contact" className="py-28 px-4 sm:px-6 lg:px-8 border-t border-white/5 bg-darkest/30 relative">
-        <div className="max-w-4xl mx-auto bg-card rounded-3xl border border-white/10 p-8 sm:p-14 shadow-2xl relative">
-          <div className="absolute -top-10 -left-10 w-40 h-40 bg-primary/5 rounded-full blur-3xl pointer-events-none" />
-
+      <section id="contact" className="py-28 px-4 sm:px-6 lg:px-8 relative" style={{ borderTop: '1px solid var(--glass-border)' }}>
+        <ConstellationBackground />
+        <div className="max-w-4xl mx-auto rounded-3xl border p-8 sm:p-14 shadow-xl relative z-10"
+          style={{ background: 'var(--surface)', borderColor: 'var(--glass-border)' }}
+        >
           <div className="text-center max-w-2xl mx-auto mb-12 flex flex-col items-center gap-3">
-            <h2 className="text-3xl font-display font-bold text-white tracking-tight">
+            <h2 className="text-3xl font-display font-bold tracking-tight" style={{ color: 'var(--text-primary)' }}>
               Have Questions? Get in Touch
             </h2>
-            <p className="text-muted text-xs">
+            <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
               Drop us a message and our support team will reply within 24 hours.
             </p>
           </div>
 
           <form className="grid grid-cols-1 sm:grid-cols-2 gap-6" onSubmit={(e) => e.preventDefault()}>
             <div className="flex flex-col gap-2">
-              <label className="text-xs font-display font-semibold text-white">Full Name</label>
+              <label className="text-xs font-display font-semibold" style={{ color: 'var(--text-primary)' }}>Full Name</label>
               <input
                 type="text"
                 placeholder="John Doe"
-                className="bg-void border border-white/10 focus:border-primary focus:ring-1 focus:ring-primary outline-none px-4 py-3.5 rounded-xl text-sm text-white"
+                className="input-field"
               />
             </div>
             <div className="flex flex-col gap-2">
-              <label className="text-xs font-display font-semibold text-white">Email Address</label>
+              <label className="text-xs font-display font-semibold" style={{ color: 'var(--text-primary)' }}>Email Address</label>
               <input
                 type="email"
                 placeholder="john@example.com"
-                className="bg-void border border-white/10 focus:border-primary focus:ring-1 focus:ring-primary outline-none px-4 py-3.5 rounded-xl text-sm text-white"
+                className="input-field"
               />
             </div>
             <div className="sm:col-span-2 flex flex-col gap-2">
-              <label className="text-xs font-display font-semibold text-white">Message</label>
+              <label className="text-xs font-display font-semibold" style={{ color: 'var(--text-primary)' }}>Message</label>
               <textarea
                 placeholder="Write your message here..."
                 rows={4}
-                className="bg-void border border-white/10 focus:border-primary focus:ring-1 focus:ring-primary outline-none px-4 py-3.5 rounded-xl text-sm text-white resize-none"
+                className="input-field resize-none"
               />
             </div>
             <div className="sm:col-span-2 flex flex-col items-center gap-3 mt-4">
               <button
                 type="button"
                 onClick={() => alert('Message Sent! Thank you for contacting StethoNotes.')}
-                className="btn-primary py-3 px-12 text-xs font-bold uppercase tracking-wider shadow-md"
+                className="btn-primary py-3 px-12 text-xs font-bold uppercase tracking-wider shadow-md hover:shadow-lg"
               >
                 Send Message
               </button>
-              <p className="text-xs text-muted text-center mt-2">
+              <p className="text-xs text-center mt-2" style={{ color: 'var(--text-muted)' }}>
                 We respect your privacy. Read our{' '}
-                <Link to="/privacy" className="text-primary hover:underline">
+                <Link to="/privacy" className="hover:underline" style={{ color: 'var(--accent-primary)' }}>
                   Privacy Policy
                 </Link>{' '}
                 to learn how we handle your data.

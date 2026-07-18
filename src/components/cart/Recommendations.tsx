@@ -7,40 +7,40 @@ import { Sparkles, ShoppingCart, Star } from 'lucide-react';
 
 const RecommendationCard = memo(({ note, onAdd }: { note: Note; onAdd: (note: Note) => void }) => (
   <div
-    className="border border-gray-50 bg-gray-50/50 hover:bg-white hover:border-gray-150 p-4 rounded-xl flex flex-col justify-between gap-3 transition-all hover:-translate-y-0.5 hover:shadow-sm"
+    className="border border-white/5 bg-[#102640] hover:border-primary/30 p-4 rounded-xl flex flex-col justify-between gap-3 transition-all duration-300 shadow-md hover:-translate-y-0.5"
   >
     <div className="flex gap-3">
       <img
         src={note.thumbnail_url}
-        className="w-12 h-12 object-cover rounded-lg border border-gray-100 shrink-0"
+        className="w-12 h-12 object-cover rounded-lg border border-white/5 shrink-0"
         alt=""
         loading="lazy"
       />
       <div className="min-w-0">
-        <h4 className="font-display font-bold text-xs text-primary line-clamp-2 leading-tight">
+        <h4 className="font-display font-bold text-xs text-white line-clamp-1 leading-tight hover:text-primary transition-colors">
           {note.title}
         </h4>
-        <div className="flex items-center gap-1.5 mt-1 text-[10px] text-gray-400 font-sans">
+        <div className="flex items-center gap-1.5 mt-1 text-[10px] text-muted font-sans">
           <span>{note.subject}</span>
-          <div className="w-1 h-1 bg-gray-200 rounded-full" />
-          <div className="flex items-center text-amber-500">
+          <div className="w-1.5 h-1.5 bg-white/10 rounded-full" />
+          <div className="flex items-center text-amber-400">
             <Star className="w-3 h-3 fill-current stroke-none" />
-            <span className="font-semibold ml-0.5 text-gray-600">4.8</span>
+            <span className="font-semibold ml-0.5">4.8</span>
           </div>
         </div>
       </div>
     </div>
 
-    <div className="flex justify-between items-center border-t border-gray-50 pt-2.5 mt-1">
+    <div className="flex justify-between items-center border-t border-white/5 pt-2.5 mt-1">
       <span className="font-display font-extrabold text-xs text-primary">
         ₹{note.price.toFixed(2)}
       </span>
       
       <button
         onClick={() => onAdd(note)}
-        className="btn-secondary py-1 px-3 text-[10px] font-bold font-display flex items-center gap-1"
+        className="btn-secondary py-1.5 px-3 text-[10px] font-bold font-display flex items-center gap-1.5"
       >
-        <ShoppingCart className="w-3 h-3 text-accent" />
+        <ShoppingCart className="w-3 h-3 text-primary" />
         <span>Quick Add</span>
       </button>
     </div>

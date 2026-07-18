@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import { useAuthStore } from './store/useAuthStore';
+import { useThemeStore } from './store/useThemeStore';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import ToastContainer from './components/Toast';
@@ -116,6 +117,12 @@ function LoadingSpinner() {
 
 function App() {
   const { checkSession } = useAuthStore();
+  const { theme } = useThemeStore();
+
+  // Apply theme attribute to <html> on every render so CSS variables activate
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+  }, [theme]);
 
   useEffect(() => {
     // Intercept Google OAuth redirects that land on '/' instead of '/auth/callback' due to Supabase redirect URI config mismatches

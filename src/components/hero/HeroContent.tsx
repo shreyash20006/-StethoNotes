@@ -66,7 +66,7 @@ export default function HeroContent() {
               className="inline-block mr-[0.25em]"
             >
               {isStethoscope ? (
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#1FB6D4] via-[#4DE8FF] to-[#1FB6D4] bg-[length:200%_auto] animate-text-gradient">
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#22C7F2] via-[#1E90FF] to-[#22C7F2] bg-[length:200%_auto] animate-text-gradient">
                   {word}
                 </span>
               ) : (
@@ -82,7 +82,7 @@ export default function HeroContent() {
         initial={{ opacity: 0, y: 15 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6, delay: 0.5, ease: 'easeOut' }}
-        className="text-sm sm:text-base text-slate-300 leading-relaxed max-w-lg font-sans font-light"
+        className="text-sm sm:text-base text-muted leading-relaxed max-w-lg font-sans font-light"
       >
         Curated, university-mapped study notes from top-ranked seniors — instant PDF
         delivery, watermarked and exam-ready. Less time hunting for material, more
@@ -115,13 +115,13 @@ export default function HeroContent() {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.8, delay: 0.8 }}
-        className="grid grid-cols-2 sm:grid-cols-4 gap-6 pt-8 border-t border-slate-800"
+        className="grid grid-cols-2 sm:grid-cols-4 gap-6 pt-8 border-t border-white/8"
       >
         <div>
           <h3 className="text-xl sm:text-2xl font-bold font-mono text-paper tracking-tight">
             <AnimatedCounter target={10000} suffix="+" />
           </h3>
-          <p className="text-[10px] uppercase font-mono tracking-wider text-slate-400 mt-1">
+          <p className="text-[10px] uppercase font-mono tracking-wider text-muted mt-1">
             Active Students
           </p>
         </div>
@@ -129,7 +129,7 @@ export default function HeroContent() {
           <h3 className="text-xl sm:text-2xl font-bold font-mono text-paper tracking-tight">
             <AnimatedCounter target={1500} suffix="+" />
           </h3>
-          <p className="text-[10px] uppercase font-mono tracking-wider text-slate-400 mt-1">
+          <p className="text-[10px] uppercase font-mono tracking-wider text-muted mt-1">
             Syllabus PDFs
           </p>
         </div>
@@ -137,15 +137,15 @@ export default function HeroContent() {
           <h3 className="text-xl sm:text-2xl font-bold font-mono text-paper tracking-tight">
             <AnimatedCounter target={150} suffix="+" />
           </h3>
-          <p className="text-[10px] uppercase font-mono tracking-wider text-slate-400 mt-1">
+          <p className="text-[10px] uppercase font-mono tracking-wider text-muted mt-1">
             Contributors
           </p>
         </div>
         <div>
-          <h3 className="text-xl sm:text-2xl font-bold font-mono text-cyan-400 tracking-tight">
+          <h3 className="text-xl sm:text-2xl font-bold font-mono text-primary tracking-tight">
             <AnimatedCounter target={4.9} suffix="★" duration={1.2} />
           </h3>
-          <p className="text-[10px] uppercase font-mono tracking-wider text-slate-400 mt-1">
+          <p className="text-[10px] uppercase font-mono tracking-wider text-muted mt-1">
             Ratings Average
           </p>
         </div>

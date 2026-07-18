@@ -11,9 +11,14 @@ export default function Footer() {
   };
 
   return (
-    <footer className="bg-void text-white font-sans pt-20 pb-10 border-t border-white/5 relative overflow-hidden">
+    <footer
+      className="font-sans pt-20 pb-10 relative overflow-hidden"
+      style={{ background: 'var(--bg-layer)', color: 'var(--text-primary)', borderTop: '1px solid var(--glass-border)' }}
+    >
       {/* Decorative Blur Orb */}
-      <div className="absolute -bottom-20 -right-20 w-80 h-80 bg-primary/5 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute -bottom-20 -right-20 w-80 h-80 rounded-full blur-3xl pointer-events-none"
+        style={{ background: 'color-mix(in srgb, var(--accent-primary) 5%, transparent)' }}
+      />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-16">

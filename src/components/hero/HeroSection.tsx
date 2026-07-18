@@ -49,7 +49,10 @@ export default function HeroSection() {
   const shouldRenderCanvas = isMounted && webglAvailable && deviceTier !== 'mobile';
 
   return (
-    <section className="relative min-h-screen w-full flex items-center justify-center py-20 px-6 sm:px-12 lg:px-16 overflow-hidden bg-[#060D1A] select-none">
+    <section
+      className="relative min-h-screen w-full flex items-center justify-center py-20 px-6 sm:px-12 lg:px-16 overflow-hidden select-none"
+      style={{ background: 'var(--bg-base)' }}
+    >
       {/* 1. CORE BACKDROP & PARTICLES */}
       <HeroBackground />
       {isMounted && <ParticleField scrollProgress={scrollProgress} />}

@@ -56,10 +56,10 @@ export default function RecentlyViewed() {
   if (recent.length === 0) return null;
 
   return (
-    <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-cyan-soft">
+    <div className="bg-[#0C2038] border border-white/5 rounded-2xl p-5 shadow-lg">
       <div className="flex items-center gap-2 mb-4">
-        <Eye className="w-4 h-4 text-accent animate-pulse" />
-        <h3 className="font-display font-bold text-sm text-primary">
+        <Eye className="w-4 h-4 text-primary animate-pulse" />
+        <h3 className="font-display font-bold text-sm text-white">
           Recently Viewed Study Guides
         </h3>
       </div>
@@ -68,17 +68,17 @@ export default function RecentlyViewed() {
         {recent.map((note) => (
           <div
             key={note.id}
-            className="border border-gray-50 bg-gray-50/50 hover:bg-white hover:border-gray-150 p-3 rounded-xl flex flex-col justify-between gap-3.5 transition-all hover:-translate-y-0.5 hover:shadow-sm"
+            className="border border-white/5 bg-[#102640] hover:border-primary/30 p-3 rounded-xl flex flex-col justify-between gap-3.5 transition-all duration-300 hover:-translate-y-0.5"
           >
             <div>
-              <Link to={`/notes/${note.id}`} className="block relative h-20 rounded-lg overflow-hidden border border-gray-100 bg-white">
+              <Link to={`/notes/${note.id}`} className="block relative h-20 rounded-lg overflow-hidden border border-white/5 bg-void/30">
                 <img
                   src={note.thumbnail_url}
                   className="w-full h-full object-cover"
                   alt={note.title}
                 />
               </Link>
-              <h4 className="font-display font-bold text-[11px] text-primary mt-2 line-clamp-2 leading-tight">
+              <h4 className="font-display font-bold text-[11px] text-white mt-2 line-clamp-1 leading-tight hover:text-primary transition-colors">
                 {note.title}
               </h4>
             </div>
@@ -88,9 +88,9 @@ export default function RecentlyViewed() {
                 <span className="font-display font-extrabold text-primary">
                   ₹{note.price.toFixed(2)}
                 </span>
-                <div className="flex items-center text-amber-500">
+                <div className="flex items-center text-amber-400">
                   <Star className="w-3 h-3 fill-current stroke-none" />
-                  <span className="font-semibold ml-0.5 text-gray-500">4.8</span>
+                  <span className="font-semibold ml-0.5 text-muted">4.8</span>
                 </div>
               </div>
 
@@ -98,7 +98,7 @@ export default function RecentlyViewed() {
                 onClick={() => handleQuickAdd(note)}
                 className="btn-secondary w-full py-1.5 px-3 text-[10px] font-bold font-display flex items-center justify-center gap-1.5"
               >
-                <ShoppingCart className="w-3.5 h-3.5 text-accent" />
+                <ShoppingCart className="w-3.5 h-3.5 text-primary" />
                 <span>Quick Add</span>
               </button>
             </div>
