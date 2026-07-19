@@ -11,8 +11,6 @@ import SEOHead from '../components/SEOHead';
 import { pageMeta, generateOrganizationLD, generateFAQLD } from '../lib/seo';
 import { COURSE_CATEGORIES, CourseIcon } from '../components/icons/CourseIcons';
 import { useSpecialty, SPECIALTIES } from '../context/SpecialtyContext';
-import AnatomyNavigator from '../components/anatomy/AnatomyNavigator';
-import SpecialtyPanel, { SpecialtyQuickSwitch } from '../components/anatomy/SpecialtyPanel';
 import { useLenis } from '../hooks/useLenis';
 
 // ─── Category Card ────────────────────────────────────────────
@@ -230,131 +228,101 @@ export default function LandingPage() {
           }}
         />
 
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24 w-full relative z-[10]">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-
-            {/* ── Left: Hero Content ── */}
-            <div className="flex flex-col gap-8 z-10 relative">
-              {/* Badge */}
-              <motion.div
-                initial={{ opacity: 0, y: -12 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6 }}
-                className="flex items-center gap-2 w-fit px-4 py-2 rounded-full text-xs font-bold font-display uppercase tracking-wider"
-                style={{
-                  background: `color-mix(in srgb, ${cfg.primaryColor} 10%, transparent)`,
-                  border: `1px solid ${cfg.primaryColor}30`,
-                  color: cfg.primaryColor,
-                  transition: 'all 0.8s ease',
-                }}
-              >
-                <Activity className="w-3.5 h-3.5" />
-                <span>India's #1 Medical Notes Platform</span>
-              </motion.div>
-
-              {/* Headline */}
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.7, delay: 0.1 }}
-              >
-                <h1 className="text-4xl sm:text-5xl xl:text-6xl font-display font-bold tracking-tight leading-[1.08]" style={{ color: 'var(--text-primary)' }}>
-                  {specialty.id === 'default' ? (
-                    <>
-                      Notes That<br />
-                      <span style={{ color: cfg.primaryColor }}>Diagnose</span><br />
-                      Your Doubts.
-                    </>
-                  ) : (
-                    <>
-                      Master<br />
-                      <span style={{ color: cfg.primaryColor }}>{specialty.label}</span><br />
-                      Like a Pro.
-                    </>
-                  )}
-                </h1>
-              </motion.div>
-
-              {/* Sub-headline */}
-              <motion.p
-                initial={{ opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, delay: 0.2 }}
-                className="text-base sm:text-lg leading-relaxed max-w-xl font-sans"
-                style={{ color: 'var(--text-muted)' }}
-              >
-                {specialty.id === 'default'
-                  ? 'Premium handwritten notes, PYQs, and study guides — curated by toppers for MBBS, BDS, BAMS, BPT, B.Sc Nursing and more.'
-                  : specialty.description
-                }
-              </motion.p>
-
-              {/* CTA buttons */}
-              <motion.div
-                initial={{ opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, delay: 0.3 }}
-                className="flex flex-col sm:flex-row gap-4"
-              >
-                <Link
-                  to={specialty.id !== 'default' ? `/courses?specialty=${encodeURIComponent(specialty.label)}` : '/courses'}
-                  className="btn-primary py-3.5 px-8 text-sm font-bold flex items-center gap-2 justify-center"
-                  style={specialty.id !== 'default' ? {
-                    background: cfg.primaryColor,
-                    boxShadow: `0 8px 32px ${cfg.glowColor}`,
-                  } : {}}
-                >
-                  <BookOpen className="w-4 h-4" />
-                  {specialty.id !== 'default' ? `Browse ${specialty.label} Notes` : 'Browse All Notes'}
-                  <ArrowRight className="w-4 h-4" />
-                </Link>
-                <Link
-                  to="/seller/login"
-                  className="btn-secondary py-3.5 px-8 text-sm font-bold flex items-center gap-2 justify-center"
-                >
-                  <Download className="w-4 h-4" />
-                  Become a Seller
-                </Link>
-              </motion.div>
-
-              {/* Stats row */}
-              <motion.div
-                initial={{ opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, delay: 0.4 }}
-                className="grid grid-cols-4 gap-4 pt-6"
-                style={{ borderTop: '1px solid var(--glass-border)' }}
-              >
-                {STATS.map((s, i) => (
-                  <div key={i} className="text-center">
-                    <p className="text-xl sm:text-2xl font-display font-bold" style={{ color: cfg.primaryColor, transition: 'color 0.6s' }}>{s.value}</p>
-                    <p className="text-[10px] font-sans mt-0.5 leading-tight" style={{ color: 'var(--text-muted)' }}>{s.label}</p>
-                  </div>
-                ))}
-              </motion.div>
-            </div>
-
-            {/* ── Right: Interactive Anatomy Navigator ── */}
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24 w-full relative z-[10] flex flex-col items-center justify-center text-center">
+          <div className="max-w-3xl flex flex-col items-center gap-8 z-10 relative">
+            {/* Badge */}
             <motion.div
-              initial={{ opacity: 0, scale: 0.92 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.9, delay: 0.2, ease: [0.22, 1, 0.36, 1] }}
-              className="flex justify-center relative z-10"
+              initial={{ opacity: 0, y: -12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6 }}
+              className="flex items-center gap-2 w-fit px-4 py-2 rounded-full text-xs font-bold font-display uppercase tracking-wider"
+              style={{
+                background: `color-mix(in srgb, ${cfg.primaryColor} 10%, transparent)`,
+                border: `1px solid ${cfg.primaryColor}30`,
+                color: cfg.primaryColor,
+                transition: 'all 0.8s ease',
+              }}
             >
-              {/* Floating particles around the body */}
-              <MedicalParticleField color={cfg.primaryColor} />
+              <Activity className="w-3.5 h-3.5" />
+              <span>India's #1 Medical Notes Platform</span>
+            </motion.div>
 
-              <div className="relative w-full max-w-sm">
-                {/* Glow ring behind the figure */}
-                <div
-                  className="absolute inset-0 rounded-full blur-3xl pointer-events-none"
-                  style={{
-                    background: `radial-gradient(circle, ${cfg.primaryColor}20 0%, transparent 70%)`,
-                    transition: 'background 0.8s ease',
-                  }}
-                />
-                <AnatomyNavigator />
-              </div>
+            {/* Headline */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.7, delay: 0.1 }}
+            >
+              <h1 className="text-4xl sm:text-5xl xl:text-6xl font-display font-bold tracking-tight leading-[1.08]" style={{ color: 'var(--text-primary)' }}>
+                {specialty.id === 'default' ? (
+                  <>
+                    Notes That<br />
+                    <span style={{ color: cfg.primaryColor }}>Diagnose</span> Your Doubts.
+                  </>
+                ) : (
+                  <>
+                    Master <span style={{ color: cfg.primaryColor }}>{specialty.label}</span> Like a Pro.
+                  </>
+                )}
+              </h1>
+            </motion.div>
+
+            {/* Sub-headline */}
+            <motion.p
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.2 }}
+              className="text-base sm:text-lg leading-relaxed max-w-xl font-sans"
+              style={{ color: 'var(--text-muted)' }}
+            >
+              {specialty.id === 'default'
+                ? 'Premium handwritten notes, PYQs, and study guides — curated by toppers for MBBS, BDS, BAMS, BPT, B.Sc Nursing and more.'
+                : specialty.description
+              }
+            </motion.p>
+
+            {/* CTA buttons */}
+            <motion.div
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.3 }}
+              className="flex flex-col sm:flex-row gap-4 justify-center"
+            >
+              <Link
+                to={specialty.id !== 'default' ? `/courses?specialty=${encodeURIComponent(specialty.label)}` : '/courses'}
+                className="btn-primary py-3.5 px-8 text-sm font-bold flex items-center gap-2 justify-center"
+                style={specialty.id !== 'default' ? {
+                  background: cfg.primaryColor,
+                  boxShadow: `0 8px 32px ${cfg.glowColor}`,
+                } : {}}
+              >
+                <BookOpen className="w-4 h-4" />
+                {specialty.id !== 'default' ? `Browse ${specialty.label} Notes` : 'Browse All Notes'}
+                <ArrowRight className="w-4 h-4" />
+              </Link>
+              <Link
+                to="/seller/login"
+                className="btn-secondary py-3.5 px-8 text-sm font-bold flex items-center gap-2 justify-center"
+              >
+                <Download className="w-4 h-4" />
+                Become a Seller
+              </Link>
+            </motion.div>
+
+            {/* Stats row */}
+            <motion.div
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.4 }}
+              className="grid grid-cols-2 sm:grid-cols-4 gap-6 pt-8 w-full"
+              style={{ borderTop: '1px solid var(--glass-border)' }}
+            >
+              {STATS.map((s, i) => (
+                <div key={i} className="text-center">
+                  <p className="text-xl sm:text-2xl font-display font-bold" style={{ color: cfg.primaryColor, transition: 'color 0.6s' }}>{s.value}</p>
+                  <p className="text-[11px] font-sans mt-0.5 leading-tight" style={{ color: 'var(--text-muted)' }}>{s.label}</p>
+                </div>
+              ))}
             </motion.div>
           </div>
         </div>
@@ -378,13 +346,6 @@ export default function LandingPage() {
         </motion.div>
       </section>
 
-      {/* ═══════════════════════════════════════════════════════
-          SPECIALTY PANEL — appears when organ is clicked
-         ═══════════════════════════════════════════════════════ */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <SpecialtyPanel />
-        <SpecialtyQuickSwitch />
-      </div>
 
       {/* ═══════════════════════════════════════════════════════
           SECTION 2 — COURSE CATEGORIES
@@ -647,43 +608,3 @@ function MedicalGridLines() {
   );
 }
 
-// ─── Floating particles around anatomy figure ─────────────────
-
-function MedicalParticleField({ color: _color }: { color: string }) {
-  const particles = Array.from({ length: 12 }, (_, i) => ({
-    x: Math.cos((i / 12) * Math.PI * 2) * (150 + (i % 3) * 30),
-    y: Math.sin((i / 12) * Math.PI * 2) * (200 + (i % 4) * 20),
-    size: 2 + (i % 3),
-    delay: i * 0.3,
-    emoji: ['🧬', '💊', '🔬', '⚕️', '🩺', '💉'][i % 6],
-  }));
-
-  return (
-    <div className="absolute inset-0 pointer-events-none overflow-hidden" aria-hidden="true">
-      {particles.map((p, i) => (
-        <motion.div
-          key={i}
-          className="absolute text-sm"
-          style={{
-            left: `calc(50% + ${p.x * 0.5}px)`,
-            top: `calc(50% + ${p.y * 0.35}px)`,
-            fontSize: p.size * 4 + 'px',
-            opacity: 0.15,
-          }}
-          animate={{
-            y: [-8, 8, -8],
-            opacity: [0.08, 0.2, 0.08],
-          }}
-          transition={{
-            duration: 3 + p.delay * 0.5,
-            repeat: Infinity,
-            delay: p.delay,
-            ease: 'easeInOut',
-          }}
-        >
-          {p.emoji}
-        </motion.div>
-      ))}
-    </div>
-  );
-}
