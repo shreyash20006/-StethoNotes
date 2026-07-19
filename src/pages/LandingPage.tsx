@@ -27,24 +27,24 @@ const CategoryCard = memo(({ cat, idx, navigate }: { cat: any; idx: number; navi
       transition={{ duration: 0.6, delay: idx * 0.06 }}
       whileHover={{ y: -6, scale: 1.02 }}
       onClick={() => navigate(`/courses?course=${encodeURIComponent(cat.name)}`)}
-      className="glass-card-v2 rounded-3xl cursor-pointer relative overflow-hidden group flex flex-col justify-between h-[360px]"
+      className="glass-card-v2 rounded-3xl cursor-pointer relative overflow-hidden group flex flex-col h-auto"
       style={{ borderColor: 'var(--glass-border)' }}
     >
       {/* Cover Image Container */}
-      <div className="relative w-full h-40 overflow-hidden" style={{ background: 'var(--bg-layer)', borderBottom: '1px solid var(--glass-border)' }}>
+      <div className="relative w-full overflow-hidden" style={{ background: 'var(--bg-layer)', borderBottom: '1px solid var(--glass-border)' }}>
         {cat.coverImage ? (
           <img
             src={cat.coverImage}
             alt={`${cat.name} cover`}
-            className="w-full h-full object-contain transition-transform duration-700 group-hover:scale-105"
+            className="w-full h-auto block transition-transform duration-700 group-hover:scale-105"
             loading="lazy"
           />
         ) : (
-          <div className={`w-full h-full bg-gradient-to-br ${cat.color}`} />
+          <div className="w-full h-40 bg-gradient-to-br from-blue-500/10 to-cyan-500/10" />
         )}
       </div>
 
-      <div className="p-6 pt-0 flex-grow flex flex-col justify-between">
+      <div className="p-6 flex flex-col justify-between flex-grow gap-4">
         <div>
           <div className="flex items-center gap-3 mb-3">
             <div
