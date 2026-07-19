@@ -25,31 +25,52 @@ const CategoryCard = memo(({ cat, idx, navigate }: { cat: any; idx: number; navi
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true }}
       transition={{ duration: 0.6, delay: idx * 0.06 }}
-      whileHover={{ y: -4, scale: 1.01 }}
+      whileHover={{ y: -6, scale: 1.02 }}
       onClick={() => navigate(`/courses?course=${encodeURIComponent(cat.name)}`)}
-      className="glass-card-v2 p-8 rounded-3xl cursor-pointer relative overflow-hidden group flex flex-col justify-between h-72"
+      className="glass-card-v2 rounded-3xl cursor-pointer relative overflow-hidden group flex flex-col justify-between h-[360px]"
       style={{ borderColor: 'var(--glass-border)' }}
     >
-      <div>
-        <div
-          className="w-14 h-14 mb-6 rounded-2xl flex items-center justify-center transition-all duration-500"
-          style={{
-            background: `color-mix(in srgb, ${cfg.primaryColor} 8%, var(--surface))`,
-            border: `1px solid ${cfg.primaryColor}25`,
-          }}
-        >
-          <CourseIcon name={cat.name} size={40} />
-        </div>
-        <h3 className="font-display font-bold text-xl mb-2 group-hover:text-primary transition-colors" style={{ color: 'var(--text-primary)' }}>
-          {cat.name}
-        </h3>
-        <p className="text-xs leading-relaxed" style={{ color: 'var(--text-muted)' }}>
-          {cat.desc}
-        </p>
+      {/* Cover Image Container */}
+      <div className="relative w-full h-40 overflow-hidden">
+        {cat.coverImage ? (
+          <img
+            src={cat.coverImage}
+            alt={`${cat.name} cover`}
+            className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+            loading="lazy"
+          />
+        ) : (
+          <div className={`w-full h-full bg-gradient-to-br ${cat.color}`} />
+        )}
+        {/* Soft overlay gradient to blend into the card surface */}
+        <div className="absolute inset-0 bg-gradient-to-t from-[var(--surface)] via-transparent to-transparent opacity-95" />
       </div>
-      <div className="flex items-center gap-2 font-display text-xs font-semibold mt-6 group-hover:translate-x-1.5 transition-transform duration-300" style={{ color: cfg.primaryColor }}>
-        <span>Explore Catalog</span>
-        <ArrowRight className="w-4 h-4" />
+
+      <div className="p-6 pt-0 flex-grow flex flex-col justify-between">
+        <div>
+          <div className="flex items-center gap-3 mb-3">
+            <div
+              className="w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-500"
+              style={{
+                background: `color-mix(in srgb, ${cfg.primaryColor} 8%, var(--surface))`,
+                border: `1px solid ${cfg.primaryColor}25`,
+              }}
+            >
+              <CourseIcon name={cat.name} size={24} />
+            </div>
+            <h3 className="font-display font-bold text-xl group-hover:text-primary transition-colors" style={{ color: 'var(--text-primary)' }}>
+              {cat.name}
+            </h3>
+          </div>
+          <p className="text-xs leading-relaxed line-clamp-2" style={{ color: 'var(--text-muted)' }}>
+            {cat.desc}
+          </p>
+        </div>
+
+        <div className="flex items-center gap-2 font-display text-xs font-semibold mt-4 group-hover:translate-x-1.5 transition-transform duration-300" style={{ color: cfg.primaryColor }}>
+          <span>Explore Catalog</span>
+          <ArrowRight className="w-4 h-4" />
+        </div>
       </div>
     </motion.div>
   );

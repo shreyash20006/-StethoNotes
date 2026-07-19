@@ -225,6 +225,7 @@ export const COURSE_ICON_MAP: Record<string, React.ComponentType<CourseIconProps
   'B.Pharma': PharmaIcon,
   BPT: BPTIcon,
   Paramedical: ParamedicalIcon,
+  BDS: MBBSIcon,
 };
 
 export const CourseIcon = memo(({ name, ...props }: { name: string } & CourseIconProps) => {
@@ -235,11 +236,12 @@ export const CourseIcon = memo(({ name, ...props }: { name: string } & CourseIco
 CourseIcon.displayName = 'CourseIcon';
 
 export const COURSE_CATEGORIES = [
-  { id: 'c1', name: 'MBBS', desc: 'Bachelor of Medicine, Bachelor of Surgery', color: 'from-blue-500/10 to-cyan-500/10' },
-  { id: 'c2', name: 'BHMS', desc: 'Bachelor of Homoeopathic Medicine and Surgery', color: 'from-emerald-500/10 to-teal-500/10' },
-  { id: 'c3', name: 'BAMS', desc: 'Bachelor of Ayurvedic Medicine and Surgery', color: 'from-green-500/10 to-emerald-500/10' },
-  { id: 'c4', name: 'BSc Nursing', desc: 'Bachelor of Science in Nursing care study guides', color: 'from-indigo-500/10 to-blue-500/10' },
-  { id: 'c5', name: 'B.Pharma', desc: 'Pharmacy and Pharmacology summary papers', color: 'from-red-500/10 to-orange-500/10' },
-  { id: 'c6', name: 'BPT', desc: 'Bachelor of Physiotherapy exercise guides', color: 'from-purple-500/10 to-pink-500/10' },
-  { id: 'c7', name: 'Paramedical', desc: 'Lab Technician, Radiology & Emergency notes', color: 'from-yellow-500/10 to-amber-500/10' },
+  { id: 'c1', name: 'MBBS', desc: 'Bachelor of Medicine, Bachelor of Surgery', color: 'from-blue-500/10 to-cyan-500/10', coverImage: 'https://res.cloudinary.com/dsqxboxoc/image/upload/v1784459007/file_00000000515882089b869fa1400fcea4_b1irgb.png' },
+  { id: 'c2', name: 'BHMS', desc: 'Bachelor of Homoeopathic Medicine and Surgery', color: 'from-emerald-500/10 to-teal-500/10', coverImage: 'https://res.cloudinary.com/dsqxboxoc/image/upload/v1784459008/file_00000000fb248208a1c95524e9262cdc_xqcc9a.png' },
+  { id: 'c3', name: 'BAMS', desc: 'Bachelor of Ayurvedic Medicine and Surgery', color: 'from-green-500/10 to-emerald-500/10', coverImage: 'https://res.cloudinary.com/dsqxboxoc/image/upload/v1784459008/file_00000000a1c0820898fe49bd8f309aa0_q8ka61.png' },
+  { id: 'c4', name: 'BSc Nursing', desc: 'Bachelor of Science in Nursing care study guides', color: 'from-indigo-500/10 to-blue-500/10', coverImage: 'https://res.cloudinary.com/dsqxboxoc/image/upload/v1784459009/file_000000000eb4820aa9f18e85d62871cf_kptvuj.png' },
+  { id: 'c5', name: 'B.Pharma', desc: 'Pharmacy and Pharmacology summary papers', color: 'from-red-500/10 to-orange-500/10', coverImage: 'https://res.cloudinary.com/dsqxboxoc/image/upload/v1784459008/file_00000000c80881f4aa424b19f175ab96_gfmi8l.png' },
+  { id: 'c6', name: 'BPT', desc: 'Bachelor of Physiotherapy exercise guides', color: 'from-purple-500/10 to-pink-500/10', coverImage: 'https://res.cloudinary.com/dsqxboxoc/image/upload/v1784459008/file_00000000e718820996166f5de8a7cdab_jb5wsr.png' },
+  { id: 'c7', name: 'Paramedical', desc: 'Lab Technician, Radiology & Emergency notes', color: 'from-yellow-500/10 to-amber-500/10', coverImage: 'https://res.cloudinary.com/dsqxboxoc/image/upload/v1784459010/file_000000007bb48209b0379d5ca31473e7_cdkvnn.png' },
+  { id: 'c8', name: 'BDS', desc: 'Bachelor of Dental Surgery study resources', color: 'from-cyan-500/10 to-blue-500/10', coverImage: 'https://res.cloudinary.com/dsqxboxoc/image/upload/v1784459587/file_0000000031dc8208bcd6304ecd8509d7_rmuinb.png' }
 ];
