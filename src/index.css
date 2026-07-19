@@ -418,3 +418,136 @@ button, a, input, textarea, select {
 [data-theme="light"] .text-paper {
   color: var(--text-primary) !important;
 }
+
+/* ══════════════════════════════════════════════════════════════
+   SPECIALTY CSS VARIABLES
+   Set by SpecialtyContext on document.documentElement.
+   These power the adaptive color system across all components.
+══════════════════════════════════════════════════════════════ */
+
+:root {
+  --specialty-primary:   #22C7F2;
+  --specialty-secondary: #1E90FF;
+  --specialty-accent:    #35D07F;
+  --specialty-glow:      rgba(34, 199, 242, 0.25);
+}
+
+/* ══════════════════════════════════════════════════════════════
+   SPECIALTY BODY ANIMATIONS
+   Applied via [data-specialty] on <body> by SpecialtyContext.
+══════════════════════════════════════════════════════════════ */
+
+/* Cardiology — subtle heartbeat on body */
+body[data-specialty="cardiology"] {
+  animation: heartbeat-page 0.85s ease-in-out infinite;
+}
+
+@keyframes heartbeat-page {
+  0%, 100% { background-position: 0% 0%; }
+  50%       { background-position: 0% 0.15%; }
+}
+
+/* Respiratory — gentle breathing scale */
+body[data-specialty="respiratory"] {
+  animation: breath-page 3.5s ease-in-out infinite;
+}
+
+@keyframes breath-page {
+  0%, 100% { transform: none; }
+  50%       { transform: scale(1.0008); }
+}
+
+/* Neurology — very subtle flicker */
+body[data-specialty="neurology"] {
+  animation: neural-flicker 4s ease-in-out infinite;
+}
+
+@keyframes neural-flicker {
+  0%, 100% { filter: none; }
+  48%       { filter: brightness(1); }
+  50%       { filter: brightness(1.008); }
+  52%       { filter: brightness(1); }
+}
+
+/* ══════════════════════════════════════════════════════════════
+   MEDICAL CURSOR GLOW — custom cursor CSS
+══════════════════════════════════════════════════════════════ */
+
+/* Hide default cursor on desktop when medical cursor is active */
+@media (hover: hover) {
+  html:has(#medical-cursor) {
+    cursor: none;
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════
+   ECG LINE ANIMATION
+══════════════════════════════════════════════════════════════ */
+
+@keyframes ecg-draw {
+  from { stroke-dashoffset: 1000; }
+  to   { stroke-dashoffset: 0; }
+}
+
+.ecg-line {
+  stroke-dasharray: 1000;
+  stroke-dashoffset: 1000;
+  animation: ecg-draw 2.5s ease-in-out forwards;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   GLASS CARD V2 — specialty-aware
+══════════════════════════════════════════════════════════════ */
+
+.glass-card-v2 {
+  background: var(--surface);
+  border: 1px solid var(--glass-border);
+  backdrop-filter: blur(12px);
+  transition: all 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.glass-card-v2:hover {
+  border-color: var(--specialty-primary);
+  box-shadow: 0 12px 40px var(--specialty-glow);
+  transform: translateY(-2px);
+}
+
+/* ══════════════════════════════════════════════════════════════
+   ANATOMY NAVIGATOR — interactive zone pulse
+══════════════════════════════════════════════════════════════ */
+
+@keyframes organ-pulse {
+  0%, 100% { opacity: 0.7; transform: scale(1); }
+  50%       { opacity: 1;   transform: scale(1.04); }
+}
+
+/* Synapse fire burst */
+@keyframes synapse-fire {
+  0%   { transform: scale(0); opacity: 1; }
+  100% { transform: scale(3); opacity: 0; }
+}
+
+/* DNA helix rotation */
+@keyframes dna-rotate {
+  from { transform: rotateY(0deg); }
+  to   { transform: rotateY(360deg); }
+}
+
+/* ══════════════════════════════════════════════════════════════
+   CINEMATIC FOOTER — stethoscope assemble
+══════════════════════════════════════════════════════════════ */
+
+@keyframes stethoscope-assemble {
+  0%   { opacity: 0; transform: scale(0.2) rotate(-30deg); }
+  60%  { transform: scale(1.08) rotate(5deg); }
+  100% { opacity: 1; transform: scale(1) rotate(0deg); }
+}
+
+/* ══════════════════════════════════════════════════════════════
+   SPECIALTY PANEL MORPH — background transitions
+══════════════════════════════════════════════════════════════ */
+
+@keyframes panel-glow-pulse {
+  0%, 100% { box-shadow: 0 0 40px var(--specialty-glow); }
+  50%       { box-shadow: 0 0 80px var(--specialty-glow); }
+}

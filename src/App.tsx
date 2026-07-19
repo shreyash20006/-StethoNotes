@@ -2,8 +2,10 @@ import { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import { useAuthStore } from './store/useAuthStore';
 import { useThemeStore } from './store/useThemeStore';
+import { SpecialtyProvider } from './context/SpecialtyContext';
 import Navbar from './components/Navbar';
-import Footer from './components/Footer';
+import CinematicFooter from './components/CinematicFooter';
+import MedicalCursor from './components/anatomy/MedicalCursor';
 import ToastContainer from './components/Toast';
 import { supabase } from './lib/supabase';
 
@@ -32,15 +34,16 @@ import NotFoundPage from './pages/NotFoundPage';
 // LAYOUT WRAPPERS
 // ============================================================
 
-/** Standard layout with Navbar + Footer (public pages) */
+/** Standard layout with Navbar + CinematicFooter (public pages) */
 function Layout() {
   return (
     <div className="flex flex-col min-h-screen">
+      <MedicalCursor />
       <Navbar />
       <div className="flex-grow">
         <Outlet />
       </div>
-      <Footer />
+      <CinematicFooter />
       <ToastContainer />
     </div>
   );
@@ -166,57 +169,59 @@ function App() {
   }, [checkSession]);
 
   return (
-    <BrowserRouter>
-      <Routes>
-        {/* ─── AUTH CALLBACK (no layout) ─── */}
-        <Route path="/auth/callback" element={<AuthCallbackPage />} />
+    <SpecialtyProvider>
+      <BrowserRouter>
+        <Routes>
+          {/* ─── AUTH CALLBACK (no layout) ─── */}
+          <Route path="/auth/callback" element={<AuthCallbackPage />} />
 
-        {/* ─── FULL-PAGE AUTH PAGES (no navbar) ─── */}
-        <Route element={<FullPageLayout />}>
-          <Route path="/seller/login" element={<SellerLoginPage />} />
-          <Route path="/admin/login" element={<AdminLoginPage />} />
+          {/* ─── FULL-PAGE AUTH PAGES (no navbar) ─── */}
+          <Route element={<FullPageLayout />}>
+            <Route path="/seller/login" element={<SellerLoginPage />} />
+            <Route path="/admin/login" element={<AdminLoginPage />} />
 
-          {/* Seller pending holding page */}
-          <Route element={<SellerPendingRoute />}>
-            <Route path="/seller/application-pending" element={<SellerPendingPage />} />
+            {/* Seller pending holding page */}
+            <Route element={<SellerPendingRoute />}>
+              <Route path="/seller/application-pending" element={<SellerPendingPage />} />
+            </Route>
+
+            {/* Seller dashboard */}
+            <Route element={<SellerRoute />}>
+              <Route path="/seller/dashboard" element={<SellerDashboardPage />} />
+            </Route>
+
+            {/* Admin panel */}
+            <Route element={<AdminRoute />}>
+              <Route path="/admin" element={<Navigate to="/admin/dashboard" replace />} />
+              <Route path="/admin/dashboard" element={<AdminPage />} />
+            </Route>
           </Route>
 
-          {/* Seller dashboard */}
-          <Route element={<SellerRoute />}>
-            <Route path="/seller/dashboard" element={<SellerDashboardPage />} />
+          {/* ─── PUBLIC ROUTES (with Navbar + CinematicFooter) ─── */}
+          <Route path="/" element={<Layout />}>
+            <Route index element={<LandingPage />} />
+            <Route path="courses" element={<CoursesPage />} />
+            <Route path="notes/:id" element={<ProductDetailPage />} />
+            <Route path="cart" element={<CartPage />} />
+            <Route path="order-success" element={<OrderConfirmationPage />} />
+            <Route path="track-order" element={<OrderLookupPage />} />
+            <Route path="download/:orderId/:noteId" element={<DownloadPage />} />
+            <Route path="login" element={<LoginPage />} />
+            <Route path="privacy" element={<PrivacyPolicyPage />} />
+            <Route path="terms" element={<TermsOfServicePage />} />
+            <Route path="contact" element={<Contact />} />
+
+            {/* Student protected dashboard */}
+            <Route element={<StudentRoute />}>
+              <Route path="dashboard" element={<DashboardPage />} />
+            </Route>
+
+            {/* Catch-all 404 */}
+            <Route path="*" element={<NotFoundPage />} />
           </Route>
-
-          {/* Admin panel */}
-          <Route element={<AdminRoute />}>
-            <Route path="/admin" element={<Navigate to="/admin/dashboard" replace />} />
-            <Route path="/admin/dashboard" element={<AdminPage />} />
-          </Route>
-        </Route>
-
-        {/* ─── PUBLIC ROUTES (with Navbar + Footer) ─── */}
-        <Route path="/" element={<Layout />}>
-          <Route index element={<LandingPage />} />
-          <Route path="courses" element={<CoursesPage />} />
-          <Route path="notes/:id" element={<ProductDetailPage />} />
-          <Route path="cart" element={<CartPage />} />
-          <Route path="order-success" element={<OrderConfirmationPage />} />
-          <Route path="track-order" element={<OrderLookupPage />} />
-          <Route path="download/:orderId/:noteId" element={<DownloadPage />} />
-          <Route path="login" element={<LoginPage />} />
-          <Route path="privacy" element={<PrivacyPolicyPage />} />
-          <Route path="terms" element={<TermsOfServicePage />} />
-          <Route path="contact" element={<Contact />} />
-
-          {/* Student protected dashboard */}
-          <Route element={<StudentRoute />}>
-            <Route path="dashboard" element={<DashboardPage />} />
-          </Route>
-
-          {/* Catch-all 404 */}
-          <Route path="*" element={<NotFoundPage />} />
-        </Route>
-      </Routes>
-    </BrowserRouter>
+        </Routes>
+      </BrowserRouter>
+    </SpecialtyProvider>
   );
 }
 

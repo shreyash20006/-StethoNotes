@@ -1,208 +1,165 @@
 import { Link, useNavigate } from 'react-router-dom';
-import { motion } from 'motion/react';
-import { memo } from 'react';
-import { Award, ShieldCheck, Star, ArrowRight, Activity, Users, Smile, ChevronLeft, ChevronRight, Mail, Trophy, Sparkles, BookOpen, Heart } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
+import { memo, useState, useEffect } from 'react';
+import {
+  Award, ShieldCheck, Star, ArrowRight, Activity, Users, Smile,
+  ChevronLeft, ChevronRight, Trophy, Sparkles, BookOpen, Heart,
+  Zap, Shield, Download
+} from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import SEOHead from '../components/SEOHead';
 import { pageMeta, generateOrganizationLD, generateFAQLD } from '../lib/seo';
-import HeroSection from '../components/hero/HeroSection';
 import { COURSE_CATEGORIES, CourseIcon } from '../components/icons/CourseIcons';
-import {
-  StudyDeskBackground,
-  AnatomyWallBackground,
-  SecureArchiveBackground,
-  CampusBackground,
-  ConstellationBackground,
-} from '../components/backgrounds/MedicalIllustrations';
+import { useSpecialty, SPECIALTIES } from '../context/SpecialtyContext';
+import AnatomyNavigator from '../components/anatomy/AnatomyNavigator';
+import SpecialtyPanel, { SpecialtyQuickSwitch } from '../components/anatomy/SpecialtyPanel';
+import { useLenis } from '../hooks/useLenis';
 
-const CategoryCard = memo(({ cat, idx, navigate }: { cat: any; idx: number; navigate: (url: string) => void }) => (
-  <motion.div
-    initial={{ opacity: 0, y: 30 }}
-    whileInView={{ opacity: 1, y: 0 }}
-    viewport={{ once: true }}
-    transition={{ duration: 0.6, delay: idx * 0.05 }}
-    onClick={() => navigate(`/courses?course=${encodeURIComponent(cat.name)}`)}
-    className="glass-card-v2 p-8 rounded-3xl cursor-pointer relative overflow-hidden group flex flex-col justify-between h-72"
-  >
-    <div>
-      <div className="w-14 h-14 mb-6 rounded-2xl flex items-center justify-center group-hover:border-primary/30 transition-all"
-        style={{ background: 'color-mix(in srgb, var(--text-primary) 5%, transparent)', border: '1px solid var(--glass-border)' }}
-      >
-        <CourseIcon name={cat.name} size={40} />
+// ─── Category Card ────────────────────────────────────────────
+
+const CategoryCard = memo(({ cat, idx, navigate }: { cat: any; idx: number; navigate: (url: string) => void }) => {
+  const { specialty } = useSpecialty();
+  const cfg = SPECIALTIES[specialty.id];
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 30 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true }}
+      transition={{ duration: 0.6, delay: idx * 0.06 }}
+      whileHover={{ y: -4, scale: 1.01 }}
+      onClick={() => navigate(`/courses?course=${encodeURIComponent(cat.name)}`)}
+      className="glass-card-v2 p-8 rounded-3xl cursor-pointer relative overflow-hidden group flex flex-col justify-between h-72"
+      style={{ borderColor: 'var(--glass-border)' }}
+    >
+      <div>
+        <div
+          className="w-14 h-14 mb-6 rounded-2xl flex items-center justify-center transition-all duration-500"
+          style={{
+            background: `color-mix(in srgb, ${cfg.primaryColor} 8%, var(--surface))`,
+            border: `1px solid ${cfg.primaryColor}25`,
+          }}
+        >
+          <CourseIcon name={cat.name} size={40} />
+        </div>
+        <h3 className="font-display font-bold text-xl mb-2 group-hover:text-primary transition-colors" style={{ color: 'var(--text-primary)' }}>
+          {cat.name}
+        </h3>
+        <p className="text-xs leading-relaxed" style={{ color: 'var(--text-muted)' }}>
+          {cat.desc}
+        </p>
       </div>
-      <h3 className="font-display font-bold text-xl mb-2 group-hover:text-primary transition-colors" style={{ color: 'var(--text-primary)' }}>
-        {cat.name}
-      </h3>
-      <p className="text-xs leading-relaxed" style={{ color: 'var(--text-muted)' }}>
-        {cat.desc}
-      </p>
-    </div>
-    <div className="flex items-center gap-2 font-display text-xs font-semibold mt-6 group-hover:translate-x-1.5 transition-transform duration-300" style={{ color: 'var(--accent-primary)' }}>
-      <span>Explore Catalog</span>
-      <ArrowRight className="w-4 h-4" />
-    </div>
-  </motion.div>
-));
-
+      <div className="flex items-center gap-2 font-display text-xs font-semibold mt-6 group-hover:translate-x-1.5 transition-transform duration-300" style={{ color: cfg.primaryColor }}>
+        <span>Explore Catalog</span>
+        <ArrowRight className="w-4 h-4" />
+      </div>
+    </motion.div>
+  );
+});
 CategoryCard.displayName = 'CategoryCard';
+
+// ─── Seller Card ──────────────────────────────────────────────
 
 const SellerCard = memo(({ seller, idx }: { seller: any; idx: number }) => (
   <motion.div
-    initial={{ opacity: 0, y: 30 }}
+    initial={{ opacity: 0, y: 20 }}
     whileInView={{ opacity: 1, y: 0 }}
     viewport={{ once: true }}
-    transition={{ duration: 0.6, delay: idx * 0.1 }}
-    className="glass-card-v2 rounded-3xl p-6 flex flex-col justify-between group bg-[#102640] hover:border-primary/30 border border-white/8"
+    transition={{ duration: 0.5, delay: idx * 0.1 }}
+    className="glass-card-v2 p-6 rounded-2xl text-center flex flex-col items-center gap-4"
   >
-    <div>
-      <div className="flex items-center gap-3.5 mb-5">
-        {seller.avatar_url ? (
-          <img 
-            src={seller.avatar_url} 
-            alt={seller.store_name || seller.name} 
-            className="w-11 h-11 rounded-2xl object-cover border border-white/8 group-hover:border-primary/30 transition-all"
-          />
-        ) : (
-          <div className="w-11 h-11 rounded-2xl bg-primary/5 border border-white/8 flex items-center justify-center text-primary text-lg font-bold shrink-0">
-            {(seller.store_name || seller.name || 'S').substring(0, 1).toUpperCase()}
-          </div>
-        )}
-        <div>
-          <h3 className="font-display font-bold text-white text-sm group-hover:text-primary transition-colors">
-            {seller.store_name || seller.name}
-          </h3>
-          <div className="flex items-center gap-1 mt-1 text-primary bg-primary/10 px-2 py-0.5 rounded-full text-[9px] font-semibold w-fit border border-primary/20">
-            <ShieldCheck className="w-3 h-3" />
-            <span>Verified Topper</span>
-          </div>
-        </div>
-      </div>
-      <p className="text-muted text-xs leading-relaxed mb-6 line-clamp-3">
-        {seller.bio || 'Author of premium medical study guides and high-yield handwritten revisions.'}
-      </p>
+    <div className="w-16 h-16 rounded-full overflow-hidden" style={{ border: '2px solid var(--glass-border)' }}>
+      {seller.avatar_url
+        ? <img src={seller.avatar_url} alt={seller.store_name} className="w-full h-full object-cover" />
+        : <div className="w-full h-full flex items-center justify-center text-2xl" style={{ background: 'var(--surface)' }}>👤</div>
+      }
     </div>
     <div>
-      <div className="flex items-center justify-between border-t border-white/8 pt-4 mb-4">
-        <div className="flex items-center gap-1.5 text-muted text-xs">
-          <Trophy className="w-3.5 h-3.5 text-amber-400" />
-          <span>{seller.total_sales}+ Sales</span>
-        </div>
-        <div className="text-[10px] text-primary/70 font-semibold uppercase tracking-wider">
-          {seller.refund_rate < 0.1 ? '99% Trust' : 'Approved Creator'}
-        </div>
-      </div>
-      <Link
-        to={`/courses?seller_id=${seller.id}`}
-        className="w-full py-2.5 rounded-xl text-xs font-semibold text-center block bg-white/5 border border-white/8 text-white hover:bg-primary hover:border-primary hover:text-void transition-all duration-300"
-      >
-        View Notes
-      </Link>
+      <p className="font-display font-bold text-sm" style={{ color: 'var(--text-primary)' }}>{seller.store_name}</p>
+      <p className="text-xs mt-0.5 font-sans" style={{ color: 'var(--text-muted)' }}>{seller.specialty || 'Medical Expert'}</p>
+    </div>
+    <div className="flex items-center gap-1" style={{ color: '#F59E0B' }}>
+      {Array.from({ length: 5 }, (_, i) => <Star key={i} className="w-3 h-3 fill-current" />)}
     </div>
   </motion.div>
 ));
-
 SellerCard.displayName = 'SellerCard';
 
-const WhyUsCard = memo(({ item, idx }: { item: any; idx: number }) => (
-  <motion.div
-    initial={{ opacity: 0, y: 30 }}
-    whileInView={{ opacity: 1, y: 0 }}
-    viewport={{ once: true }}
-    transition={{ duration: 0.6, delay: idx * 0.1 }}
-    className="glass-card-v2 p-8 rounded-3xl flex flex-col items-center text-center gap-4 hover:border-primary/30"
-  >
-    <div className="p-4 bg-primary/5 border border-white/5 rounded-2xl group-hover:bg-primary/10 group-hover:scale-110 transition-all duration-300">
-      {item.icon}
-    </div>
-    <h3 className="font-display font-bold text-lg text-white">
-      {item.title}
-    </h3>
-    <p className="text-muted text-xs leading-relaxed">
-      {item.desc}
-    </p>
-  </motion.div>
-));
+// ─── WhyUs Card ───────────────────────────────────────────────
 
+const WhyUsCard = memo(({ item, idx }: { item: any; idx: number }) => {
+  const { specialty } = useSpecialty();
+  const cfg = SPECIALTIES[specialty.id];
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 24 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true }}
+      transition={{ duration: 0.5, delay: idx * 0.08 }}
+      whileHover={{ y: -3 }}
+      className="glass-card-v2 p-8 rounded-3xl flex flex-col gap-4 group"
+    >
+      <div
+        className="w-12 h-12 rounded-2xl flex items-center justify-center transition-all duration-500"
+        style={{
+          background: `color-mix(in srgb, ${cfg.primaryColor} 10%, var(--surface))`,
+          border: `1px solid ${cfg.primaryColor}25`,
+        }}
+      >
+        <item.icon className="w-6 h-6" style={{ color: cfg.primaryColor }} />
+      </div>
+      <h3 className="font-display font-bold text-base" style={{ color: 'var(--text-primary)' }}>{item.title}</h3>
+      <p className="text-xs leading-relaxed font-sans" style={{ color: 'var(--text-muted)' }}>{item.desc}</p>
+    </motion.div>
+  );
+});
 WhyUsCard.displayName = 'WhyUsCard';
 
+// ─── Static data ──────────────────────────────────────────────
+
 const WHY_US = [
-  {
-    icon: <Mail className="w-7 h-7 text-primary" />,
-    title: 'Instant Email Delivery',
-    desc: 'Get your note files sent directly to your email inbox immediately after payment. No manual downloads needed.'
-  },
-  {
-    icon: <Award className="w-7 h-7 text-primary" />,
-    title: 'Topper-Curated Content',
-    desc: 'Compiled and verified by university rankers and toppers, ensuring maximum accuracy and score success.'
-  },
-  {
-    icon: <Activity className="w-7 h-7 text-primary" />,
-    title: 'Affordable Pricing',
-    desc: 'Access standard-quality guides at a fraction of standard textbook costs, tailored for student budgets.'
-  },
-  {
-    icon: <ShieldCheck className="w-7 h-7 text-primary" />,
-    title: 'Secure Payments',
-    desc: 'Fully encrypted and secure checkout powered by Razorpay. Safe transactions guaranteed.'
-  }
+  { icon: ShieldCheck, title: 'Verified Medical Content', desc: 'Every note is reviewed for accuracy against current MBBS, BDS, and BAMS syllabi.' },
+  { icon: Award,       title: 'Topper-Curated Notes',   desc: 'Written by university rank holders and experienced clinicians with exam-tested material.' },
+  { icon: Zap,         title: 'Instant PDF Access',     desc: 'Download your purchased notes immediately — no waiting, no delays, any device.' },
+  { icon: Shield,      title: 'Secure Checkout',        desc: 'Razorpay-powered payments with full encryption. Your data is always protected.' },
 ];
 
 const TESTIMONIALS = [
-  {
-    name: 'Anjali Sharma',
-    role: 'MBBS 3rd Year, AIIMS Delhi',
-    avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=150',
-    comment: 'The Pathology and Microbiology notes are absolutely top-notch! The flowcharts and tabular comparisons helped me score an A in my university exams. Thank you, StethoNotes!',
-    rating: 5
-  },
-  {
-    name: 'Dr. Vivek Nair',
-    role: 'BAMS graduate, Government Ayurvedic College',
-    avatar: 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?auto=format&fit=crop&q=80&w=150',
-    comment: 'Dravyaguna notes are incredibly hard to write concisely, but this store did it beautifully. All shlokas and property lists are laid out perfectly. Essential for BAMS students.',
-    rating: 5
-  },
-  {
-    name: 'Priyanka Das',
-    role: 'BSc Nursing 2nd Year, Apollo College',
-    avatar: 'https://images.unsplash.com/photo-1594744803329-e58b31de215f?auto=format&fit=crop&q=80&w=150',
-    comment: 'Nursing Foundation notes made my clinical placements so much easier. The step-by-step procedures and care plans are explained clearly. Saved me hours of reference work!',
-    rating: 5
-  }
+  { name: 'Anjali Sharma',    role: 'MBBS 3rd Year, AIIMS Delhi',              avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=150', comment: 'The Pathology and Microbiology notes are absolutely top-notch! The flowcharts and tabular comparisons helped me score an A in my university exams.', rating: 5 },
+  { name: 'Dr. Vivek Nair',   role: 'BAMS graduate, Government Ayurvedic College', avatar: 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?auto=format&fit=crop&q=80&w=150', comment: 'Dravyaguna notes are incredibly hard to write concisely, but this store did it beautifully. Essential for BAMS students.', rating: 5 },
+  { name: 'Priyanka Das',     role: 'BSc Nursing 2nd Year, Apollo College',    avatar: 'https://images.unsplash.com/photo-1594744803329-e58b31de215f?auto=format&fit=crop&q=80&w=150', comment: 'Nursing Foundation notes made my clinical placements so much easier. Saved me hours of reference work!', rating: 5 },
 ];
+
+const STATS = [
+  { value: '12,000+', label: 'Students Enrolled' },
+  { value: '500+',    label: 'Verified Notes' },
+  { value: '50+',     label: 'Expert Sellers' },
+  { value: '4.9★',    label: 'Average Rating' },
+];
+
+// ─── Main Page ────────────────────────────────────────────────
 
 export default function LandingPage() {
   const navigate = useNavigate();
   const [currentTestimonial, setCurrentTestimonial] = useState(0);
   const [featuredSellers, setFeaturedSellers] = useState<any[]>([]);
+  const { specialty } = useSpecialty();
+  useLenis();
 
-  const nextTestimonial = () => {
-    setCurrentTestimonial((prev) => (prev + 1) % TESTIMONIALS.length);
-  };
+  const nextTestimonial = () => setCurrentTestimonial(p => (p + 1) % TESTIMONIALS.length);
+  const prevTestimonial = () => setCurrentTestimonial(p => (p - 1 + TESTIMONIALS.length) % TESTIMONIALS.length);
 
-  const prevTestimonial = () => {
-    setCurrentTestimonial((prev) => (prev - 1 + TESTIMONIALS.length) % TESTIMONIALS.length);
-  };
-
-  // Fetch featured sellers
   useEffect(() => {
     const fetchSellers = async () => {
       try {
-        const { data } = await supabase
-          .from('featured_sellers')
-          .select('*')
-          .limit(4);
+        const { data } = await supabase.from('featured_sellers').select('*').limit(4);
         if (data) setFeaturedSellers(data);
-      } catch (err) {
-        console.error('Error fetching featured sellers:', err);
-      }
+      } catch (err) { /* silent */ }
     };
     fetchSellers();
   }, []);
 
-  // Auto scroll testimonials
   useEffect(() => {
     const interval = setInterval(nextTestimonial, 6000);
     return () => clearInterval(interval);
@@ -211,37 +168,204 @@ export default function LandingPage() {
   const meta = pageMeta.home();
   const orgSchema = generateOrganizationLD();
   const faqSchema = generateFAQLD();
+  const cfg = SPECIALTIES[specialty.id];
 
   return (
-    <div
-      className="overflow-hidden min-h-screen"
-      style={{ background: 'var(--bg-base)', color: 'var(--text-primary)' }}
-    >
+    <div className="overflow-hidden min-h-screen" style={{ background: 'var(--bg-base)', color: 'var(--text-primary)' }}>
       <SEOHead {...meta} jsonLd={[orgSchema, faqSchema]} />
-      {/* 1. Premium Interactive Hero Section */}
-      <HeroSection />
 
-      {/* 2. Course Category Section */}
-      <section className="py-28 px-4 sm:px-6 lg:px-8 relative" style={{ borderTop: '1px solid var(--glass-border)' }}>
-        <AnatomyWallBackground />
-        
-        <div className="max-w-7xl mx-auto relative z-10">
-          <div className="text-center max-w-3xl mx-auto mb-20 flex flex-col items-center gap-4">
-            <div className="flex items-center gap-2 px-3 py-1 rounded-full border text-xs font-semibold tracking-wider uppercase"
-              style={{ background: 'color-mix(in srgb, var(--accent-primary) 10%, transparent)', borderColor: 'color-mix(in srgb, var(--accent-primary) 25%, transparent)', color: 'var(--accent-primary)' }}
-            >
-              <Sparkles className="w-3.5 h-3.5" />
-              <span>Academic Catalog</span>
+      {/* ═══════════════════════════════════════════════════════
+          SECTION 1 — ANATOMY HERO
+          Two-column: Left = tagline/CTA, Right = interactive body
+         ═══════════════════════════════════════════════════════ */}
+      <section className="min-h-screen relative flex items-center">
+        {/* Dynamic specialty background glow */}
+        <motion.div
+          className="absolute inset-0 pointer-events-none"
+          animate={{
+            background: `radial-gradient(ellipse at 75% 50%, ${cfg.glowColor} 0%, transparent 55%),
+                         radial-gradient(ellipse at 20% 80%, ${cfg.primaryColor}08 0%, transparent 45%)`,
+          }}
+          transition={{ duration: 0.8, ease: 'easeInOut' }}
+        />
+
+        {/* Medical grid background */}
+        <div
+          className="absolute inset-0 pointer-events-none opacity-[0.04]"
+          style={{
+            backgroundImage: `linear-gradient(var(--accent-primary) 1px, transparent 1px), linear-gradient(90deg, var(--accent-primary) 1px, transparent 1px)`,
+            backgroundSize: '48px 48px',
+          }}
+        />
+
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24 w-full">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+
+            {/* ── Left: Hero Content ── */}
+            <div className="flex flex-col gap-8 z-10 relative">
+              {/* Badge */}
+              <motion.div
+                initial={{ opacity: 0, y: -12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6 }}
+                className="flex items-center gap-2 w-fit px-4 py-2 rounded-full text-xs font-bold font-display uppercase tracking-wider"
+                style={{
+                  background: `color-mix(in srgb, ${cfg.primaryColor} 10%, transparent)`,
+                  border: `1px solid ${cfg.primaryColor}30`,
+                  color: cfg.primaryColor,
+                  transition: 'all 0.8s ease',
+                }}
+              >
+                <Activity className="w-3.5 h-3.5" />
+                <span>India's #1 Medical Notes Platform</span>
+              </motion.div>
+
+              {/* Headline */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.7, delay: 0.1 }}
+              >
+                <h1 className="text-4xl sm:text-5xl xl:text-6xl font-display font-bold tracking-tight leading-[1.08]" style={{ color: 'var(--text-primary)' }}>
+                  {specialty.id === 'default' ? (
+                    <>
+                      Notes That<br />
+                      <span style={{ color: cfg.primaryColor }}>Diagnose</span><br />
+                      Your Doubts.
+                    </>
+                  ) : (
+                    <>
+                      Master<br />
+                      <span style={{ color: cfg.primaryColor }}>{specialty.label}</span><br />
+                      Like a Pro.
+                    </>
+                  )}
+                </h1>
+              </motion.div>
+
+              {/* Sub-headline */}
+              <motion.p
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: 0.2 }}
+                className="text-base sm:text-lg leading-relaxed max-w-xl font-sans"
+                style={{ color: 'var(--text-muted)' }}
+              >
+                {specialty.id === 'default'
+                  ? 'Premium handwritten notes, PYQs, and study guides — curated by toppers for MBBS, BDS, BAMS, BPT, B.Sc Nursing and more.'
+                  : specialty.description
+                }
+              </motion.p>
+
+              {/* CTA buttons */}
+              <motion.div
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: 0.3 }}
+                className="flex flex-col sm:flex-row gap-4"
+              >
+                <Link
+                  to={specialty.id !== 'default' ? `/courses?specialty=${encodeURIComponent(specialty.label)}` : '/courses'}
+                  className="btn-primary py-3.5 px-8 text-sm font-bold flex items-center gap-2 justify-center"
+                  style={specialty.id !== 'default' ? {
+                    background: cfg.primaryColor,
+                    boxShadow: `0 8px 32px ${cfg.glowColor}`,
+                  } : {}}
+                >
+                  <BookOpen className="w-4 h-4" />
+                  {specialty.id !== 'default' ? `Browse ${specialty.label} Notes` : 'Browse All Notes'}
+                  <ArrowRight className="w-4 h-4" />
+                </Link>
+                <Link
+                  to="/seller/login"
+                  className="btn-secondary py-3.5 px-8 text-sm font-bold flex items-center gap-2 justify-center"
+                >
+                  <Download className="w-4 h-4" />
+                  Become a Seller
+                </Link>
+              </motion.div>
+
+              {/* Stats row */}
+              <motion.div
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: 0.4 }}
+                className="grid grid-cols-4 gap-4 pt-6"
+                style={{ borderTop: '1px solid var(--glass-border)' }}
+              >
+                {STATS.map((s, i) => (
+                  <div key={i} className="text-center">
+                    <p className="text-xl sm:text-2xl font-display font-bold" style={{ color: cfg.primaryColor, transition: 'color 0.6s' }}>{s.value}</p>
+                    <p className="text-[10px] font-sans mt-0.5 leading-tight" style={{ color: 'var(--text-muted)' }}>{s.label}</p>
+                  </div>
+                ))}
+              </motion.div>
             </div>
-            <h2 className="text-3xl sm:text-5xl font-display font-bold tracking-tight" style={{ color: 'var(--text-primary)' }}>
-              Notes Classified by Course
-            </h2>
-            <p className="font-sans text-sm max-w-2xl mt-1" style={{ color: 'var(--text-muted)' }}>
-              Select your academic discipline to filter our library of university-specific study guides, handwritten topper cards, and diagrams.
-            </p>
-          </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            {/* ── Right: Interactive Anatomy Navigator ── */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.92 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.9, delay: 0.2, ease: [0.22, 1, 0.36, 1] }}
+              className="flex justify-center relative z-10"
+            >
+              {/* Floating particles around the body */}
+              <MedicalParticleField color={cfg.primaryColor} />
+
+              <div className="relative w-full max-w-sm">
+                {/* Glow ring behind the figure */}
+                <div
+                  className="absolute inset-0 rounded-full blur-3xl pointer-events-none"
+                  style={{
+                    background: `radial-gradient(circle, ${cfg.primaryColor}20 0%, transparent 70%)`,
+                    transition: 'background 0.8s ease',
+                  }}
+                />
+                <AnatomyNavigator />
+              </div>
+            </motion.div>
+          </div>
+        </div>
+
+        {/* Scroll indicator */}
+        <motion.div
+          className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 1.2 }}
+        >
+          <motion.div
+            animate={{ y: [0, 8, 0] }}
+            transition={{ duration: 1.6, repeat: Infinity }}
+            className="w-5 h-8 rounded-full border-2 flex items-start justify-center pt-1.5"
+            style={{ borderColor: 'var(--glass-border)' }}
+          >
+            <div className="w-1 h-2 rounded-full" style={{ background: 'var(--accent-primary)' }} />
+          </motion.div>
+          <p className="text-[10px] font-sans opacity-40" style={{ color: 'var(--text-muted)' }}>Scroll to explore</p>
+        </motion.div>
+      </section>
+
+      {/* ═══════════════════════════════════════════════════════
+          SPECIALTY PANEL — appears when organ is clicked
+         ═══════════════════════════════════════════════════════ */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <SpecialtyPanel />
+        <SpecialtyQuickSwitch />
+      </div>
+
+      {/* ═══════════════════════════════════════════════════════
+          SECTION 2 — COURSE CATEGORIES
+         ═══════════════════════════════════════════════════════ */}
+      <section className="py-28 px-4 sm:px-6 lg:px-8 relative" style={{ borderTop: '1px solid var(--glass-border)' }}>
+        <MedicalGridLines />
+        <div className="max-w-7xl mx-auto relative z-10">
+          <SectionHeader
+            badge={<><Sparkles className="w-3.5 h-3.5" />Academic Catalog</>}
+            title="Notes Classified by Course"
+            subtitle="Select your academic discipline to filter our library of university-specific study guides, handwritten topper cards, and diagrams."
+          />
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mt-12">
             {COURSE_CATEGORIES.map((cat, idx) => (
               <CategoryCard key={cat.id} cat={cat} idx={idx} navigate={navigate} />
             ))}
@@ -249,26 +373,18 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Featured Sellers Section */}
+      {/* ═══════════════════════════════════════════════════════
+          SECTION 3 — FEATURED SELLERS
+         ═══════════════════════════════════════════════════════ */}
       {featuredSellers.length > 0 && (
         <section className="py-28 px-4 sm:px-6 lg:px-8 relative" style={{ borderTop: '1px solid var(--glass-border)' }}>
-          <StudyDeskBackground />
-          
           <div className="max-w-7xl mx-auto relative z-10">
-            <div className="text-center max-w-3xl mx-auto mb-20 flex flex-col items-center gap-4">
-              <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-xs font-semibold tracking-wider text-primary uppercase">
-                <Trophy className="w-3.5 h-3.5" />
-                <span>Verified Authors</span>
-              </div>
-              <h2 className="text-3xl sm:text-5xl font-display font-bold text-white tracking-tight">
-                Top Verified Creators
-              </h2>
-              <p className="text-muted font-sans text-sm max-w-2xl mt-1">
-                Study from premium notes uploaded by university toppers, reviewed for accuracy and medical curriculum alignments.
-              </p>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+            <SectionHeader
+              badge={<><Trophy className="w-3.5 h-3.5" />Verified Authors</>}
+              title="Top Verified Creators"
+              subtitle="Study from premium notes uploaded by university toppers, reviewed for accuracy and medical curriculum alignment."
+            />
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mt-12">
               {featuredSellers.map((seller, idx) => (
                 <SellerCard key={seller.id} seller={seller} idx={idx} />
               ))}
@@ -277,26 +393,17 @@ export default function LandingPage() {
         </section>
       )}
 
-      {/* 3. Why StethoNotes Bento Section */}
+      {/* ═══════════════════════════════════════════════════════
+          SECTION 4 — WHY STETHONOTES
+         ═══════════════════════════════════════════════════════ */}
       <section id="why-us" className="py-28 px-4 sm:px-6 lg:px-8 relative" style={{ borderTop: '1px solid var(--glass-border)' }}>
-        <SecureArchiveBackground />
-        <div className="max-w-7xl mx-auto relative z-10">
-          <div className="text-center max-w-3xl mx-auto mb-20 flex flex-col items-center gap-4">
-            <div className="flex items-center gap-2 px-3 py-1 rounded-full border text-xs font-semibold tracking-wider uppercase"
-              style={{ background: 'color-mix(in srgb, var(--accent-primary) 10%, transparent)', borderColor: 'color-mix(in srgb, var(--accent-primary) 25%, transparent)', color: 'var(--accent-primary)' }}
-            >
-              <BookOpen className="w-3.5 h-3.5" />
-              <span>Core Benefits</span>
-            </div>
-            <h2 className="text-3xl sm:text-5xl font-display font-bold tracking-tight" style={{ color: 'var(--text-primary)' }}>
-              Why Study with StethoNotes?
-            </h2>
-            <p className="font-sans text-sm max-w-2xl mt-1" style={{ color: 'var(--text-muted)' }}>
-              Designed specifically to meet the high academic demands of modern medicine, surgery, and health sciences.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+        <div className="max-w-7xl mx-auto">
+          <SectionHeader
+            badge={<><BookOpen className="w-3.5 h-3.5" />Core Benefits</>}
+            title="Why Study with StethoNotes?"
+            subtitle="Designed specifically to meet the high academic demands of modern medicine, surgery, and health sciences."
+          />
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mt-12">
             {WHY_US.map((item, idx) => (
               <WhyUsCard key={idx} item={item} idx={idx} />
             ))}
@@ -304,68 +411,51 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* 4. Testimonials Section */}
+      {/* ═══════════════════════════════════════════════════════
+          SECTION 5 — TESTIMONIALS
+         ═══════════════════════════════════════════════════════ */}
       <section id="testimonials" className="py-28 px-4 sm:px-6 lg:px-8 relative overflow-hidden" style={{ borderTop: '1px solid var(--glass-border)' }}>
-        <CampusBackground />
-        
         <div className="max-w-4xl mx-auto relative z-10">
-          <div className="text-center mb-16 flex flex-col items-center gap-3">
-            <div className="flex items-center gap-2 px-3 py-1 rounded-full border text-xs font-semibold tracking-wider uppercase"
-              style={{ background: 'color-mix(in srgb, var(--accent-primary) 10%, transparent)', borderColor: 'color-mix(in srgb, var(--accent-primary) 25%, transparent)', color: 'var(--accent-primary)' }}
-            >
-              <Heart className="w-3.5 h-3.5" />
-              <span>Wall of Love</span>
-            </div>
-            <h2 className="text-3xl sm:text-5xl font-display font-bold tracking-tight" style={{ color: 'var(--text-primary)' }}>
-              Loved by Thousands of Medics
-            </h2>
-          </div>
-
-          {/* Testimonial slider */}
-          <div className="relative p-8 sm:p-14 rounded-3xl border shadow-xl flex flex-col items-center gap-6"
-            style={{ background: 'var(--surface)', borderColor: 'var(--glass-border)' }}
-          >
-            <div className="flex gap-1 mb-2" style={{ color: 'var(--accent-primary)' }}>
-              {Array.from({ length: TESTIMONIALS[currentTestimonial].rating }).map((_, i) => (
-                <Star key={i} className="w-5 h-5 fill-current" />
-              ))}
-            </div>
-
-            <p className="text-center text-base sm:text-lg italic leading-relaxed font-sans max-w-2xl" style={{ color: 'var(--text-muted)' }}>
-              "{TESTIMONIALS[currentTestimonial].comment}"
-            </p>
-
-            <div className="flex items-center gap-4 mt-4">
-              <img
-                src={TESTIMONIALS[currentTestimonial].avatar}
-                alt={TESTIMONIALS[currentTestimonial].name}
-                className="w-12 h-12 rounded-full object-cover"
-                style={{ border: '1px solid var(--glass-border)' }}
-              />
-              <div className="text-left">
-                <h4 className="font-display font-bold text-sm" style={{ color: 'var(--text-primary)' }}>
-                  {TESTIMONIALS[currentTestimonial].name}
-                </h4>
-                <p className="text-xs font-sans" style={{ color: 'var(--accent-primary)' }}>
-                  {TESTIMONIALS[currentTestimonial].role}
-                </p>
-              </div>
-            </div>
-
-            {/* Slider Navigation */}
-            <div className="flex gap-4 mt-6">
-              <button
-                onClick={prevTestimonial}
-                className="p-2.5 rounded-xl transition-colors"
-                style={{ border: '1px solid var(--glass-border)', background: 'color-mix(in srgb, var(--text-primary) 5%, transparent)', color: 'var(--text-muted)' }}
+          <SectionHeader
+            badge={<><Heart className="w-3.5 h-3.5" />Wall of Love</>}
+            title="Loved by Thousands of Medics"
+          />
+          <div className="mt-12 relative rounded-3xl border p-8 sm:p-14 flex flex-col items-center gap-6"
+            style={{ background: 'var(--surface)', borderColor: 'var(--glass-border)' }}>
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={currentTestimonial}
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -16 }}
+                transition={{ duration: 0.4 }}
+                className="flex flex-col items-center gap-4 w-full"
               >
+                <div className="flex gap-1" style={{ color: cfg.primaryColor }}>
+                  {Array.from({ length: TESTIMONIALS[currentTestimonial].rating }, (_, i) => (
+                    <Star key={i} className="w-5 h-5 fill-current" />
+                  ))}
+                </div>
+                <p className="text-center text-base sm:text-lg italic leading-relaxed font-sans max-w-2xl" style={{ color: 'var(--text-muted)' }}>
+                  "{TESTIMONIALS[currentTestimonial].comment}"
+                </p>
+                <div className="flex items-center gap-4 mt-4">
+                  <img src={TESTIMONIALS[currentTestimonial].avatar} alt={TESTIMONIALS[currentTestimonial].name}
+                    className="w-12 h-12 rounded-full object-cover" style={{ border: '2px solid var(--glass-border)' }} />
+                  <div>
+                    <p className="font-display font-bold text-sm" style={{ color: 'var(--text-primary)' }}>{TESTIMONIALS[currentTestimonial].name}</p>
+                    <p className="text-xs font-sans" style={{ color: cfg.primaryColor }}>{TESTIMONIALS[currentTestimonial].role}</p>
+                  </div>
+                </div>
+              </motion.div>
+            </AnimatePresence>
+            <div className="flex gap-4 mt-2">
+              <button onClick={prevTestimonial} className="p-2.5 rounded-xl transition-colors"
+                style={{ border: '1px solid var(--glass-border)', background: 'color-mix(in srgb, var(--text-primary) 5%, transparent)', color: 'var(--text-muted)' }}>
                 <ChevronLeft className="w-5 h-5" />
               </button>
-              <button
-                onClick={nextTestimonial}
-                className="p-2.5 rounded-xl transition-colors"
-                style={{ border: '1px solid var(--glass-border)', background: 'color-mix(in srgb, var(--text-primary) 5%, transparent)', color: 'var(--text-muted)' }}
-              >
+              <button onClick={nextTestimonial} className="p-2.5 rounded-xl transition-colors"
+                style={{ border: '1px solid var(--glass-border)', background: 'color-mix(in srgb, var(--text-primary) 5%, transparent)', color: 'var(--text-muted)' }}>
                 <ChevronRight className="w-5 h-5" />
               </button>
             </div>
@@ -373,101 +463,195 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* 5. About Section */}
+      {/* ═══════════════════════════════════════════════════════
+          SECTION 6 — ABOUT
+         ═══════════════════════════════════════════════════════ */}
       <section id="about" className="py-28 px-4 sm:px-6 lg:px-8 relative" style={{ borderTop: '1px solid var(--glass-border)' }}>
         <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-16 items-center">
-          <div className="lg:col-span-5 relative group">
+          <motion.div
+            className="lg:col-span-5"
+            initial={{ opacity: 0, x: -30 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.7 }}
+          >
             <img
               src="https://res.cloudinary.com/dsqxboxoc/image/upload/v1784056611/ChatGPT_Image_Jul_15_2026_12_45_53_AM_edclrq.png"
               alt="Medical Students Studying"
-              className="rounded-3xl relative z-10 object-cover w-full h-[420px]"
+              className="rounded-3xl object-cover w-full h-[420px]"
               style={{ border: '1px solid var(--glass-border)' }}
             />
-          </div>
-          <div className="lg:col-span-7 flex flex-col items-start gap-5">
+          </motion.div>
+          <motion.div
+            className="lg:col-span-7 flex flex-col items-start gap-5"
+            initial={{ opacity: 0, x: 30 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.7 }}
+          >
             <h2 className="text-3xl sm:text-4xl font-display font-bold tracking-tight" style={{ color: 'var(--text-primary)' }}>
               Empowering the Next Generation of Healthcare Professionals
             </h2>
-            <div className="w-12 h-1 rounded-full" style={{ background: 'var(--accent-primary)' }} />
-            <p className="text-sm leading-relaxed mt-2 font-sans" style={{ color: 'var(--text-muted)' }}>
-              StethoNotes was created by medical students, for medical students. We understand that medical and paramedical syllabi are vast, and traditional textbook layouts can sometimes feel overwhelming during final revision cycles.
+            <div className="w-12 h-1 rounded-full" style={{ background: cfg.primaryColor, transition: 'background 0.6s' }} />
+            <p className="text-sm leading-relaxed font-sans" style={{ color: 'var(--text-muted)' }}>
+              StethoNotes was created by medical students, for medical students. We understand that medical and paramedical syllabi are vast, and traditional textbook layouts can feel overwhelming during final revision cycles.
             </p>
             <p className="text-sm leading-relaxed font-sans" style={{ color: 'var(--text-muted)' }}>
-              Our marketplace brings together university toppers, instructors, and experienced doctors to upload high-yield, structured study notes. Each note PDF undergoes review for accuracy and syllabus coverage, ensuring that your study prep is focused, concise, and highly effective.
+              Our marketplace brings together university toppers, instructors, and experienced doctors to upload high-yield, structured study notes. Each PDF undergoes review for accuracy and syllabus coverage.
             </p>
             <div className="grid grid-cols-2 gap-4 mt-4 w-full">
               <div className="flex items-center gap-3">
-                <Users className="w-5 h-5 shrink-0" style={{ color: 'var(--accent-primary)' }} />
+                <Users className="w-5 h-5 shrink-0" style={{ color: cfg.primaryColor }} />
                 <span className="font-display font-semibold text-sm" style={{ color: 'var(--text-primary)' }}>Topper Community</span>
               </div>
               <div className="flex items-center gap-3">
-                <Smile className="w-5 h-5 shrink-0" style={{ color: 'var(--accent-primary)' }} />
+                <Smile className="w-5 h-5 shrink-0" style={{ color: cfg.primaryColor }} />
                 <span className="font-display font-semibold text-sm" style={{ color: 'var(--text-primary)' }}>Affordable Study Aids</span>
               </div>
             </div>
-          </div>
+          </motion.div>
         </div>
       </section>
 
-      {/* 6. Contact Section */}
+      {/* ═══════════════════════════════════════════════════════
+          SECTION 7 — CONTACT
+         ═══════════════════════════════════════════════════════ */}
       <section id="contact" className="py-28 px-4 sm:px-6 lg:px-8 relative" style={{ borderTop: '1px solid var(--glass-border)' }}>
-        <ConstellationBackground />
         <div className="max-w-4xl mx-auto rounded-3xl border p-8 sm:p-14 shadow-xl relative z-10"
-          style={{ background: 'var(--surface)', borderColor: 'var(--glass-border)' }}
-        >
-          <div className="text-center max-w-2xl mx-auto mb-12 flex flex-col items-center gap-3">
+          style={{ background: 'var(--surface)', borderColor: 'var(--glass-border)' }}>
+          <div className="text-center max-w-2xl mx-auto mb-12">
             <h2 className="text-3xl font-display font-bold tracking-tight" style={{ color: 'var(--text-primary)' }}>
               Have Questions? Get in Touch
             </h2>
-            <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+            <p className="mt-3 text-xs" style={{ color: 'var(--text-muted)' }}>
               Drop us a message and our support team will reply within 24 hours.
             </p>
           </div>
-
           <form className="grid grid-cols-1 sm:grid-cols-2 gap-6" onSubmit={(e) => e.preventDefault()}>
             <div className="flex flex-col gap-2">
               <label className="text-xs font-display font-semibold" style={{ color: 'var(--text-primary)' }}>Full Name</label>
-              <input
-                type="text"
-                placeholder="John Doe"
-                className="input-field"
-              />
+              <input type="text" placeholder="John Doe" className="input-field" />
             </div>
             <div className="flex flex-col gap-2">
               <label className="text-xs font-display font-semibold" style={{ color: 'var(--text-primary)' }}>Email Address</label>
-              <input
-                type="email"
-                placeholder="john@example.com"
-                className="input-field"
-              />
+              <input type="email" placeholder="john@example.com" className="input-field" />
             </div>
             <div className="sm:col-span-2 flex flex-col gap-2">
               <label className="text-xs font-display font-semibold" style={{ color: 'var(--text-primary)' }}>Message</label>
-              <textarea
-                placeholder="Write your message here..."
-                rows={4}
-                className="input-field resize-none"
-              />
+              <textarea placeholder="Write your message here..." rows={4} className="input-field resize-none" />
             </div>
             <div className="sm:col-span-2 flex flex-col items-center gap-3 mt-4">
               <button
                 type="button"
-                onClick={() => alert('Message Sent! Thank you for contacting StethoNotes.')}
-                className="btn-primary py-3 px-12 text-xs font-bold uppercase tracking-wider shadow-md hover:shadow-lg"
+                onClick={() => alert('Message sent! Thank you for contacting StethoNotes.')}
+                className="btn-primary py-3 px-12 text-xs font-bold uppercase tracking-wider"
+                style={specialty.id !== 'default' ? { background: cfg.primaryColor, boxShadow: `0 4px 20px ${cfg.glowColor}` } : {}}
               >
                 Send Message
               </button>
               <p className="text-xs text-center mt-2" style={{ color: 'var(--text-muted)' }}>
                 We respect your privacy. Read our{' '}
-                <Link to="/privacy" className="hover:underline" style={{ color: 'var(--accent-primary)' }}>
-                  Privacy Policy
-                </Link>{' '}
-                to learn how we handle your data.
+                <Link to="/privacy" className="hover:underline" style={{ color: cfg.primaryColor }}>Privacy Policy</Link>.
               </p>
             </div>
           </form>
         </div>
       </section>
+    </div>
+  );
+}
+
+// ─── Reusable Section Header ──────────────────────────────────
+
+function SectionHeader({ badge, title, subtitle }: { badge: React.ReactNode; title: string; subtitle?: string }) {
+  const { specialty } = useSpecialty();
+  const cfg = SPECIALTIES[specialty.id];
+
+  return (
+    <motion.div
+      className="text-center max-w-3xl mx-auto flex flex-col items-center gap-4"
+      initial={{ opacity: 0, y: 20 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true }}
+      transition={{ duration: 0.6 }}
+    >
+      <div
+        className="flex items-center gap-2 px-3 py-1 rounded-full border text-xs font-semibold tracking-wider uppercase"
+        style={{
+          background: `color-mix(in srgb, ${cfg.primaryColor} 10%, transparent)`,
+          borderColor: `${cfg.primaryColor}30`,
+          color: cfg.primaryColor,
+          transition: 'all 0.6s ease',
+        }}
+      >
+        {badge}
+      </div>
+      <h2 className="text-3xl sm:text-5xl font-display font-bold tracking-tight" style={{ color: 'var(--text-primary)' }}>
+        {title}
+      </h2>
+      {subtitle && (
+        <p className="font-sans text-sm max-w-2xl mt-1" style={{ color: 'var(--text-muted)' }}>
+          {subtitle}
+        </p>
+      )}
+    </motion.div>
+  );
+}
+
+// ─── Medical grid lines (subtle background) ───────────────────
+
+function MedicalGridLines() {
+  return (
+    <div className="absolute inset-0 pointer-events-none" style={{ opacity: 0.025 }}>
+      <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <pattern id="grid" width="48" height="48" patternUnits="userSpaceOnUse">
+            <path d="M 48 0 L 0 0 0 48" fill="none" stroke="var(--accent-primary)" strokeWidth="0.5" />
+          </pattern>
+        </defs>
+        <rect width="100%" height="100%" fill="url(#grid)" />
+      </svg>
+    </div>
+  );
+}
+
+// ─── Floating particles around anatomy figure ─────────────────
+
+function MedicalParticleField({ color: _color }: { color: string }) {
+  const particles = Array.from({ length: 12 }, (_, i) => ({
+    x: Math.cos((i / 12) * Math.PI * 2) * (150 + (i % 3) * 30),
+    y: Math.sin((i / 12) * Math.PI * 2) * (200 + (i % 4) * 20),
+    size: 2 + (i % 3),
+    delay: i * 0.3,
+    emoji: ['🧬', '💊', '🔬', '⚕️', '🩺', '💉'][i % 6],
+  }));
+
+  return (
+    <div className="absolute inset-0 pointer-events-none overflow-hidden" aria-hidden="true">
+      {particles.map((p, i) => (
+        <motion.div
+          key={i}
+          className="absolute text-sm"
+          style={{
+            left: `calc(50% + ${p.x * 0.5}px)`,
+            top: `calc(50% + ${p.y * 0.35}px)`,
+            fontSize: p.size * 4 + 'px',
+            opacity: 0.15,
+          }}
+          animate={{
+            y: [-8, 8, -8],
+            opacity: [0.08, 0.2, 0.08],
+          }}
+          transition={{
+            duration: 3 + p.delay * 0.5,
+            repeat: Infinity,
+            delay: p.delay,
+            ease: 'easeInOut',
+          }}
+        >
+          {p.emoji}
+        </motion.div>
+      ))}
     </div>
   );
 }
