@@ -31,19 +31,17 @@ const CategoryCard = memo(({ cat, idx, navigate }: { cat: any; idx: number; navi
       style={{ borderColor: 'var(--glass-border)' }}
     >
       {/* Cover Image Container */}
-      <div className="relative w-full h-40 overflow-hidden">
+      <div className="relative w-full h-40 overflow-hidden" style={{ background: 'var(--bg-layer)', borderBottom: '1px solid var(--glass-border)' }}>
         {cat.coverImage ? (
           <img
             src={cat.coverImage}
             alt={`${cat.name} cover`}
-            className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+            className="w-full h-full object-contain transition-transform duration-700 group-hover:scale-105"
             loading="lazy"
           />
         ) : (
           <div className={`w-full h-full bg-gradient-to-br ${cat.color}`} />
         )}
-        {/* Soft overlay gradient to blend into the card surface */}
-        <div className="absolute inset-0 bg-gradient-to-t from-[var(--surface)] via-transparent to-transparent opacity-95" />
       </div>
 
       <div className="p-6 pt-0 flex-grow flex flex-col justify-between">
