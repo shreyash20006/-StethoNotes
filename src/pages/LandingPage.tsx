@@ -178,10 +178,42 @@ export default function LandingPage() {
           SECTION 1 — ANATOMY HERO
           Two-column: Left = tagline/CTA, Right = interactive body
          ═══════════════════════════════════════════════════════ */}
-      <section className="min-h-screen relative flex items-center">
-        {/* Dynamic specialty background glow */}
+      <section className="min-h-screen relative flex items-center overflow-hidden">
+
+        {/* ── Cinematic Video Background ── */}
+        <video
+          autoPlay
+          muted
+          loop
+          playsInline
+          preload="auto"
+          className="absolute inset-0 w-full h-full object-cover z-0"
+          style={{ objectPosition: 'center center' }}
+          aria-hidden="true"
+        >
+          <source
+            src="https://res.cloudinary.com/dsqxboxoc/video/upload/v1784454154/Create_a_premium_cinematic_web_bdrj8r.mp4"
+            type="video/mp4"
+          />
+        </video>
+
+        {/* ── Gradient overlay — dark in dark mode, soft in light mode ── */}
+        <div
+          className="absolute inset-0 z-[1] pointer-events-none"
+          style={{
+            background: `var(--video-overlay, linear-gradient(
+              135deg,
+              rgba(7, 23, 43, 0.88) 0%,
+              rgba(7, 23, 43, 0.72) 45%,
+              rgba(7, 23, 43, 0.52) 75%,
+              rgba(7, 23, 43, 0.38) 100%
+            ))`,
+          }}
+        />
+
+        {/* Dynamic specialty background glow — on top of video */}
         <motion.div
-          className="absolute inset-0 pointer-events-none"
+          className="absolute inset-0 pointer-events-none z-[2]"
           animate={{
             background: `radial-gradient(ellipse at 75% 50%, ${cfg.glowColor} 0%, transparent 55%),
                          radial-gradient(ellipse at 20% 80%, ${cfg.primaryColor}08 0%, transparent 45%)`,
@@ -191,14 +223,14 @@ export default function LandingPage() {
 
         {/* Medical grid background */}
         <div
-          className="absolute inset-0 pointer-events-none opacity-[0.04]"
+          className="absolute inset-0 pointer-events-none opacity-[0.04] z-[2]"
           style={{
             backgroundImage: `linear-gradient(var(--accent-primary) 1px, transparent 1px), linear-gradient(90deg, var(--accent-primary) 1px, transparent 1px)`,
             backgroundSize: '48px 48px',
           }}
         />
 
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24 w-full">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24 w-full relative z-[10]">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
 
             {/* ── Left: Hero Content ── */}
