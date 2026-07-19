@@ -1,5 +1,5 @@
 import { Link, useNavigate } from 'react-router-dom';
-import { motion, AnimatePresence, useScroll, useTransform } from 'motion/react';
+import { motion, AnimatePresence } from 'motion/react';
 import { memo, useState, useEffect } from 'react';
 import {
   Award, ShieldCheck, Star, ArrowRight, Activity, Users, Smile,
@@ -145,11 +145,6 @@ export default function LandingPage() {
   const { specialty } = useSpecialty();
   useLenis();
 
-  const { scrollY } = useScroll();
-  const videoY = useTransform(scrollY, [0, 800], [0, 180]);
-  const videoScale = useTransform(scrollY, [0, 800], [1, 1.12]);
-  const videoOpacity = useTransform(scrollY, [0, 800], [1, 0.3]);
-
   const nextTestimonial = () => setCurrentTestimonial(p => (p + 1) % TESTIMONIALS.length);
   const prevTestimonial = () => setCurrentTestimonial(p => (p - 1 + TESTIMONIALS.length) % TESTIMONIALS.length);
 
@@ -184,30 +179,25 @@ export default function LandingPage() {
       <section className="min-h-screen relative flex items-center overflow-hidden">
 
         {/* ── Cinematic Video Background ── */}
-        <motion.video
+        <video
           autoPlay
           muted
           loop
           playsInline
           preload="auto"
-          className="absolute inset-0 w-full h-full object-cover z-0"
-          style={{
-            y: videoY,
-            scale: videoScale,
-            opacity: videoOpacity,
-            objectPosition: 'center center'
-          }}
+          className="fixed inset-0 w-full h-full object-cover z-0"
+          style={{ objectPosition: 'center center' }}
           aria-hidden="true"
         >
           <source
             src="https://res.cloudinary.com/dsqxboxoc/video/upload/v1784456953/Create_an_ultra_realistic_cine_zvgdrm.mp4"
             type="video/mp4"
           />
-        </motion.video>
+        </video>
 
         {/* ── Gradient overlay — dark in dark mode, soft in light mode ── */}
         <div
-          className="absolute inset-0 z-[1] pointer-events-none"
+          className="fixed inset-0 z-[1] pointer-events-none"
           style={{
             background: `var(--video-overlay, linear-gradient(
               135deg,
